@@ -72,15 +72,16 @@ export const NotificationSimulatorModal: React.FC<NotificationSimulatorProps> = 
         >
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <View style={[styles.iconBadge, { backgroundColor: colors.primaryMuted }]}>
+              <View style={[styles.iconBadge, { backgroundColor: colors.surfaceSubtle }]}>
                 <Zap size={16} color={colors.primary} />
               </View>
               <Text style={[styles.title, { color: colors.text }]}>Simulador de Notificação</Text>
             </View>
-            <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.borderLight }]}>
+            <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
               <X size={16} color={colors.text} />
             </Pressable>
           </View>
+
 
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Teste como o aplicativo captura as notificações de bancos em segundo plano e adiciona automaticamente ao extrato:

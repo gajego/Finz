@@ -37,22 +37,24 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
+        snapToAlignment="center"
+        decelerationRate="fast"
         onMomentumScrollEnd={handleScroll}
         renderItem={({ item }) => (
           <CardItem card={item} onEditSkin={onEditSkin} />
         )}
       />
 
-      {/* Indicadores de Paginação */}
+      {/* Indicadores de Cartão Ativo Minimalistas */}
       <View style={styles.pagination}>
         {cards.map((_, i) => (
           <View
             key={i}
             style={[
-              styles.dot,
+              styles.bar,
               {
-                backgroundColor: i === activeIndex ? colors.primary : colors.borderLight,
-                width: i === activeIndex ? 22 : 6,
+                backgroundColor: i === activeIndex ? colors.primary : colors.surfaceSubtle,
+                width: i === activeIndex ? 24 : 8,
               },
             ]}
           />
@@ -64,17 +66,17 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 4,
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    marginTop: 16,
+    marginTop: 8,
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
+  bar: {
+    height: 3,
+    borderRadius: 1.5,
   },
 });

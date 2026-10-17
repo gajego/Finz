@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput } from 'react-native';
 import { Image } from 'expo-image';
-import { X, Check, Image as ImageIcon } from 'lucide-react-native';
+import { X, Check } from 'lucide-react-native';
 import { BankCard } from '@/types';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -15,33 +15,33 @@ interface CardSkinModalProps {
 const WALLPAPER_PRESETS = [
   {
     id: 'p1',
-    name: 'Cyber Void',
-    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
-    gradient: ['#0F172A', '#1E293B'] as [string, string],
+    name: 'TITANIUM OBSIDIAN',
+    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1000&auto=format&fit=crop&q=80',
+    gradient: ['#0A0A0C', '#121217'] as [string, string],
   },
   {
     id: 'p2',
-    name: 'Aurora Neon',
-    url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=800&auto=format&fit=crop&q=80',
-    gradient: ['#00F59B', '#6366F1'] as [string, string],
+    name: 'ACID MATRIX',
+    url: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1000&auto=format&fit=crop&q=80',
+    gradient: ['#040405', '#161908'] as [string, string],
   },
   {
     id: 'p3',
-    name: 'Liquid Gold',
-    url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=80',
-    gradient: ['#F59E0B', '#78350F'] as [string, string],
+    name: 'ONYX GOLD',
+    url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1000&auto=format&fit=crop&q=80',
+    gradient: ['#1C1608', '#0A0804'] as [string, string],
   },
   {
     id: 'p4',
-    name: 'Dark Nebula',
-    url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800&auto=format&fit=crop&q=80',
-    gradient: ['#7C3AED', '#312E81'] as [string, string],
+    name: 'CHROMATIC FOIL',
+    url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=1000&auto=format&fit=crop&q=80',
+    gradient: ['#180A2E', '#0A0514'] as [string, string],
   },
   {
     id: 'p5',
-    name: 'Carbon Matrix',
-    url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
-    gradient: ['#111827', '#030712'] as [string, string],
+    name: 'BRUSHED DAMASCUS',
+    url: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1000&auto=format&fit=crop&q=80',
+    gradient: ['#141518', '#08090A'] as [string, string],
   },
 ];
 
@@ -59,7 +59,7 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
 
   const handleApplyCustomUrl = () => {
     if (customUrl.trim().length > 0) {
-      updateCardSkin(card.id, customUrl.trim(), ['#111827', '#1F2937']);
+      updateCardSkin(card.id, customUrl.trim(), ['#08090C', '#13151B']);
       setCustomUrl('');
       onClose();
     }
@@ -78,25 +78,27 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
             styles.sheet,
             {
               backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.border,
+              borderColor: colors.borderStrong,
             },
           ]}
         >
           {/* Cabeçalho */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.title, { color: colors.text }]}>Skins & Wallpapers</Text>
+              <Text style={[styles.title, { color: colors.text }]}>ATELIÊ DE SKINS</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Personalize o visual do seu {card.bankName}
+                {card.bankName}
               </Text>
             </View>
-            <Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.borderLight }]}>
-              <X size={18} color={colors.text} />
+            <Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceSubtle }]}>
+              <X size={16} color={colors.text} />
             </Pressable>
           </View>
 
-          {/* Galeria de Presets */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>WALLPAPERS MODERNOS</Text>
+          {/* Presets de Wallpapers Físicos */}
+          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            TEXTURAS & MATERIAIS DE ALTA DEFINIÇÃO
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
             {WALLPAPER_PRESETS.map((preset) => {
               const isSelected = card.wallpaperUri === preset.url;
@@ -106,7 +108,8 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
                   onPress={() => handleSelectPreset(preset.url, preset.gradient)}
                   style={[
                     styles.presetItem,
-                    isSelected && { borderColor: colors.primary, borderWidth: 2 },
+                    { borderColor: isSelected ? colors.primary : colors.border },
+                    isSelected && { borderWidth: 2 },
                   ]}
                 >
                   <Image source={{ uri: preset.url }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -114,7 +117,7 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
                   <Text style={styles.presetName}>{preset.name}</Text>
                   {isSelected && (
                     <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
-                      <Check size={12} color="#0B0D13" />
+                      <Check size={10} color={colors.primaryForeground} />
                     </View>
                   )}
                 </Pressable>
@@ -122,13 +125,13 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
             })}
           </ScrollView>
 
-          {/* Opção Customizada por URL */}
-          <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: 18 }]}>
-            OU COLE O LINK DE UMA IMAGEM
+          {/* Inserir URL de imagem externa */}
+          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 18 }]}>
+            OU VINCULE UM WALLPAPER PRÓPRIO
           </Text>
           <View style={styles.customRow}>
             <TextInput
-              placeholder="https://sua-imagem.com/foto.jpg"
+              placeholder="https://exemplo.com/sua-imagem.png"
               placeholderTextColor={colors.textMuted}
               value={customUrl}
               onChangeText={setCustomUrl}
@@ -145,7 +148,9 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
               onPress={handleApplyCustomUrl}
               style={[styles.applyButton, { backgroundColor: colors.primary }]}
             >
-              <Text style={styles.applyButtonText}>Salvar</Text>
+              <Text style={[styles.applyButtonText, { color: colors.primaryForeground }]}>
+                APLICAR
+              </Text>
             </Pressable>
           </View>
 
@@ -153,7 +158,7 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
           {card.wallpaperUri && (
             <Pressable onPress={handleRemoveWallpaper} style={styles.removeButton}>
               <Text style={[styles.removeButtonText, { color: colors.danger }]}>
-                Remover wallpaper atual
+                RESTAURAR VISUAL PADRÃO DE FÁBRICA
               </Text>
             </Pressable>
           )}
@@ -166,15 +171,15 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 36,
   },
   header: {
     flexDirection: 'row',
@@ -183,92 +188,96 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '700',
     marginTop: 2,
+    letterSpacing: 1,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 12,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 10,
   },
   presetsRow: {
-    gap: 12,
-    paddingBottom: 8,
+    gap: 10,
+    paddingBottom: 4,
   },
   presetItem: {
-    width: 110,
-    height: 72,
-    borderRadius: 16,
+    width: 120,
+    height: 75,
+    borderRadius: 12,
     overflow: 'hidden',
     justifyContent: 'flex-end',
     padding: 8,
     borderWidth: 1,
-    borderColor: 'transparent',
   },
   presetOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   presetName: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.8,
     zIndex: 2,
   },
   checkBadge: {
     position: 'absolute',
     top: 6,
     right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 3,
   },
   customRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 8,
+    gap: 8,
+    marginTop: 6,
   },
   input: {
     flex: 1,
-    height: 48,
-    borderRadius: 14,
+    height: 44,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 13,
+    paddingHorizontal: 14,
+    fontSize: 12,
   },
   applyButton: {
-    height: 48,
-    paddingHorizontal: 20,
-    borderRadius: 14,
+    height: 44,
+    paddingHorizontal: 16,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   applyButtonText: {
-    color: '#0B0D13',
-    fontWeight: '700',
-    fontSize: 13,
+    fontWeight: '900',
+    fontSize: 11,
+    letterSpacing: 1,
   },
   removeButton: {
     marginTop: 18,
     alignItems: 'center',
   },
   removeButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

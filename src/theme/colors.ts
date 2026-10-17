@@ -3,66 +3,72 @@ export interface ThemeColors {
   background: string;
   surface: string;
   surfaceElevated: string;
+  surfaceSubtle: string;
   border: string;
-  borderLight: string;
-  primary: string;
-  primaryMuted: string;
+  borderStrong: string;
+  
+  // Neo-Fintech Acid Accent & Precision Monochrome
+  primary: string;           // Acid Volt / Neon Lime
+  primaryForeground: string; // Dark contrast on acid volt
   secondary: string;
-  secondaryMuted: string;
-  accent: string;
+  
+  // Status
   success: string;
-  warning: string;
   danger: string;
-  dangerMuted: string;
+  warning: string;
+  
+  // Tipografia com alto contraste
   text: string;
   textSecondary: string;
   textMuted: string;
-  glassBackground: string;
+  
   cardShadow: string;
 }
 
 export const DarkTheme: ThemeColors = {
   mode: 'dark',
-  background: '#090B10',
-  surface: '#121620',
-  surfaceElevated: '#1A202E',
+  background: '#040405',         // OLED Deep Black
+  surface: '#0D0E12',            // Titanium Graphite
+  surfaceElevated: '#15171E',
+  surfaceSubtle: '#1C1F28',
   border: 'rgba(255, 255, 255, 0.08)',
-  borderLight: 'rgba(255, 255, 255, 0.14)',
-  primary: '#00F59B',
-  primaryMuted: 'rgba(0, 245, 155, 0.12)',
-  secondary: '#6366F1',
-  secondaryMuted: 'rgba(99, 102, 241, 0.15)',
-  accent: '#38BDF8',
+  borderStrong: 'rgba(255, 255, 255, 0.18)',
+  
+  primary: '#D9F920',            // Acid Volt (Estilo Cash App / Linear / Off-White)
+  primaryForeground: '#040405',
+  secondary: '#3B82F6',
+  
   success: '#10B981',
+  danger: '#FF3B30',
   warning: '#F59E0B',
-  danger: '#EF4444',
-  dangerMuted: 'rgba(239, 68, 68, 0.15)',
-  text: '#FFFFFF',
-  textSecondary: '#94A3B8',
-  textMuted: '#64748B',
-  glassBackground: 'rgba(18, 22, 32, 0.75)',
-  cardShadow: 'rgba(0, 0, 0, 0.5)',
+  
+  text: '#F3F4F6',
+  textSecondary: '#8B93A5',
+  textMuted: '#525866',
+  
+  cardShadow: '#000000',
 };
 
 export const LightTheme: ThemeColors = {
   mode: 'light',
-  background: '#F8FAFC',
+  background: '#F6F7F9',         // Crisp Ceramic
   surface: '#FFFFFF',
-  surfaceElevated: '#F1F5F9',
-  border: 'rgba(0, 0, 0, 0.06)',
-  borderLight: 'rgba(0, 0, 0, 0.10)',
-  primary: '#00B871',
-  primaryMuted: 'rgba(0, 184, 113, 0.12)',
-  secondary: '#4F46E5',
-  secondaryMuted: 'rgba(79, 70, 229, 0.12)',
-  accent: '#0284C7',
+  surfaceElevated: '#EDEFF2',
+  surfaceSubtle: '#E2E5EA',
+  border: 'rgba(0, 0, 0, 0.07)',
+  borderStrong: 'rgba(0, 0, 0, 0.16)',
+  
+  primary: '#090A0C',            // Deep Carbon Black no modo claro
+  primaryForeground: '#FFFFFF',
+  secondary: '#2563EB',
+  
   success: '#059669',
+  danger: '#E11D48',
   warning: '#D97706',
-  danger: '#DC2626',
-  dangerMuted: 'rgba(220, 38, 38, 0.12)',
-  text: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
-  glassBackground: 'rgba(255, 255, 255, 0.85)',
-  cardShadow: 'rgba(0, 0, 0, 0.08)',
+  
+  text: '#090A0C',
+  textSecondary: '#4A5160',
+  textMuted: '#8C94A4',
+  
+  cardShadow: 'rgba(0, 0, 0, 0.06)',
 };

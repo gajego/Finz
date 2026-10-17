@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Moon, Sun, Bell, ShieldCheck } from 'lucide-react-native';
+import { Moon, Sun, Bell, Terminal } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 
@@ -12,49 +12,47 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const profile = useWalletStore((s) => s.profile);
 
-  const greeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
-    return 'Boa noite';
-  };
-
   return (
     <View style={styles.container}>
+      {/* Logotipo e Usuário */}
       <View>
-        <View style={styles.badgeRow}>
-          <ShieldCheck size={14} color={colors.primary} />
-          <Text style={[styles.badgeText, { color: colors.primary }]}>Local-First Seguro</Text>
+        <View style={styles.logoRow}>
+          <Text style={[styles.brandLogo, { color: colors.text }]}>FINZ</Text>
+          <View style={[styles.versionBadge, { borderColor: colors.borderStrong }]}>
+            <Text style={[styles.versionText, { color: colors.primary }]}>CORE v1.0</Text>
+          </View>
         </View>
-        <Text style={[styles.greeting, { color: colors.textSecondary }]}>{greeting()},</Text>
-        <Text style={[styles.name, { color: colors.text }]}>
-          {profile.nickname || 'Wesley'} ✨
+        <Text style={[styles.userName, { color: colors.textSecondary }]}>
+          PORTFÓLIO DE {profile.fullName.toUpperCase() || 'WESLEY SILVA'}
         </Text>
       </View>
 
-      <View style={styles.actions}>
+      {/* Ações: Alternar Tema e Simulador de Eventos */}
+      <View style={styles.actionButtons}>
         <Pressable
           onPress={toggleTheme}
           style={[
-            styles.iconButton,
+            styles.actionPill,
             { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
           ]}
+          hitSlop={8}
         >
           {mode === 'dark' ? (
-            <Sun size={20} color={colors.primary} />
+            <Sun size={15} color={colors.primary} />
           ) : (
-            <Moon size={20} color={colors.text} />
+            <Moon size={15} color={colors.text} />
           )}
         </Pressable>
 
         <Pressable
           onPress={onOpenNotifications}
           style={[
-            styles.iconButton,
+            styles.actionPill,
             { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
           ]}
+          hitSlop={8}
         >
-          <Bell size={20} color={colors.text} />
+          <Terminal size={15} color={colors.text} />
         </Pressable>
       </View>
     </View>
@@ -68,37 +66,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
-  badgeRow: {
+  logoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 8,
     marginBottom: 2,
   },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  greeting: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  name: {
+  brandLogo: {
     fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 3,
+  },
+  versionBadge: {
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  versionText: {
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: 1,
   },
-  actions: {
+  userName: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  actionButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
-  iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  actionPill: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',

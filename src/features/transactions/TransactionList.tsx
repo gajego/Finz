@@ -10,13 +10,15 @@ export const TransactionList: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={[styles.title, { color: colors.text }]}>Histórico Recente</Text>
-        <Text style={[styles.badge, { backgroundColor: colors.primaryMuted, color: colors.primary }]}>
-          Automático (Listener)
+      {/* Cabeçalho da Lista */}
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: colors.text }]}>REGISTRO DE ATIVIDADES</Text>
+        <Text style={[styles.countBadge, { color: colors.textMuted }]}>
+          {transactions.length} EVENTOS
         </Text>
       </View>
 
+      {/* Lista Linha a Linha */}
       <View style={styles.list}>
         {transactions.map((tx) => (
           <TransactionItem key={tx.id} transaction={tx} />
@@ -28,29 +30,28 @@ export const TransactionList: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24,
-    marginTop: 10,
-    marginBottom: 40,
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 50,
   },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
+    paddingBottom: 8,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
-  badge: {
-    fontSize: 11,
-    fontWeight: '700',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  countBadge: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   list: {
-    gap: 2,
+    gap: 0,
   },
 });

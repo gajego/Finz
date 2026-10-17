@@ -48,12 +48,13 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onClo
           ]}
         >
           {/* Badge */}
-          <View style={[styles.badge, { backgroundColor: colors.primaryMuted }]}>
+          <View style={[styles.badge, { backgroundColor: colors.surfaceSubtle }]}>
             <Sparkles size={14} color={colors.primary} />
             <Text style={[styles.badgeText, { color: colors.primary }]}>
               {step === 1 ? 'Bem-vindo ao Finz' : 'Dados Pessoais'}
             </Text>
           </View>
+
 
           {step === 1 ? (
             <>

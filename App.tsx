@@ -21,6 +21,8 @@ import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationSimulatorModal } from './src/features/notifications/NotificationSimulatorModal';
+import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
+import { ParsedReceipt } from './src/services/receipts/receiptParser';
 import { BankCard } from './src/types';
 
 export default function App() {
@@ -42,23 +44,23 @@ export default function App() {
     initStore();
   }, [initStore]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
-
-
-
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(!profile.onboardingCompleted);
   const [simulatorVisible, setSimulatorVisible] = useState(false);
+  const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   const handleOpenBudgetModal = (categoryId?: string) => {
     setSelectedCategoryForBudget(categoryId);
     setBudgetModalVisible(true);
   };
+
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -113,15 +115,24 @@ export default function App() {
           onClose={() => setOnboardingVisible(false)}
         />
 
-        {/* Terminal de Testes de Notificação */}
+        {/* Terminal de Testes de Notificação e Compartilhamento */}
         <NotificationSimulatorModal
           visible={simulatorVisible}
           onClose={() => setSimulatorVisible(false)}
+          onSimulateSharedReceipt={(receipt) => setImportedReceipt(receipt)}
+        />
+
+        {/* Modal de Comprovante Pix Compartilhado */}
+        <ReceiptImportModal
+          receipt={importedReceipt}
+          visible={!!importedReceipt}
+          onClose={() => setImportedReceipt(null)}
         />
       </SafeAreaView>
     </GestureHandlerRootView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

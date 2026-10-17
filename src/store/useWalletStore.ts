@@ -3,9 +3,11 @@ import { UserProfile, BankCard, Transaction, Category, SmartAlert } from '@/type
 import {
   initDatabase,
   loadAllDataFromSQLite,
+  persistCard,
   persistCardSkin,
   persistCategoryBudget,
   persistTransaction,
+  persistProfile,
 } from '@/services/database/db';
 
 interface WalletState {
@@ -23,6 +25,7 @@ interface WalletState {
   setProfile: (profile: Partial<UserProfile>) => void;
   setActiveCardIndex: (index: number) => void;
   togglePrivacyMode: () => void;
+  addCard: (card: Omit<BankCard, 'id'>) => void;
   updateCardSkin: (cardId: string, wallpaperUri: string | undefined, gradient: [string, string]) => void;
   updateCategoryBudget: (categoryId: string, newLimitInCents: number) => void;
   dismissAlert: () => void;
@@ -32,10 +35,10 @@ interface WalletState {
 export const useWalletStore = create<WalletState>((set, get) => ({
   profile: {
     id: 'usr_default',
-    nickname: 'Wesley',
-    fullName: 'Wesley Silva',
-    birthDate: '1998-06-15',
-    onboardingCompleted: true,
+    nickname: '',
+    fullName: '',
+    birthDate: '',
+    onboardingCompleted: false,
   },
   cards: [],
   transactions: [],
@@ -54,6 +57,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         cards: data.cards,
         categories: data.categories,
         transactions: data.transactions,
+        ...(data.profile ? { profile: data.profile } : {}),
         isInitialized: true,
       });
     } catch (e) {
@@ -62,15 +66,29 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   setProfile: (data) =>
-    set((state) => ({
-      profile: { ...state.profile, ...data },
-    })),
+    set((state) => {
+      const updatedProfile = { ...state.profile, ...data };
+      persistProfile(updatedProfile);
+      return { profile: updatedProfile };
+    }),
 
   setActiveCardIndex: (index) => set({ activeCardIndex: index }),
 
   togglePrivacyMode: () => set((state) => ({ privacyMode: !state.privacyMode })),
 
   dismissAlert: () => set({ activeAlert: null }),
+
+  addCard: (cardData) => {
+    const newCard: BankCard = {
+      ...cardData,
+      id: `card_${Date.now()}`,
+    };
+    persistCard(newCard);
+    set((state) => ({
+      cards: [...state.cards, newCard],
+      activeCardIndex: state.cards.length,
+    }));
+  },
 
   updateCardSkin: (cardId, wallpaperUri, gradient) => {
     persistCardSkin(cardId, wallpaperUri, gradient);
@@ -98,12 +116,10 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       timestamp: Date.now(),
     };
 
-    // Salva no banco de dados SQLite persistente
     persistTransaction(newTx);
 
     const updatedTransactions = [newTx, ...state.transactions];
 
-    // Checagem inteligente de limites para Alerta Vermelho
     let triggeredAlert: SmartAlert | null = null;
     if (tx.type === 'EXPENSE') {
       const category = state.categories.find((c) => c.id === tx.categoryId);

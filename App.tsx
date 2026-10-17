@@ -16,6 +16,7 @@ import { BalanceHero } from './src/components/ui/BalanceHero';
 import { AlertBanner } from './src/components/ui/AlertBanner';
 import { CardCarousel } from './src/features/cards/CardCarousel';
 import { CardSkinModal } from './src/features/cards/CardSkinModal';
+import { AddCardModal } from './src/features/cards/AddCardModal';
 import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown';
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
@@ -36,6 +37,7 @@ export default function App() {
 
   const { colors, mode } = useTheme();
   const initStore = useWalletStore((s) => s.initStore);
+  const isInitialized = useWalletStore((s) => s.isInitialized);
   const cards = useWalletStore((s) => s.cards);
   const activeCardIndex = useWalletStore((s) => s.activeCardIndex);
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
@@ -47,12 +49,19 @@ export default function App() {
 
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
+  const [addCardVisible, setAddCardVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
-  const [onboardingVisible, setOnboardingVisible] = useState(!profile.onboardingCompleted);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [simulatorVisible, setSimulatorVisible] = useState(false);
   const [receiptPickerVisible, setReceiptPickerVisible] = useState(false);
   const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
+
+  useEffect(() => {
+    if (isInitialized && !profile.onboardingCompleted) {
+      setOnboardingVisible(true);
+    }
+  }, [isInitialized, profile.onboardingCompleted]);
 
 
   if (!fontsLoaded) {
@@ -89,6 +98,7 @@ export default function App() {
             activeIndex={activeCardIndex}
             onIndexChange={setActiveCardIndex}
             onEditSkin={(card) => setSelectedCardForSkin(card)}
+            onAddCard={() => setAddCardVisible(true)}
           />
 
           {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
@@ -97,6 +107,12 @@ export default function App() {
           {/* Extrato com Estilo Editorial Suíço e Estornos */}
           <TransactionList />
         </ScrollView>
+
+        {/* Modal de Adição de Cartão */}
+        <AddCardModal
+          visible={addCardVisible}
+          onClose={() => setAddCardVisible(false)}
+        />
 
         {/* Modal de Gestão de Metas por Categoria */}
         <BudgetModal

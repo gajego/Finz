@@ -31,7 +31,7 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
       {/* Topo do Hero: Rótulo e Olho de Privacidade */}
       <View style={styles.labelRow}>
         <Text style={[styles.metaLabel, { color: colors.textMuted }]}>
-          FATURA ATUAL • {currentCard?.bankName}
+          FATURA ATUAL • {currentCard ? currentCard.bankName : 'NENHUM CARTÃO'}
         </Text>
         <Pressable onPress={togglePrivacyMode} hitSlop={12} style={styles.eyeBtn}>
           {privacyMode ? (
@@ -60,7 +60,7 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
         <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
           <ArrowUpRight size={12} color={colors.success} />
           <Text style={[styles.badgeText, { color: colors.success }]}>
-            Limite Total: {formatBRL(currentCard?.limit || 0)}
+            {currentCard ? `Limite Total: ${formatBRL(currentCard.limit || 0)}` : 'Nenhum limite ativo'}
           </Text>
         </View>
       </View>

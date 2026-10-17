@@ -1,5 +1,12 @@
 import { create } from 'zustand';
 import { UserProfile, BankCard, Transaction, Category, SmartAlert } from '@/types';
+import {
+  initDatabase,
+  loadAllDataFromSQLite,
+  persistCardSkin,
+  persistCategoryBudget,
+  persistTransaction,
+} from '@/services/database/db';
 
 interface WalletState {
   profile: UserProfile;
@@ -9,8 +16,10 @@ interface WalletState {
   activeCardIndex: number;
   privacyMode: boolean;
   activeAlert: SmartAlert | null;
+  isInitialized: boolean;
   
   // Ações
+  initStore: () => void;
   setProfile: (profile: Partial<UserProfile>) => void;
   setActiveCardIndex: (index: number) => void;
   togglePrivacyMode: () => void;
@@ -20,91 +29,6 @@ interface WalletState {
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
 }
 
-const DEFAULT_CATEGORIES: Category[] = [
-  { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#FF7A00', budgetLimit: 120000 },
-  { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#00F0FF', budgetLimit: 45000 },
-  { id: 'cat_leisure', name: 'Lazer & Setup', icon: 'gamepad-2', color: '#A855F7', budgetLimit: 60000 },
-  { id: 'cat_shopping', name: 'Investimentos', icon: 'trending-up', color: '#D9F920', budgetLimit: 150000 },
-];
-
-const INITIAL_CARDS: BankCard[] = [
-  {
-    id: 'card_black',
-    bankName: 'NUBANK ULTRAVIOLETA',
-    packageName: 'com.nu.production',
-    lastFourDigits: '9042',
-    gradient: ['#0A0A0C', '#121217'],
-    wallpaperUri: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1000&auto=format&fit=crop&q=80',
-    accentColor: '#D9F920',
-    cardholderName: 'WESLEY SILVA',
-    balance: 842050,
-    limit: 2500000,
-  },
-  {
-    id: 'card_titanium',
-    bankName: 'INTER BLACK TITANIUM',
-    packageName: 'br.com.intermedium',
-    lastFourDigits: '3194',
-    gradient: ['#1A1C20', '#0E0F12'],
-    wallpaperUri: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?w=1000&auto=format&fit=crop&q=80',
-    accentColor: '#FF7A00',
-    cardholderName: 'WESLEY SILVA',
-    balance: 419000,
-    limit: 1200000,
-  },
-  {
-    id: 'card_itau',
-    bankName: 'ITAÚ PRIVATE BANK',
-    packageName: 'com.itau',
-    lastFourDigits: '7721',
-    gradient: ['#0F141C', '#05070A'],
-    wallpaperUri: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=1000&auto=format&fit=crop&q=80',
-    accentColor: '#E2E8F0',
-    cardholderName: 'WESLEY SILVA',
-    balance: 1520000,
-    limit: 5000000,
-  },
-];
-
-const INITIAL_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx_1',
-    cardId: 'card_black',
-    amount: 14990,
-    type: 'EXPENSE',
-    merchant: 'Apple Services (iCloud & Music)',
-    categoryId: 'cat_shopping',
-    timestamp: Date.now() - 1000 * 60 * 18,
-  },
-  {
-    id: 'tx_2',
-    cardId: 'card_black',
-    amount: 8750,
-    type: 'EXPENSE',
-    merchant: 'Pobre Juan Steakhouse',
-    categoryId: 'cat_food',
-    timestamp: Date.now() - 1000 * 60 * 60 * 3,
-  },
-  {
-    id: 'tx_3',
-    cardId: 'card_titanium',
-    amount: 4200,
-    type: 'REFUND',
-    merchant: 'Posto Petrobras (Estorno Duplicado)',
-    categoryId: 'cat_transport',
-    timestamp: Date.now() - 1000 * 60 * 60 * 22,
-  },
-  {
-    id: 'tx_4',
-    cardId: 'card_itau',
-    amount: 320000,
-    type: 'EXPENSE',
-    merchant: 'Aporte Tesouro Selic 2029',
-    categoryId: 'cat_shopping',
-    timestamp: Date.now() - 1000 * 60 * 60 * 48,
-  },
-];
-
 export const useWalletStore = create<WalletState>((set, get) => ({
   profile: {
     id: 'usr_default',
@@ -113,12 +37,29 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     birthDate: '1998-06-15',
     onboardingCompleted: true,
   },
-  cards: INITIAL_CARDS,
-  transactions: INITIAL_TRANSACTIONS,
-  categories: DEFAULT_CATEGORIES,
+  cards: [],
+  transactions: [],
+  categories: [],
   activeCardIndex: 0,
   privacyMode: false,
   activeAlert: null,
+  isInitialized: false,
+
+  initStore: () => {
+    if (get().isInitialized) return;
+    try {
+      initDatabase();
+      const data = loadAllDataFromSQLite();
+      set({
+        cards: data.cards,
+        categories: data.categories,
+        transactions: data.transactions,
+        isInitialized: true,
+      });
+    } catch (e) {
+      console.error('Falha ao inicializar SQLite:', e);
+    }
+  },
 
   setProfile: (data) =>
     set((state) => ({
@@ -131,19 +72,23 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
   dismissAlert: () => set({ activeAlert: null }),
 
-  updateCardSkin: (cardId, wallpaperUri, gradient) =>
+  updateCardSkin: (cardId, wallpaperUri, gradient) => {
+    persistCardSkin(cardId, wallpaperUri, gradient);
     set((state) => ({
       cards: state.cards.map((c) =>
         c.id === cardId ? { ...c, wallpaperUri, gradient } : c
       ),
-    })),
+    }));
+  },
 
-  updateCategoryBudget: (categoryId, newLimitInCents) =>
+  updateCategoryBudget: (categoryId, newLimitInCents) => {
+    persistCategoryBudget(categoryId, newLimitInCents);
     set((state) => ({
       categories: state.categories.map((c) =>
         c.id === categoryId ? { ...c, budgetLimit: newLimitInCents } : c
       ),
-    })),
+    }));
+  },
 
   addTransaction: (tx) => {
     const state = get();
@@ -152,6 +97,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       id: `tx_${Date.now()}`,
       timestamp: Date.now(),
     };
+
+    // Salva no banco de dados SQLite persistente
+    persistTransaction(newTx);
 
     const updatedTransactions = [newTx, ...state.transactions];
 
@@ -166,7 +114,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 
         const percent = Math.round((totalSpent / category.budgetLimit) * 100);
 
-        // Se o gasto atingir ou ultrapassar 85%, dispara o alerta inteligente imediato
         if (percent >= 85) {
           triggeredAlert = {
             id: `alert_${Date.now()}`,

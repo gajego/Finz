@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { Wifi, Sparkles, Layers } from 'lucide-react-native';
+import { Wifi, Layers } from 'lucide-react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   interpolate,
+  runOnJS,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { BankCard } from '@/types';
@@ -14,7 +15,6 @@ import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 
 const { width } = Dimensions.get('window');
-// Proporção física padrão de cartão bancário (ISO/IEC 7810 ID-1 = 1.586)
 const CARD_WIDTH = width - 40;
 const CARD_HEIGHT = CARD_WIDTH / 1.586;
 
@@ -32,21 +32,30 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const rotateY = useSharedValue(0);
   const scale = useSharedValue(1);
 
+  // Gesto de Clique: Abre o modal de customização ao tocar no cartão
+  const tapGesture = Gesture.Tap().onEnd(() => {
+    'worklet';
+    runOnJS(onEditSkin)(card);
+  });
+
+  // Gesto de Arrasto: Inclinação 3D interativa
   const panGesture = Gesture.Pan()
+    .minDistance(8)
     .onBegin(() => {
       scale.value = withSpring(0.97, { damping: 15 });
     })
     .onUpdate((e) => {
-      // Mapeia o deslocamento do dedo para inclinação angular realista (até 14 graus)
       rotateY.value = interpolate(e.translationX, [-CARD_WIDTH / 2, CARD_WIDTH / 2], [-14, 14]);
       rotateX.value = interpolate(e.translationY, [-CARD_HEIGHT / 2, CARD_HEIGHT / 2], [12, -12]);
     })
     .onFinalize(() => {
-      // Retorno elástico suave à posição de repouso
       rotateX.value = withSpring(0, { damping: 12, stiffness: 120 });
       rotateY.value = withSpring(0, { damping: 12, stiffness: 120 });
       scale.value = withSpring(1, { damping: 12, stiffness: 120 });
     });
+
+  // Composição: Arrasto tem prioridade; toque puro aciona o ateliê de skins
+  const cardGesture = Gesture.Exclusive(panGesture, tapGesture);
 
   const animatedCardStyle = useAnimatedStyle(() => {
     return {
@@ -69,7 +78,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
 
   return (
     <View style={styles.outerWrapper}>
-      <GestureDetector gesture={panGesture}>
+      <GestureDetector gesture={cardGesture}>
         <Animated.View style={[styles.cardContainer, animatedCardStyle]}>
           {/* Wallpaper Fotográfico ou Textura */}
           {card.wallpaperUri ? (
@@ -91,11 +100,11 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
           {/* Gradiente escuro para legibilidade e profundidade física */}
           <View style={styles.cardGradientOverlay} />
 
-          {/* Reflexo de borda chanfrada estilo cartão de titânio */}
+          {/* Borda metálica chanfrada */}
           <View style={styles.metallicBezel} />
 
           <View style={styles.cardContent}>
-            {/* Linha Superior: Nome do Banco em caixa alta com kerning e Botão de Skin */}
+            {/* Linha Superior: Nome do Banco e Ícone NFC (Sem botão redundante de customizar) */}
             <View style={styles.topRow}>
               <View>
                 <Text style={styles.bankName}>{card.bankName}</Text>
@@ -103,21 +112,12 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
               </View>
 
               <View style={styles.topRightActions}>
-                <Pressable
-                  onPress={() => onEditSkin(card)}
-                  style={styles.skinButton}
-                  hitSlop={10}
-                >
-                  <Sparkles size={13} color="#FFFFFF" />
-                  <Text style={styles.skinButtonText}>CUSTOMIZAR</Text>
-                </Pressable>
                 <Wifi size={20} color="rgba(255, 255, 255, 0.85)" style={styles.nfcIcon} />
               </View>
             </View>
 
-            {/* Linha Central: Chip EMV Realista e Selo Holográfico */}
+            {/* Linha Central: Chip EMV Detalhado e Selo Holográfico */}
             <View style={styles.chipRow}>
-              {/* Chip metálico dourado detalhado */}
               <View style={styles.emvChip}>
                 <View style={styles.chipPadsTop}>
                   <View style={styles.padLeft} />
@@ -130,13 +130,12 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
                 </View>
               </View>
 
-              {/* Holographic Security Patch */}
               <View style={styles.hologramPatch}>
                 <Layers size={14} color="rgba(255, 255, 255, 0.7)" />
               </View>
             </View>
 
-            {/* Linha Inferior: Numeração em relevo laser, Titular e Limite */}
+            {/* Linha Inferior: Numeração em relevo, Titular e Limite */}
             <View style={styles.bottomRow}>
               <View>
                 <Text style={styles.cardNumber}>
@@ -218,24 +217,6 @@ const styles = StyleSheet.create({
   topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  skinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  skinButtonText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1,
   },
   nfcIcon: {
     transform: [{ rotate: '90deg' }],

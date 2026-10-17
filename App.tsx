@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -18,10 +18,16 @@ import { BankCard } from './src/types';
 
 export default function App() {
   const { colors, mode } = useTheme();
+  const initStore = useWalletStore((s) => s.initStore);
   const cards = useWalletStore((s) => s.cards);
   const activeCardIndex = useWalletStore((s) => s.activeCardIndex);
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
   const profile = useWalletStore((s) => s.profile);
+
+  useEffect(() => {
+    initStore();
+  }, [initStore]);
+
 
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);

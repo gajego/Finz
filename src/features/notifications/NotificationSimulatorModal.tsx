@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, TextInput } from 'react-native';
-import { Bell, X, Zap, ArrowDownRight } from 'lucide-react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Modal, Pressable } from 'react-native';
+import { X, Zap, AlertTriangle } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 
@@ -12,30 +12,33 @@ interface NotificationSimulatorProps {
 const PRESET_PUSHES = [
   {
     bankName: 'Nubank',
-    cardId: 'card_nu',
-    text: 'Compra de R$ 42,90 aprovada no Uber Brasil',
-    amount: 4290,
+    cardId: 'card_black',
+    text: 'Compra de R$ 520,00 aprovada no Fogo de Chão (Alimentação)',
+    amount: 52000,
+    merchant: 'Fogo de Chão Steakhouse',
+    categoryId: 'cat_food',
+    type: 'EXPENSE' as const,
+    isWarningTrigger: true,
+  },
+  {
+    bankName: 'Nubank',
+    cardId: 'card_black',
+    text: 'Compra de R$ 35,90 aprovada no Uber Brasil',
+    amount: 3590,
     merchant: 'Uber Brasil',
     categoryId: 'cat_transport',
     type: 'EXPENSE' as const,
+    isWarningTrigger: false,
   },
   {
     bankName: 'Itaú',
     cardId: 'card_itau',
-    text: 'Compra aprovada de R$ 135,00 em Outback Steakhouse',
-    amount: 13500,
-    merchant: 'Outback Steakhouse',
-    categoryId: 'cat_food',
-    type: 'EXPENSE' as const,
-  },
-  {
-    bankName: 'Banco Inter',
-    cardId: 'card_inter',
-    text: 'Estorno aprovado de R$ 68,00 em Amazon Marketplace',
-    amount: 6800,
-    merchant: 'Amazon Marketplace (Estorno)',
+    text: 'Estorno confirmado de R$ 140,00 em Amazon Prime',
+    amount: 14000,
+    merchant: 'Amazon Prime (Estorno)',
     categoryId: 'cat_shopping',
     type: 'REFUND' as const,
+    isWarningTrigger: false,
   },
 ];
 
@@ -66,7 +69,7 @@ export const NotificationSimulatorModal: React.FC<NotificationSimulatorProps> = 
             styles.sheet,
             {
               backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.border,
+              borderColor: colors.borderStrong,
             },
           ]}
         >
@@ -75,16 +78,15 @@ export const NotificationSimulatorModal: React.FC<NotificationSimulatorProps> = 
               <View style={[styles.iconBadge, { backgroundColor: colors.surfaceSubtle }]}>
                 <Zap size={16} color={colors.primary} />
               </View>
-              <Text style={[styles.title, { color: colors.text }]}>Simulador de Notificação</Text>
+              <Text style={[styles.title, { color: colors.text }]}>TERMINAL DE NOTIFICAÇÕES</Text>
             </View>
             <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
               <X size={16} color={colors.text} />
             </Pressable>
           </View>
 
-
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Teste como o aplicativo captura as notificações de bancos em segundo plano e adiciona automaticamente ao extrato:
+            Dispare um evento simulado de banco para testar a captura automática e o disparo de alertas vermelhos de meta:
           </Text>
 
           <View style={styles.presetsList}>
@@ -94,19 +96,30 @@ export const NotificationSimulatorModal: React.FC<NotificationSimulatorProps> = 
                 onPress={() => handleSimulate(push)}
                 style={[
                   styles.pushCard,
-                  {
-                    backgroundColor: mode === 'dark' ? colors.background : colors.surface,
-                    borderColor: colors.border,
-                  },
+                  push.isWarningTrigger
+                    ? styles.pushCardWarning
+                    : {
+                        backgroundColor: mode === 'dark' ? colors.background : colors.surface,
+                        borderColor: colors.border,
+                      },
                 ]}
               >
                 <View style={styles.pushTop}>
-                  <Text style={[styles.pushBank, { color: colors.primary }]}>{push.bankName}</Text>
-                  <Text style={[styles.pushTime, { color: colors.textMuted }]}>Agora</Text>
+                  <Text style={[styles.pushBank, { color: push.isWarningTrigger ? '#FF3B30' : colors.primary }]}>
+                    {push.bankName}
+                  </Text>
+                  {push.isWarningTrigger ? (
+                    <View style={styles.triggerBadge}>
+                      <AlertTriangle size={11} color="#FF3B30" />
+                      <Text style={styles.triggerBadgeText}>DISPARA ALERTA VERMELHO</Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.pushTime, { color: colors.textMuted }]}>Agora</Text>
+                  )}
                 </View>
                 <Text style={[styles.pushText, { color: colors.text }]}>{push.text}</Text>
-                <Text style={[styles.pushAction, { color: colors.secondary }]}>
-                  Toque para simular disparo ⚡
+                <Text style={[styles.pushAction, { color: push.isWarningTrigger ? '#FF3B30' : colors.secondary }]}>
+                  Toque para simular recebimento ⚡
                 </Text>
               </Pressable>
             ))}
@@ -120,12 +133,12 @@ export const NotificationSimulatorModal: React.FC<NotificationSimulatorProps> = 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
     padding: 24,
     paddingBottom: 40,
@@ -134,7 +147,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   titleRow: {
     flexDirection: 'row',
@@ -144,54 +157,76 @@ const styles = StyleSheet.create({
   iconBadge: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
   closeBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 12,
     lineHeight: 18,
     marginBottom: 18,
   },
   presetsList: {
-    gap: 12,
+    gap: 10,
   },
   pushCard: {
     padding: 16,
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
+  },
+  pushCardWarning: {
+    backgroundColor: 'rgba(255, 59, 48, 0.08)',
+    borderColor: '#FF3B30',
   },
   pushTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   pushBank: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  triggerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 59, 48, 0.18)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  triggerBadgeText: {
+    color: '#FF3B30',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   pushTime: {
     fontSize: 11,
   },
   pushText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     marginBottom: 8,
   },
   pushAction: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
 });

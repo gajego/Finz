@@ -2,7 +2,7 @@ export interface UserProfile {
   id: string;
   nickname: string;
   fullName: string;
-  birthDate: string; // YYYY-MM-DD
+  birthDate: string;
   onboardingCompleted: boolean;
 }
 
@@ -38,4 +38,13 @@ export interface Category {
   icon: string;
   color: string;
   budgetLimit: number; // Centavos
+}
+
+export interface SmartAlert {
+  id: string;
+  categoryName: string;
+  percent: number;
+  spent: number;
+  limit: number;
+  timestamp: number;
 }

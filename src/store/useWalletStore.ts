@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserProfile, BankCard, Transaction, Category } from '@/types';
+import { UserProfile, BankCard, Transaction, Category, SmartAlert } from '@/types';
 
 interface WalletState {
   profile: UserProfile;
@@ -8,12 +8,15 @@ interface WalletState {
   categories: Category[];
   activeCardIndex: number;
   privacyMode: boolean;
+  activeAlert: SmartAlert | null;
   
   // Ações
   setProfile: (profile: Partial<UserProfile>) => void;
   setActiveCardIndex: (index: number) => void;
   togglePrivacyMode: () => void;
   updateCardSkin: (cardId: string, wallpaperUri: string | undefined, gradient: [string, string]) => void;
+  updateCategoryBudget: (categoryId: string, newLimitInCents: number) => void;
+  dismissAlert: () => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
 }
 
@@ -102,7 +105,7 @@ const INITIAL_TRANSACTIONS: Transaction[] = [
   },
 ];
 
-export const useWalletStore = create<WalletState>((set) => ({
+export const useWalletStore = create<WalletState>((set, get) => ({
   profile: {
     id: 'usr_default',
     nickname: 'Wesley',
@@ -115,6 +118,7 @@ export const useWalletStore = create<WalletState>((set) => ({
   categories: DEFAULT_CATEGORIES,
   activeCardIndex: 0,
   privacyMode: false,
+  activeAlert: null,
 
   setProfile: (data) =>
     set((state) => ({
@@ -125,6 +129,8 @@ export const useWalletStore = create<WalletState>((set) => ({
 
   togglePrivacyMode: () => set((state) => ({ privacyMode: !state.privacyMode })),
 
+  dismissAlert: () => set({ activeAlert: null }),
+
   updateCardSkin: (cardId, wallpaperUri, gradient) =>
     set((state) => ({
       cards: state.cards.map((c) =>
@@ -132,15 +138,51 @@ export const useWalletStore = create<WalletState>((set) => ({
       ),
     })),
 
-  addTransaction: (tx) =>
+  updateCategoryBudget: (categoryId, newLimitInCents) =>
     set((state) => ({
-      transactions: [
-        {
-          ...tx,
-          id: `tx_${Date.now()}`,
-          timestamp: Date.now(),
-        },
-        ...state.transactions,
-      ],
+      categories: state.categories.map((c) =>
+        c.id === categoryId ? { ...c, budgetLimit: newLimitInCents } : c
+      ),
     })),
+
+  addTransaction: (tx) => {
+    const state = get();
+    const newTx: Transaction = {
+      ...tx,
+      id: `tx_${Date.now()}`,
+      timestamp: Date.now(),
+    };
+
+    const updatedTransactions = [newTx, ...state.transactions];
+
+    // Checagem inteligente de limites para Alerta Vermelho
+    let triggeredAlert: SmartAlert | null = null;
+    if (tx.type === 'EXPENSE') {
+      const category = state.categories.find((c) => c.id === tx.categoryId);
+      if (category && category.budgetLimit > 0) {
+        const totalSpent = updatedTransactions
+          .filter((t) => t.categoryId === category.id && t.type === 'EXPENSE')
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const percent = Math.round((totalSpent / category.budgetLimit) * 100);
+
+        // Se o gasto atingir ou ultrapassar 85%, dispara o alerta inteligente imediato
+        if (percent >= 85) {
+          triggeredAlert = {
+            id: `alert_${Date.now()}`,
+            categoryName: category.name,
+            percent,
+            spent: totalSpent,
+            limit: category.budgetLimit,
+            timestamp: Date.now(),
+          };
+        }
+      }
+    }
+
+    set({
+      transactions: updatedTransactions,
+      activeAlert: triggeredAlert || state.activeAlert,
+    });
+  },
 }));

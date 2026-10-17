@@ -1,9 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Sliders, AlertTriangle } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 
-export const CategoryBreakdown: React.FC = () => {
+interface CategoryBreakdownProps {
+  onOpenBudgetManager: (categoryId?: string) => void;
+}
+
+export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudgetManager }) => {
   const { colors, mode } = useTheme();
   const categories = useWalletStore((s) => s.categories);
   const transactions = useWalletStore((s) => s.transactions);
@@ -26,55 +31,88 @@ export const CategoryBreakdown: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Título da Seção */}
+      {/* Título da Seção e Botão de Gestão */}
       <View style={styles.sectionHeader}>
         <View>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & ORÇAMENTOS</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & TETOS MENSAIS</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Distribuição de capital em tempo real
+            Toque em uma categoria para ajustar o limite
           </Text>
         </View>
-        <Text style={[styles.statusPill, { color: colors.primary, borderColor: colors.primary }]}>
-          MÊS ATUAL
-        </Text>
+
+        <Pressable
+          onPress={() => onOpenBudgetManager()}
+          style={[
+            styles.configButton,
+            { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+          ]}
+        >
+          <Sliders size={12} color={colors.primary} />
+          <Text style={[styles.configButtonText, { color: colors.text }]}>AJUSTAR</Text>
+        </Pressable>
       </View>
 
-      {/* Grid Bento Moderno */}
+      {/* Grid Bento com Alertas Visuais Vermelhos */}
       <View style={styles.grid}>
         {categories.map((cat) => {
           const spent = getCategorySpent(cat.id);
-          const percent = Math.min(Math.round((spent / cat.budgetLimit) * 100), 100);
-          const isWarning = percent > 85;
+          const percent = Math.min(Math.round((spent / cat.budgetLimit) * 100), 200);
+          const isWarning = percent >= 85;
+          const isExceeded = percent >= 100;
 
           return (
-            <View
+            <Pressable
               key={cat.id}
+              onPress={() => onOpenBudgetManager(cat.id)}
               style={[
                 styles.bentoCard,
                 {
-                  backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-                  borderColor: isWarning ? 'rgba(255, 59, 48, 0.4)' : colors.border,
+                  backgroundColor: isWarning
+                    ? 'rgba(255, 59, 48, 0.08)'
+                    : mode === 'dark'
+                    ? colors.surface
+                    : colors.surfaceElevated,
+                  borderColor: isWarning ? '#FF3B30' : colors.border,
                 },
               ]}
             >
               <View style={styles.cardHeader}>
-                <Text style={[styles.categoryName, { color: colors.text }]}>
-                  {cat.name.toUpperCase()}
-                </Text>
-                <Text
+                <View style={styles.nameWithIcon}>
+                  {isWarning && <AlertTriangle size={12} color="#FF3B30" />}
+                  <Text
+                    style={[
+                      styles.categoryName,
+                      { color: isWarning ? '#FF3B30' : colors.text },
+                    ]}
+                  >
+                    {cat.name.toUpperCase()}
+                  </Text>
+                </View>
+
+                <View
                   style={[
                     styles.percentBadge,
-                    {
-                      color: isWarning ? colors.danger : colors.primary,
-                    },
+                    isWarning && { backgroundColor: 'rgba(255, 59, 48, 0.2)' },
                   ]}
                 >
-                  {percent}%
-                </Text>
+                  <Text
+                    style={[
+                      styles.percentText,
+                      { color: isWarning ? '#FF3B30' : colors.primary },
+                    ]}
+                  >
+                    {percent}%
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.amountRow}>
-                <Text style={[styles.spentText, { color: colors.text }]}>
+                <Text
+                  style={[
+                    styles.spentText,
+                    { color: isWarning ? '#FF3B30' : colors.text },
+                  ]}
+                >
                   {formatBRL(spent)}
                 </Text>
                 <Text style={[styles.limitText, { color: colors.textMuted }]}>
@@ -82,19 +120,19 @@ export const CategoryBreakdown: React.FC = () => {
                 </Text>
               </View>
 
-              {/* Barra de Progresso Fina e Precisa */}
+              {/* Medidor com Padrão Vermelho em Alerta */}
               <View style={[styles.track, { backgroundColor: colors.surfaceSubtle }]}>
                 <View
                   style={[
                     styles.fill,
                     {
-                      width: `${percent}%`,
-                      backgroundColor: isWarning ? colors.danger : colors.primary,
+                      width: `${Math.min(percent, 100)}%`,
+                      backgroundColor: isWarning ? '#FF3B30' : colors.primary,
                     },
                   ]}
                 />
               </View>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -124,14 +162,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '500',
   },
-  statusPill: {
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
+  configButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  configButtonText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   grid: {
     flexDirection: 'row',
@@ -151,12 +194,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  nameWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   categoryName: {
     fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   percentBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  percentText: {
     fontSize: 11,
     fontWeight: '900',
     fontVariant: ['tabular-nums'],

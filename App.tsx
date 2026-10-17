@@ -22,6 +22,7 @@ import { TransactionList } from './src/features/transactions/TransactionList';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationSimulatorModal } from './src/features/notifications/NotificationSimulatorModal';
 import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
+import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
 import { ParsedReceipt } from './src/services/receipts/receiptParser';
 import { BankCard } from './src/types';
 
@@ -50,7 +51,9 @@ export default function App() {
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(!profile.onboardingCompleted);
   const [simulatorVisible, setSimulatorVisible] = useState(false);
+  const [receiptPickerVisible, setReceiptPickerVisible] = useState(false);
   const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
+
 
   if (!fontsLoaded) {
     return null;
@@ -74,8 +77,8 @@ export default function App() {
           {/* Header Neo-Fintech com identidade de marca industrial */}
           <Header onOpenNotifications={() => setSimulatorVisible(true)} />
 
-          {/* Saldo Brutalista, Ações Rápidas e Modo Stealth */}
-          <BalanceHero />
+          {/* Saldo Brutalista, Ações Rápidas e Leitor de Comprovante */}
+          <BalanceHero onOpenReceiptPicker={() => setReceiptPickerVisible(true)} />
 
           {/* Alerta Inteligente Vermelho quando limite é atingido */}
           <AlertBanner onOpenBudgetManager={() => handleOpenBudgetModal()} />
@@ -122,7 +125,14 @@ export default function App() {
           onSimulateSharedReceipt={(receipt) => setImportedReceipt(receipt)}
         />
 
-        {/* Modal de Comprovante Pix Compartilhado */}
+        {/* Folha de Seleção e Leitura de Comprovante (Foto / PDF) */}
+        <ReceiptPickerSheet
+          visible={receiptPickerVisible}
+          onClose={() => setReceiptPickerVisible(false)}
+          onReceiptExtracted={(receipt) => setImportedReceipt(receipt)}
+        />
+
+        {/* Modal de Comprovante Pix Identificado */}
         <ReceiptImportModal
           receipt={importedReceipt}
           visible={!!importedReceipt}
@@ -132,6 +142,7 @@ export default function App() {
     </GestureHandlerRootView>
   );
 }
+
 
 
 const styles = StyleSheet.create({

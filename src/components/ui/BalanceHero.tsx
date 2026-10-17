@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Eye, EyeOff, Send, SlidersHorizontal, ShieldAlert, ArrowUpRight } from 'lucide-react-native';
+import { Eye, EyeOff, FileText, SlidersHorizontal, ShieldAlert, ArrowUpRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 
-export const BalanceHero: React.FC = () => {
+interface BalanceHeroProps {
+  onOpenReceiptPicker?: () => void;
+}
 
+export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker }) => {
   const { colors, mode } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
@@ -65,6 +68,7 @@ export const BalanceHero: React.FC = () => {
       {/* Barra de Ações Rápidas Táteis */}
       <View style={styles.actionsBar}>
         <Pressable
+          onPress={onOpenReceiptPicker}
           style={[
             styles.actionButton,
             {
@@ -73,8 +77,8 @@ export const BalanceHero: React.FC = () => {
             },
           ]}
         >
-          <Send size={15} color={colors.primary} />
-          <Text style={[styles.actionText, { color: colors.text }]}>PIX</Text>
+          <FileText size={14} color={colors.primary} />
+          <Text style={[styles.actionText, { color: colors.text }]}>COMPROVANTE</Text>
         </Pressable>
 
         <Pressable
@@ -86,7 +90,7 @@ export const BalanceHero: React.FC = () => {
             },
           ]}
         >
-          <SlidersHorizontal size={15} color={colors.textSecondary} />
+          <SlidersHorizontal size={14} color={colors.textSecondary} />
           <Text style={[styles.actionText, { color: colors.text }]}>LIMITES</Text>
         </Pressable>
 
@@ -99,13 +103,14 @@ export const BalanceHero: React.FC = () => {
             },
           ]}
         >
-          <ShieldAlert size={15} color={colors.danger} />
+          <ShieldAlert size={14} color={colors.danger} />
           <Text style={[styles.actionText, { color: colors.text }]}>BLOQUEAR</Text>
         </Pressable>
       </View>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

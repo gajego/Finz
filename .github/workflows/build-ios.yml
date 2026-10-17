@@ -1,0 +1,62 @@
+name: Build iOS IPA (Unsigned)
+
+on:
+  workflow_dispatch: # Permite disparar manualmente com 1 clique no GitHub
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  build:
+    name: Compilar IPA para iOS
+    runs-on: macos-14 # Máquinas Apple Silicon ultra-rápidas e gratuitas no GitHub
+
+    steps:
+      - name: 1. Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: 2. Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 3. Instalar Dependências do Projeto
+        run: npm ci --legacy-peer-deps
+
+      - name: 4. Gerar Projeto Nativo iOS (Expo Prebuild)
+        run: npx expo prebuild --platform ios --clean
+
+      - name: 5. Instalar CocoaPods
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: 6. Compilar App Nativo com xcodebuild (Sem assinatura)
+        run: |
+          xcodebuild -workspace ios/Finz.xcworkspace \
+                     -scheme Finz \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -derivedDataPath ios/build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     build
+
+      - name: 7. Empacotar .app em .ipa para Sideloadly
+        run: |
+          mkdir -p build_output/Payload
+          cp -r ios/build/Build/Products/Release-iphoneos/Finz.app build_output/Payload/
+          cd build_output
+          zip -r Finz-unsigned.ipa Payload
+          cd ..
+
+      - name: 8. Disponibilizar download do .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: Finz-iOS-Unsigned
+          path: build_output/Finz-unsigned.ipa
+          retention-days: 14

@@ -9,7 +9,10 @@
     "scheme": "finz",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.finz.app"
+      "bundleIdentifier": "com.finz.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.finz.app",
@@ -24,15 +27,22 @@
         {
           "action": "SEND",
           "data": [
-            { "mimeType": "text/plain" },
-            { "mimeType": "image/*" },
-            { "mimeType": "application/pdf" }
+            {
+              "mimeType": "text/plain"
+            },
+            {
+              "mimeType": "image/*"
+            },
+            {
+              "mimeType": "application/pdf"
+            }
           ],
-          "category": ["DEFAULT"]
+          "category": [
+            "DEFAULT"
+          ]
         }
       ]
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -40,6 +50,11 @@
       "expo-image",
       "expo-sqlite",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9d8c6867-298d-4747-b06b-8cccc7eb8caf"
+      }
+    }
   }
 }

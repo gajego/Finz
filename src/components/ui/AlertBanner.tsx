@@ -4,6 +4,7 @@ import { AlertTriangle, X, ArrowUpRight } from 'lucide-react-native';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
 
 interface AlertBannerProps {
   onOpenBudgetManager: () => void;
@@ -109,8 +110,8 @@ const styles = StyleSheet.create({
   },
   alertBadgeText: {
     color: '#FF3B30',
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '900',
     letterSpacing: 1.2,
   },
   closeBtn: {
@@ -118,22 +119,23 @@ const styles = StyleSheet.create({
   },
   alertHeadline: {
     color: '#FFFFFF',
+    fontFamily: Typography.medium,
     fontSize: 14,
-    fontWeight: '700',
     lineHeight: 20,
     marginBottom: 4,
   },
   highlightPercent: {
     color: '#FF3B30',
-    fontWeight: '900',
+    fontFamily: Typography.bold,
   },
   categoryName: {
     color: '#FFFFFF',
-    fontWeight: '900',
+    fontFamily: Typography.bold,
     textDecorationLine: 'underline',
   },
   numbersDetail: {
     color: 'rgba(255, 255, 255, 0.7)',
+    fontFamily: Typography.regular,
     fontSize: 11,
     fontVariant: ['tabular-nums'],
     marginBottom: 12,
@@ -150,8 +152,9 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     color: '#FFFFFF',
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '900',
     letterSpacing: 0.8,
   },
 });
+

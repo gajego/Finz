@@ -13,6 +13,8 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { BankCard } from '@/types';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
+import { Typography } from '@/theme/typography';
+
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
@@ -202,15 +204,15 @@ const styles = StyleSheet.create({
   },
   bankName: {
     color: '#FFFFFF',
+    fontFamily: Typography.bold,
     fontSize: 13,
-    fontWeight: '900',
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
   debitCreditLabel: {
     color: 'rgba(255, 255, 255, 0.5)',
+    fontFamily: Typography.bold,
     fontSize: 8,
-    fontWeight: '700',
     letterSpacing: 1.5,
     marginTop: 2,
   },
@@ -280,8 +282,8 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     color: 'rgba(255, 255, 255, 0.95)',
+    fontFamily: Typography.bold,
     fontSize: 16,
-    fontWeight: '700',
     letterSpacing: 2,
     fontVariant: ['tabular-nums'],
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
@@ -291,8 +293,8 @@ const styles = StyleSheet.create({
   },
   cardholder: {
     color: 'rgba(255, 255, 255, 0.7)',
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -301,14 +303,15 @@ const styles = StyleSheet.create({
   },
   limitLabel: {
     color: 'rgba(255, 255, 255, 0.55)',
+    fontFamily: Typography.bold,
     fontSize: 9,
-    fontWeight: '800',
     letterSpacing: 1,
   },
   limitValue: {
     color: '#FFFFFF',
+    fontFamily: Typography.bold,
     fontSize: 16,
-    fontWeight: '900',
     letterSpacing: -0.5,
   },
+
 });

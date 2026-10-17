@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
 import { TransactionItem } from './TransactionItem';
 
 export const TransactionList: React.FC = () => {
@@ -42,16 +43,17 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: {
+    fontFamily: Typography.bold,
     fontSize: 12,
-    fontWeight: '900',
     letterSpacing: 2,
   },
   countBadge: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 1,
   },
   list: {
     gap: 0,
   },
 });
+

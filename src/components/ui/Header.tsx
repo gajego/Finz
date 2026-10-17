@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Moon, Sun, Bell, Terminal } from 'lucide-react-native';
+import { Moon, Sun, Terminal } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
+import { Typography } from '@/theme/typography';
 
 interface HeaderProps {
   onOpenNotifications?: () => void;
@@ -75,9 +76,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   brandLogo: {
+    fontFamily: Typography.bold,
     fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: 3,
+    letterSpacing: 2,
   },
   versionBadge: {
     borderWidth: 1,
@@ -86,13 +87,13 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   versionText: {
+    fontFamily: Typography.bold,
     fontSize: 9,
-    fontWeight: '800',
     letterSpacing: 1,
   },
   userName: {
+    fontFamily: Typography.medium,
     fontSize: 10,
-    fontWeight: '700',
     letterSpacing: 1.2,
   },
   actionButtons: {
@@ -108,3 +109,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+

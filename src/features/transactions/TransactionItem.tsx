@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Transaction } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -103,8 +104,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   merchantName: {
+    fontFamily: Typography.bold,
     fontSize: 14,
-    fontWeight: '700',
     letterSpacing: -0.2,
   },
   refundBadge: {
@@ -113,8 +114,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   refundBadgeText: {
+    fontFamily: Typography.bold,
     fontSize: 9,
-    fontWeight: '800',
     letterSpacing: 0.5,
   },
   metaRow: {
@@ -123,18 +124,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bankTag: {
+    fontFamily: Typography.bold,
     fontSize: 11,
-    fontWeight: '700',
     textTransform: 'uppercase',
   },
   dot: {
     fontSize: 10,
   },
   categoryTag: {
+    fontFamily: Typography.regular,
     fontSize: 11,
-    fontWeight: '500',
   },
   timeTag: {
+    fontFamily: Typography.regular,
     fontSize: 11,
     fontVariant: ['tabular-nums'],
   },
@@ -142,9 +144,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   amountText: {
+    fontFamily: Typography.bold,
     fontSize: 15,
-    fontWeight: '800',
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.3,
   },
 });
+

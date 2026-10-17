@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+  useFonts,
+  Ubuntu_300Light,
+  Ubuntu_400Regular,
+  Ubuntu_500Medium,
+  Ubuntu_700Bold,
+} from '@expo-google-fonts/ubuntu';
 import { useTheme } from './src/theme/useTheme';
 import { useWalletStore } from './src/store/useWalletStore';
 import { Header } from './src/components/ui/Header';
@@ -17,6 +24,13 @@ import { NotificationSimulatorModal } from './src/features/notifications/Notific
 import { BankCard } from './src/types';
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Ubuntu_300Light,
+    Ubuntu_400Regular,
+    Ubuntu_500Medium,
+    Ubuntu_700Bold,
+  });
+
   const { colors, mode } = useTheme();
   const initStore = useWalletStore((s) => s.initStore);
   const cards = useWalletStore((s) => s.cards);
@@ -27,6 +41,11 @@ export default function App() {
   useEffect(() => {
     initStore();
   }, [initStore]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
 
 
   // Modais de Controle

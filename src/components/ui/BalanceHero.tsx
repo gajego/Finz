@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Eye, EyeOff, Send, SlidersHorizontal, ShieldAlert, ArrowUpRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
 
 export const BalanceHero: React.FC = () => {
+
   const { colors, mode } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
@@ -118,8 +120,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   metaLabel: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -130,9 +132,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   balanceText: {
-    fontSize: 38,
-    fontWeight: '900',
-    letterSpacing: -1.5,
+    fontFamily: Typography.bold,
+    fontSize: 36,
+    letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
   statusRow: {
@@ -149,8 +151,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   badgeText: {
+    fontFamily: Typography.medium,
     fontSize: 11,
-    fontWeight: '700',
   },
   actionsBar: {
     flexDirection: 'row',
@@ -167,8 +169,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionText: {
+    fontFamily: Typography.bold,
     fontSize: 11,
-    fontWeight: '800',
     letterSpacing: 1,
   },
+
 });

@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView } from 
 import { X, Check, Sliders, AlertTriangle } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
 import { Category } from '@/types';
+
+
 
 interface BudgetModalProps {
   visible: boolean;
@@ -244,13 +247,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   badgeText: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 1.5,
   },
   title: {
+    fontFamily: Typography.bold,
     fontSize: 18,
-    fontWeight: '900',
     letterSpacing: -0.3,
   },
   closeBtn: {
@@ -271,16 +274,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillText: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 0.8,
   },
   inputSection: {
     marginVertical: 10,
   },
   inputLabel: {
+    fontFamily: Typography.bold,
     fontSize: 9,
-    fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -294,14 +297,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   currencyPrefix: {
+    fontFamily: Typography.bold,
     fontSize: 20,
-    fontWeight: '700',
     marginRight: 6,
   },
   numericInput: {
     flex: 1,
+    fontFamily: Typography.bold,
     fontSize: 24,
-    fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
   quickAddRow: {
@@ -317,8 +320,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickAddText: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '700',
   },
   previewBox: {
     padding: 14,
@@ -342,13 +345,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   previewTitle: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '900',
     letterSpacing: 1,
   },
   previewPercent: {
+    fontFamily: Typography.bold,
     fontSize: 14,
-    fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
   track: {
@@ -362,8 +365,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   previewDetail: {
+    fontFamily: Typography.regular,
     fontSize: 11,
-    fontWeight: '500',
   },
   saveButton: {
     height: 50,
@@ -374,8 +377,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveButtonText: {
+    fontFamily: Typography.bold,
     fontSize: 12,
-    fontWeight: '900',
     letterSpacing: 1,
   },
+
 });

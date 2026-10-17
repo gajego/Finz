@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Sliders, AlertTriangle } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { Typography } from '@/theme/typography';
+
+
 
 interface CategoryBreakdownProps {
   onOpenBudgetManager: (categoryId?: string) => void;
@@ -153,14 +156,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
+    fontFamily: Typography.bold,
     fontSize: 12,
-    fontWeight: '900',
     letterSpacing: 2,
   },
   sectionSubtitle: {
+    fontFamily: Typography.regular,
     fontSize: 11,
     marginTop: 2,
-    fontWeight: '500',
   },
   configButton: {
     flexDirection: 'row',
@@ -172,8 +175,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   configButtonText: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 0.8,
   },
   grid: {
@@ -200,8 +203,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   categoryName: {
+    fontFamily: Typography.bold,
     fontSize: 10,
-    fontWeight: '800',
     letterSpacing: 0.8,
   },
   percentBadge: {
@@ -210,8 +213,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   percentText: {
+    fontFamily: Typography.bold,
     fontSize: 11,
-    fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
   amountRow: {
@@ -221,14 +224,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   spentText: {
+    fontFamily: Typography.bold,
     fontSize: 16,
-    fontWeight: '900',
     fontVariant: ['tabular-nums'],
   },
   limitText: {
+    fontFamily: Typography.regular,
     fontSize: 10,
-    fontWeight: '600',
   },
+
   track: {
     height: 3,
     borderRadius: 1.5,

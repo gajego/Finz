@@ -1,0 +1,41 @@
+export interface UserProfile {
+  id: string;
+  nickname: string;
+  fullName: string;
+  birthDate: string; // YYYY-MM-DD
+  onboardingCompleted: boolean;
+}
+
+export interface BankCard {
+  id: string;
+  bankName: string;
+  packageName: string;
+  lastFourDigits: string;
+  wallpaperUri?: string;
+  gradient: [string, string];
+  accentColor: string;
+  cardholderName: string;
+  balance: number;
+  limit: number;
+}
+
+export type TransactionType = 'EXPENSE' | 'REFUND' | 'PIX_OUT' | 'PIX_IN';
+
+export interface Transaction {
+  id: string;
+  cardId: string;
+  amount: number; // Centavos
+  type: TransactionType;
+  merchant: string;
+  categoryId: string;
+  timestamp: number;
+  rawText?: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  budgetLimit: number; // Centavos
+}

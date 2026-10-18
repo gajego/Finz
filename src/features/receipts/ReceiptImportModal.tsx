@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { CheckCircle2, ArrowRight, ShieldCheck, Tag } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
@@ -31,6 +31,8 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
     cards.find((c) => c.bankName.toLowerCase().includes(receipt.bankName.toLowerCase())) ||
     cards[0];
 
+  const cardId = matchedCard?.id || 'card_pix';
+
   const formatBRL = (cents: number) => {
     return (cents / 100).toLocaleString('pt-BR', {
       style: 'currency',
@@ -40,7 +42,7 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
 
   const handleConfirm = () => {
     addTransaction({
-      cardId: matchedCard.id,
+      cardId,
       amount: receipt.amount,
       type: receipt.type,
       merchant: `Pix: ${receipt.recipient}`,
@@ -52,29 +54,40 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          {/* Topo com Badge de Sucesso */}
-          <View style={styles.header}>
-            <View style={styles.badgeRow}>
-              <ShieldCheck size={14} color={colors.primary} />
-              <Text style={[styles.badgeText, { color: colors.primary }]}>
-                COMPROVANTE IDENTIFICADO
-              </Text>
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>PIX IMPORTADO COM SUCESSO</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              O Finz leu os dados do seu comprovante localmente sem enviar nada para a internet.
-            </Text>
-          </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Topo com Badge de Sucesso */}
+              <View style={styles.header}>
+                <View style={styles.badgeRow}>
+                  <ShieldCheck size={14} color={colors.primary} />
+                  <Text style={[styles.badgeText, { color: colors.primary }]}>
+                    COMPROVANTE IDENTIFICADO
+                  </Text>
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>PIX IMPORTADO COM SUCESSO</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  O Finz leu os dados do seu comprovante localmente sem enviar nada para a internet.
+                </Text>
+              </View>
 
           {/* Card com Detalhes Extraídos do Comprovante */}
           <View
@@ -105,7 +118,7 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
             <View style={styles.detailRow}>
               <Text style={[styles.detailLabel, { color: colors.textMuted }]}>BANCO DE ORIGEM</Text>
               <Text style={[styles.detailValue, { color: colors.primary }]}>
-                {receipt.bankName} ({matchedCard.bankName})
+                {receipt.bankName}{matchedCard ? ` (${matchedCard.bankName})` : ''}
               </Text>
             </View>
           </View>
@@ -148,31 +161,44 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
             </ScrollView>
           </View>
 
-          {/* Botão de Confirmação */}
-          <Pressable onPress={handleConfirm} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}>
-            <Text style={[styles.confirmBtnText, { color: colors.primaryForeground }]}>
-              CONFIRMAR & SALVAR NO EXTRATO
-            </Text>
-            <ArrowRight size={16} color={colors.primaryForeground} />
-          </Pressable>
+              {/* Botão de Confirmação */}
+              <Pressable onPress={handleConfirm} style={[styles.confirmBtn, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.confirmBtnText, { color: colors.primaryForeground }]}>
+                  CONFIRMAR & SALVAR NO EXTRATO
+                </Text>
+                <ArrowRight size={16} color={colors.primaryForeground} />
+              </Pressable>
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 24,
-    paddingBottom: 36,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
   header: {
     marginBottom: 16,
@@ -181,7 +207,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
   },
   badgeText: {
     fontFamily: Typography.bold,
@@ -200,11 +230,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   receiptCard: {
-    borderRadius: 14,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 16,
+    padding: 18,
     marginVertical: 14,
-    gap: 10,
+    gap: 12,
   },
   detailRow: {
     flexDirection: 'row',
@@ -250,9 +280,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
   },
   pillText: {
@@ -261,8 +291,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   confirmBtn: {
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 999,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Check, CreditCard, ShieldCheck } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
@@ -25,145 +25,189 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose }) 
   const profile = useWalletStore((s) => s.profile);
 
   const [selectedBank, setSelectedBank] = useState(PRESET_BANKS[0]);
-  const [lastFour, setLastFour] = useState('1234');
-  const [limitStr, setLimitStr] = useState('5000');
+  const [lastFour, setLastFour] = useState('');
+  const [limitStr, setLimitStr] = useState('');
+
+  const isValid = lastFour.trim().length === 4 && (parseFloat(limitStr) || 0) > 0;
 
   const handleSave = () => {
+    if (!isValid) return;
     const limitCents = Math.round((parseFloat(limitStr) || 0) * 100);
     addCard({
       bankName: selectedBank.name.toUpperCase(),
       packageName: selectedBank.package,
-      lastFourDigits: lastFour.trim() || '0000',
+      lastFourDigits: lastFour.trim(),
       gradient: selectedBank.gradient,
       accentColor: selectedBank.color,
       cardholderName: (profile.fullName || profile.nickname || 'MEU CARTAO').toUpperCase(),
       balance: 0,
       limit: limitCents,
     });
+    setLastFour('');
+    setLimitStr('');
     onClose();
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          {/* Topo */}
-          <View style={styles.header}>
-            <View>
-              <View style={styles.badgeRow}>
-                <CreditCard size={12} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>NOVO CARTÃO</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            {/* Topo Fixo */}
+            <View style={styles.header}>
+              <View>
+                <View style={styles.badgeRow}>
+                  <CreditCard size={12} color={colors.primary} />
+                  <Text style={[styles.badgeText, { color: colors.primary }]}>NOVO CARTÃO</Text>
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>VINCULAR BANCO</Text>
               </View>
-              <Text style={[styles.title, { color: colors.text }]}>VINCULAR BANCO</Text>
+              <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
+                <X size={16} color={colors.text} />
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
-              <X size={16} color={colors.text} />
-            </Pressable>
-          </View>
 
-          {/* Selecionar Banco */}
-          <Text style={[styles.label, { color: colors.textMuted }]}>SELECIONE SUA INSTITUIÇÃO</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bankPills}>
-            {PRESET_BANKS.map((b) => {
-              const isSelected = selectedBank.name === b.name;
-              return (
-                <Pressable
-                  key={b.name}
-                  onPress={() => setSelectedBank(b)}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Selecionar Banco */}
+              <Text style={[styles.label, { color: colors.textMuted }]}>SELECIONE SUA INSTITUIÇÃO</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bankPills}>
+                {PRESET_BANKS.map((b) => {
+                  const isSelected = selectedBank.name === b.name;
+                  return (
+                    <Pressable
+                      key={b.name}
+                      onPress={() => setSelectedBank(b)}
+                      style={[
+                        styles.bankPill,
+                        {
+                          backgroundColor: isSelected ? colors.primary : colors.surfaceSubtle,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.bankPillText,
+                          { color: isSelected ? colors.primaryForeground : colors.text },
+                        ]}
+                      >
+                        {b.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Campos */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textMuted }]}>ÚLTIMOS 4 DÍGITOS DO CARTÃO</Text>
+                <TextInput
+                  value={lastFour}
+                  onChangeText={setLastFour}
+                  maxLength={4}
+                  keyboardType="numeric"
+                  placeholder="Ex: 8492"
+                  placeholderTextColor={colors.textMuted}
                   style={[
-                    styles.bankPill,
+                    styles.input,
                     {
-                      backgroundColor: isSelected ? colors.primary : colors.surfaceSubtle,
-                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: mode === 'dark' ? colors.background : colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
                     },
                   ]}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.label, { color: colors.textMuted }]}>LIMITE TOTAL DISPONÍVEL (R$)</Text>
+                <TextInput
+                  value={limitStr}
+                  onChangeText={setLimitStr}
+                  keyboardType="numeric"
+                  placeholder="Ex: 5000"
+                  placeholderTextColor={colors.textMuted}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: mode === 'dark' ? colors.background : colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* Botão de Salvar */}
+              <Pressable
+                onPress={handleSave}
+                disabled={!isValid}
+                style={[
+                  styles.saveBtn,
+                  {
+                    backgroundColor: isValid ? colors.primary : colors.surfaceSubtle,
+                    opacity: isValid ? 1 : 0.6,
+                  },
+                ]}
+              >
+                <Check size={16} color={isValid ? colors.primaryForeground : colors.textMuted} />
+                <Text
+                  style={[
+                    styles.saveBtnText,
+                    { color: isValid ? colors.primaryForeground : colors.textMuted },
+                  ]}
                 >
-                  <Text
-                    style={[
-                      styles.bankPillText,
-                      { color: isSelected ? colors.primaryForeground : colors.text },
-                    ]}
-                  >
-                    {b.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Campos */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textMuted }]}>ÚLTIMOS 4 DÍGITOS DO CARTÃO</Text>
-            <TextInput
-              value={lastFour}
-              onChangeText={setLastFour}
-              maxLength={4}
-              keyboardType="numeric"
-              placeholder="Ex: 8492"
-              placeholderTextColor={colors.textMuted}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: mode === 'dark' ? colors.background : colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
+                  SALVAR E VINCULAR CARTÃO
+                </Text>
+              </Pressable>
+            </ScrollView>
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: colors.textMuted }]}>LIMITE TOTAL DISPONÍVEL (R$)</Text>
-            <TextInput
-              value={limitStr}
-              onChangeText={setLimitStr}
-              keyboardType="numeric"
-              placeholder="Ex: 5000"
-              placeholderTextColor={colors.textMuted}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: mode === 'dark' ? colors.background : colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-          </View>
-
-          {/* Botão de Salvar */}
-          <Pressable onPress={handleSave} style={[styles.saveBtn, { backgroundColor: colors.primary }]}>
-            <Check size={16} color={colors.primaryForeground} />
-            <Text style={[styles.saveBtnText, { color: colors.primaryForeground }]}>
-              SALVAR E VINCULAR CARTÃO
-            </Text>
-          </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 24,
-    paddingBottom: 36,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
@@ -175,6 +219,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
     marginBottom: 4,
   },
   badgeText: {
@@ -190,7 +237,7 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -207,7 +254,7 @@ const styles = StyleSheet.create({
   bankPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
   },
   bankPillText: {
@@ -218,17 +265,17 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   input: {
-    height: 48,
-    borderRadius: 10,
+    height: 50,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     fontSize: 16,
     fontFamily: Typography.bold,
     fontVariant: ['tabular-nums'],
   },
   saveBtn: {
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 999,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

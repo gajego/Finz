@@ -12,12 +12,19 @@ export const TransactionList: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Cabeçalho da Lista */}
+      {/* Cabeçalho da Lista Estilo Aurex */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>REGISTRO DE ATIVIDADES</Text>
-        <Text style={[styles.countBadge, { color: colors.textMuted }]}>
-          {transactions.length} EVENTOS
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>ATIVIDADES RECENTES</Text>
+        <View
+          style={[
+            styles.countPill,
+            { backgroundColor: colors.surfaceElevated, borderColor: colors.borderSubtle },
+          ]}
+        >
+          <Text style={[styles.countBadge, { color: colors.textSecondary }]}>
+            {transactions.length} {transactions.length === 1 ? 'EVENTO' : 'EVENTOS'}
+          </Text>
+        </View>
       </View>
 
       {/* Lista Linha a Linha ou Empty State */}
@@ -28,7 +35,9 @@ export const TransactionList: React.FC = () => {
             { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
           ]}
         >
-          <ReceiptText size={28} color={colors.textMuted} style={{ marginBottom: 8 }} />
+          <View style={[styles.emptyIconCircle, { backgroundColor: colors.surfaceSubtle }]}>
+            <ReceiptText size={24} color={colors.textMuted} />
+          </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>NENHUM REGISTRO</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
             Compartilhe um comprovante Pix ou escaneie um documento acima para registrar gastos.
@@ -55,17 +64,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 8,
+    marginBottom: 12,
   },
   title: {
     fontFamily: Typography.bold,
     fontSize: 12,
     letterSpacing: 2,
   },
+  countPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
   countBadge: {
     fontFamily: Typography.bold,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 1,
   },
   list: {
@@ -73,10 +87,18 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 24,
+    padding: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   emptyTitle: {
     fontFamily: Typography.bold,
@@ -88,7 +110,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 12,
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
   },
 });
 

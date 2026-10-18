@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { X, Check } from 'lucide-react-native';
 import { BankCard } from '@/types';
@@ -72,114 +72,138 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          {/* Cabeçalho */}
-          <View style={styles.header}>
-            <View>
-              <Text style={[styles.title, { color: colors.text }]}>ATELIÊ DE SKINS</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                {card.bankName}
-              </Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            {/* Cabeçalho Fixo */}
+            <View style={styles.header}>
+              <View>
+                <Text style={[styles.title, { color: colors.text }]}>ATELIÊ DE SKINS</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  {card.bankName}
+                </Text>
+              </View>
+              <Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceSubtle }]}>
+                <X size={16} color={colors.text} />
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceSubtle }]}>
-              <X size={16} color={colors.text} />
-            </Pressable>
-          </View>
 
-          {/* Presets de Wallpapers Físicos */}
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
-            TEXTURAS & MATERIAIS DE ALTA DEFINIÇÃO
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
-            {WALLPAPER_PRESETS.map((preset) => {
-              const isSelected = card.wallpaperUri === preset.url;
-              return (
-                <Pressable
-                  key={preset.id}
-                  onPress={() => handleSelectPreset(preset.url, preset.gradient)}
-                  style={[
-                    styles.presetItem,
-                    { borderColor: isSelected ? colors.primary : colors.border },
-                    isSelected && { borderWidth: 2 },
-                  ]}
-                >
-                  <Image source={{ uri: preset.url }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                  <View style={styles.presetOverlay} />
-                  <Text style={styles.presetName}>{preset.name}</Text>
-                  {isSelected && (
-                    <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
-                      <Check size={10} color={colors.primaryForeground} />
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-
-          {/* Inserir URL de imagem externa */}
-          <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 18 }]}>
-            OU VINCULE UM WALLPAPER PRÓPRIO
-          </Text>
-          <View style={styles.customRow}>
-            <TextInput
-              placeholder="https://exemplo.com/sua-imagem.png"
-              placeholderTextColor={colors.textMuted}
-              value={customUrl}
-              onChangeText={setCustomUrl}
-              style={[
-                styles.input,
-                {
-                  backgroundColor: mode === 'dark' ? colors.background : colors.surface,
-                  color: colors.text,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-            <Pressable
-              onPress={handleApplyCustomUrl}
-              style={[styles.applyButton, { backgroundColor: colors.primary }]}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              contentContainerStyle={styles.scrollContent}
             >
-              <Text style={[styles.applyButtonText, { color: colors.primaryForeground }]}>
-                APLICAR
+              {/* Presets de Wallpapers Físicos */}
+              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                TEXTURAS & MATERIAIS DE ALTA DEFINIÇÃO
               </Text>
-            </Pressable>
-          </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
+                {WALLPAPER_PRESETS.map((preset) => {
+                  const isSelected = card.wallpaperUri === preset.url;
+                  return (
+                    <Pressable
+                      key={preset.id}
+                      onPress={() => handleSelectPreset(preset.url, preset.gradient)}
+                      style={[
+                        styles.presetItem,
+                        { borderColor: isSelected ? colors.primary : colors.border },
+                        isSelected && { borderWidth: 2 },
+                      ]}
+                    >
+                      <Image source={{ uri: preset.url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      <View style={styles.presetOverlay} />
+                      <Text style={styles.presetName}>{preset.name}</Text>
+                      {isSelected && (
+                        <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
+                          <Check size={10} color={colors.primaryForeground} />
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
 
-          {/* Remover wallpaper */}
-          {card.wallpaperUri && (
-            <Pressable onPress={handleRemoveWallpaper} style={styles.removeButton}>
-              <Text style={[styles.removeButtonText, { color: colors.danger }]}>
-                RESTAURAR VISUAL PADRÃO DE FÁBRICA
+              {/* Inserir URL de imagem externa */}
+              <Text style={[styles.sectionLabel, { color: colors.textMuted, marginTop: 18 }]}>
+                OU VINCULE UM WALLPAPER PRÓPRIO
               </Text>
-            </Pressable>
-          )}
+              <View style={styles.customRow}>
+                <TextInput
+                  placeholder="https://exemplo.com/sua-imagem.png"
+                  placeholderTextColor={colors.textMuted}
+                  value={customUrl}
+                  onChangeText={setCustomUrl}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: mode === 'dark' ? colors.background : colors.surface,
+                      color: colors.text,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+                <Pressable
+                  onPress={handleApplyCustomUrl}
+                  style={[styles.applyButton, { backgroundColor: colors.primary }]}
+                >
+                  <Text style={[styles.applyButtonText, { color: colors.primaryForeground }]}>
+                    APLICAR
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Remover wallpaper */}
+              {card.wallpaperUri && (
+                <Pressable onPress={handleRemoveWallpaper} style={styles.removeButton}>
+                  <Text style={[styles.removeButtonText, { color: colors.danger }]}>
+                    RESTAURAR VISUAL PADRÃO DE FÁBRICA
+                  </Text>
+                </Pressable>
+              )}
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 24,
-    paddingBottom: 36,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
@@ -201,7 +225,7 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -218,7 +242,7 @@ const styles = StyleSheet.create({
   presetItem: {
     width: 120,
     height: 75,
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'flex-end',
     padding: 8,
@@ -241,7 +265,7 @@ const styles = StyleSheet.create({
     right: 6,
     width: 18,
     height: 18,
-    borderRadius: 4,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 3,
@@ -253,16 +277,16 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 44,
-    borderRadius: 10,
+    height: 48,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     fontSize: 12,
   },
   applyButton: {
-    height: 44,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    height: 48,
+    paddingHorizontal: 18,
+    borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -273,7 +297,10 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     marginTop: 18,
-    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
   removeButtonText: {
     fontSize: 10,

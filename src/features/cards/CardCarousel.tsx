@@ -72,7 +72,11 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         showsHorizontalScrollIndicator={false}
         snapToAlignment="center"
         decelerationRate="fast"
+        nestedScrollEnabled={true}
+        onScroll={handleScroll}
+        scrollEventThrottle={32}
         onMomentumScrollEnd={handleScroll}
+        onScrollEndDrag={handleScroll}
         renderItem={({ item }) => (
           <CardItem card={item} onEditSkin={onEditSkin} />
         )}
@@ -118,7 +122,7 @@ const styles = StyleSheet.create({
   emptyCard: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 16,
+    borderRadius: 26,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     justifyContent: 'center',

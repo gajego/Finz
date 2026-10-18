@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Check, Sliders, AlertTriangle } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
@@ -39,6 +39,17 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     ((activeCategory?.budgetLimit || 0) / 100).toString()
   );
 
+  React.useEffect(() => {
+    if (visible) {
+      const targetId = initialCategoryId || selectedCatId || categories[0]?.id;
+      const cat = categories.find((c) => c.id === targetId) || categories[0];
+      if (cat) {
+        setSelectedCatId(cat.id);
+        setInputReais(((cat.budgetLimit || 0) / 100).toString());
+      }
+    }
+  }, [visible, initialCategoryId]);
+
   const handleSelectCategory = (cat: Category) => {
     setSelectedCatId(cat.id);
     setInputReais((cat.budgetLimit / 100).toString());
@@ -71,168 +82,192 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.borderStrong,
-            },
-          ]}
-        >
-          {/* Topo */}
-          <View style={styles.header}>
-            <View>
-              <View style={styles.titleBadge}>
-                <Sliders size={13} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>GESTÃO DE METAS</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboardAvoid}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={onClose} />
+          <View
+            style={[
+              styles.sheet,
+              {
+                backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
+                borderColor: colors.borderStrong,
+              },
+            ]}
+          >
+            {/* Topo Fixo */}
+            <View style={styles.header}>
+              <View>
+                <View style={styles.titleBadge}>
+                  <Sliders size={13} color={colors.primary} />
+                  <Text style={[styles.badgeText, { color: colors.primary }]}>GESTÃO DE METAS</Text>
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>TETO DE GASTOS MENSAL</Text>
               </View>
-              <Text style={[styles.title, { color: colors.text }]}>TETO DE GASTOS MENSAL</Text>
+              <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
+                <X size={16} color={colors.text} />
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.surfaceSubtle }]}>
-              <X size={16} color={colors.text} />
-            </Pressable>
-          </View>
 
-          {/* Seletor de Categoria */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryPills}>
-            {categories.map((cat) => {
-              const isSelected = cat.id === activeCategory?.id;
-              return (
-                <Pressable
-                  key={cat.id}
-                  onPress={() => handleSelectCategory(cat)}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Seletor de Categoria */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryPills}>
+                {categories.map((cat) => {
+                  const isSelected = cat.id === activeCategory?.id;
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => handleSelectCategory(cat)}
+                      style={[
+                        styles.pill,
+                        {
+                          backgroundColor: isSelected ? colors.primary : colors.surfaceSubtle,
+                          borderColor: isSelected ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pillText,
+                          { color: isSelected ? colors.primaryForeground : colors.text },
+                        ]}
+                      >
+                        {cat.name.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Campo de Valor */}
+              <View style={styles.inputSection}>
+                <Text style={[styles.inputLabel, { color: colors.textMuted }]}>
+                  QUANTO VOCÊ DESEJA GASTAR EM {activeCategory?.name.toUpperCase()} POR MÊS?
+                </Text>
+
+                <View
                   style={[
-                    styles.pill,
+                    styles.inputWrapper,
                     {
-                      backgroundColor: isSelected ? colors.primary : colors.surfaceSubtle,
-                      borderColor: isSelected ? colors.primary : colors.border,
+                      backgroundColor: mode === 'dark' ? colors.background : colors.surface,
+                      borderColor: isAlertThreshold ? '#FF3B30' : colors.border,
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.pillText,
-                      { color: isSelected ? colors.primaryForeground : colors.text },
-                    ]}
-                  >
-                    {cat.name.toUpperCase()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                  <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>R$</Text>
+                  <TextInput
+                    value={inputReais}
+                    onChangeText={setInputReais}
+                    keyboardType="numeric"
+                    style={[styles.numericInput, { color: colors.text }]}
+                  />
+                </View>
 
-          {/* Campo de Valor */}
-          <View style={styles.inputSection}>
-            <Text style={[styles.inputLabel, { color: colors.textMuted }]}>
-              QUANTO VOCÊ DESEJA GASTAR EM {activeCategory?.name.toUpperCase()} POR MÊS?
-            </Text>
-
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: mode === 'dark' ? colors.background : colors.surface,
-                  borderColor: isAlertThreshold ? '#FF3B30' : colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>R$</Text>
-              <TextInput
-                value={inputReais}
-                onChangeText={setInputReais}
-                keyboardType="numeric"
-                style={[styles.numericInput, { color: colors.text }]}
-              />
-            </View>
-
-            {/* Botoes de incremento rapido */}
-            <View style={styles.quickAddRow}>
-              {[100, 250, 500, 1000].map((val) => (
-                <Pressable
-                  key={val}
-                  onPress={() => handleQuickAdd(val)}
-                  style={[styles.quickAddBtn, { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}
-                >
-                  <Text style={[styles.quickAddText, { color: colors.text }]}>+ R$ {val}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          {/* Indicador de Consumo Atual e Alerta Vermelho */}
-          <View
-            style={[
-              styles.previewBox,
-              isAlertThreshold ? styles.previewBoxWarning : { backgroundColor: colors.surfaceSubtle, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.previewTop}>
-              <View style={styles.previewTitleRow}>
-                {isAlertThreshold && <AlertTriangle size={15} color="#FF3B30" />}
-                <Text
-                  style={[
-                    styles.previewTitle,
-                    { color: isAlertThreshold ? '#FF3B30' : colors.textSecondary },
-                  ]}
-                >
-                  {isAlertThreshold ? 'ATENÇÃO: CONSUMO CRÍTICO' : 'STATUS DO CONSUMO'}
-                </Text>
+                {/* Botoes de incremento rapido */}
+                <View style={styles.quickAddRow}>
+                  {[100, 250, 500, 1000].map((val) => (
+                    <Pressable
+                      key={val}
+                      onPress={() => handleQuickAdd(val)}
+                      style={[styles.quickAddBtn, { backgroundColor: colors.surfaceSubtle, borderColor: colors.border }]}
+                    >
+                      <Text style={[styles.quickAddText, { color: colors.text }]}>+ R$ {val}</Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-              <Text
-                style={[
-                  styles.previewPercent,
-                  { color: isAlertThreshold ? '#FF3B30' : colors.primary },
-                ]}
-              >
-                {currentPercent}%
-              </Text>
-            </View>
 
-            <View style={[styles.track, { backgroundColor: colors.surfaceElevated }]}>
+              {/* Indicador de Consumo Atual e Alerta Vermelho */}
               <View
                 style={[
-                  styles.bar,
-                  {
-                    width: `${Math.min(currentPercent, 100)}%`,
-                    backgroundColor: isAlertThreshold ? '#FF3B30' : colors.primary,
-                  },
+                  styles.previewBox,
+                  isAlertThreshold ? styles.previewBoxWarning : { backgroundColor: colors.surfaceSubtle, borderColor: colors.border },
                 ]}
-              />
-            </View>
+              >
+                <View style={styles.previewTop}>
+                  <View style={styles.previewTitleRow}>
+                    {isAlertThreshold && <AlertTriangle size={15} color="#FF3B30" />}
+                    <Text
+                      style={[
+                        styles.previewTitle,
+                        { color: isAlertThreshold ? '#FF3B30' : colors.textSecondary },
+                      ]}
+                    >
+                      {isAlertThreshold ? 'ATENÇÃO: CONSUMO CRÍTICO' : 'STATUS DO CONSUMO'}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.previewPercent,
+                      { color: isAlertThreshold ? '#FF3B30' : colors.primary },
+                    ]}
+                  >
+                    {currentPercent}%
+                  </Text>
+                </View>
 
-            <Text style={[styles.previewDetail, { color: colors.textSecondary }]}>
-              Você já gastou {formatBRL(currentSpent)} nesta categoria.
-            </Text>
+                <View style={[styles.track, { backgroundColor: colors.surfaceElevated }]}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        width: `${Math.min(currentPercent, 100)}%`,
+                        backgroundColor: isAlertThreshold ? '#FF3B30' : colors.primary,
+                      },
+                    ]}
+                  />
+                </View>
+
+                <Text style={[styles.previewDetail, { color: colors.textSecondary }]}>
+                  Você já gastou {formatBRL(currentSpent)} nesta categoria.
+                </Text>
+              </View>
+
+              {/* Botão Salvar */}
+              <Pressable onPress={handleSave} style={[styles.saveButton, { backgroundColor: colors.primary }]}>
+                <Check size={16} color={colors.primaryForeground} />
+                <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>
+                  SALVAR TETO MENSAL
+                </Text>
+              </Pressable>
+            </ScrollView>
           </View>
-
-          {/* Botão Salvar */}
-          <Pressable onPress={handleSave} style={[styles.saveButton, { backgroundColor: colors.primary }]}>
-            <Check size={16} color={colors.primaryForeground} />
-            <Text style={[styles.saveButtonText, { color: colors.primaryForeground }]}>
-              SALVAR TETO MENSAL
-            </Text>
-          </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     borderWidth: 1,
-    padding: 24,
-    paddingBottom: 36,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+  },
+  scrollContent: {
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
@@ -244,6 +279,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
     marginBottom: 4,
   },
   badgeText: {
@@ -259,7 +297,7 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -268,9 +306,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
     borderWidth: 1,
   },
   pillText: {
@@ -291,9 +329,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 56,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    paddingHorizontal: 16,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 18,
     marginBottom: 10,
   },
   currencyPrefix: {
@@ -313,8 +351,8 @@ const styles = StyleSheet.create({
   },
   quickAddBtn: {
     flex: 1,
-    height: 34,
-    borderRadius: 8,
+    height: 36,
+    borderRadius: 999,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -324,14 +362,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   previewBox: {
-    padding: 14,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 22,
     borderWidth: 1,
     marginVertical: 14,
   },
   previewBoxWarning: {
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
-    borderColor: '#FF3B30',
+    backgroundColor: 'rgba(255, 59, 48, 0.08)',
+    borderColor: 'rgba(255, 59, 48, 0.35)',
   },
   previewTop: {
     flexDirection: 'row',
@@ -369,8 +407,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   saveButton: {
-    height: 50,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 999,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -381,5 +419,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1,
   },
-
 });

@@ -21,7 +21,7 @@ import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
-import { NotificationSimulatorModal } from './src/features/notifications/NotificationSimulatorModal';
+import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
 import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
 import { ParsedReceipt } from './src/services/receipts/receiptParser';
@@ -53,7 +53,7 @@ export default function App() {
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(false);
-  const [simulatorVisible, setSimulatorVisible] = useState(false);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [receiptPickerVisible, setReceiptPickerVisible] = useState(false);
   const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
 
@@ -84,7 +84,7 @@ export default function App() {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Header Neo-Fintech com identidade de marca industrial */}
-          <Header onOpenNotifications={() => setSimulatorVisible(true)} />
+          <Header onOpenNotifications={() => setNotificationsVisible(true)} />
 
           {/* Saldo Brutalista, Ações Rápidas e Leitor de Comprovante */}
           <BalanceHero onOpenReceiptPicker={() => setReceiptPickerVisible(true)} />
@@ -134,11 +134,12 @@ export default function App() {
           onClose={() => setOnboardingVisible(false)}
         />
 
-        {/* Terminal de Testes de Notificação e Compartilhamento */}
-        <NotificationSimulatorModal
-          visible={simulatorVisible}
-          onClose={() => setSimulatorVisible(false)}
-          onSimulateSharedReceipt={(receipt) => setImportedReceipt(receipt)}
+        {/* Central de Notificações em Tempo Real (Zero Mocks) */}
+        <NotificationCenterModal
+          visible={notificationsVisible}
+          onClose={() => setNotificationsVisible(false)}
+          onNavigateToBudgets={handleOpenBudgetModal}
+          onNavigateToAddCard={() => setAddCardVisible(true)}
         />
 
         {/* Folha de Seleção e Leitura de Comprovante (Foto / PDF) */}

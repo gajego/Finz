@@ -29,7 +29,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({ children, style }) => {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     padding: 16,
     shadowOffset: { width: 0, height: 8 },

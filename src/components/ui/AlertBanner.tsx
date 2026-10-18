@@ -33,16 +33,18 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ onOpenBudgetManager })
       style={styles.wrapper}
     >
       <View style={[styles.container, isExceeded ? styles.containerExceeded : styles.containerWarning]}>
-        {/* Linha Vermelha de Alerta de Perigo */}
+        {/* Linha de Alerta de Perigo */}
         <View style={styles.topRow}>
           <View style={styles.badgeRow}>
-            <AlertTriangle size={15} color="#FF3B30" />
+            <View style={styles.iconCircle}>
+              <AlertTriangle size={13} color="#FF3B30" />
+            </View>
             <Text style={styles.alertBadgeText}>
               {isExceeded ? 'LIMITE MENSAL ESTOURADO' : 'ALERTA CRÍTICO DE META'}
             </Text>
           </View>
           <Pressable onPress={dismissAlert} hitSlop={10} style={styles.closeBtn}>
-            <X size={15} color="rgba(255, 255, 255, 0.7)" />
+            <X size={14} color="rgba(255, 255, 255, 0.7)" />
           </Pressable>
         </View>
 
@@ -62,7 +64,7 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({ onOpenBudgetManager })
             dismissAlert();
             onOpenBudgetManager();
           }}
-          style={styles.actionBtn}
+          style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? 0.85 : 1 }]}
         >
           <Text style={styles.actionBtnText}>AJUSTAR TETO DESTA CATEGORIA</Text>
           <ArrowUpRight size={13} color="#FFFFFF" />
@@ -79,43 +81,60 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   container: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 4,
   },
   containerWarning: {
-    backgroundColor: 'rgba(255, 59, 48, 0.12)',
-    borderColor: '#FF3B30',
+    backgroundColor: 'rgba(255, 59, 48, 0.08)',
+    borderColor: 'rgba(255, 59, 48, 0.32)',
     shadowColor: '#FF3B30',
   },
   containerExceeded: {
-    backgroundColor: 'rgba(255, 59, 48, 0.22)',
-    borderColor: '#FF3B30',
+    backgroundColor: 'rgba(255, 59, 48, 0.16)',
+    borderColor: 'rgba(255, 59, 48, 0.45)',
     shadowColor: '#FF3B30',
   },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    backgroundColor: 'rgba(255, 59, 48, 0.14)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  iconCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   alertBadgeText: {
     color: '#FF3B30',
     fontFamily: Typography.bold,
-    fontSize: 10,
+    fontSize: 9,
     letterSpacing: 1.2,
   },
   closeBtn: {
-    padding: 2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   alertHeadline: {
     color: '#FFFFFF',
@@ -138,17 +157,17 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 11,
     fontVariant: ['tabular-nums'],
-    marginBottom: 12,
+    marginBottom: 14,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     backgroundColor: '#FF3B30',
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
   actionBtnText: {
     color: '#FFFFFF',

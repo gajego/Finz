@@ -34,29 +34,46 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const rotateY = useSharedValue(0);
   const scale = useSharedValue(1);
 
-  // Gesto de Clique: Abre o modal de customização ao tocar no cartão
-  const tapGesture = Gesture.Tap().onEnd(() => {
-    'worklet';
-    runOnJS(onEditSkin)(card);
-  });
-
-  // Gesto de Arrasto: Inclinação 3D interativa
-  const panGesture = Gesture.Pan()
-    .minDistance(8)
-    .onBegin(() => {
-      scale.value = withSpring(0.97, { damping: 15 });
-    })
-    .onUpdate((e) => {
-      rotateY.value = interpolate(e.translationX, [-CARD_WIDTH / 2, CARD_WIDTH / 2], [-14, 14]);
-      rotateX.value = interpolate(e.translationY, [-CARD_HEIGHT / 2, CARD_HEIGHT / 2], [12, -12]);
-    })
-    .onFinalize(() => {
-      rotateX.value = withSpring(0, { damping: 12, stiffness: 120 });
-      rotateY.value = withSpring(0, { damping: 12, stiffness: 120 });
-      scale.value = withSpring(1, { damping: 12, stiffness: 120 });
+  // Gesto de Clique: Abre o modal de customização ao tocar rapidamente no cartão
+  const tapGesture = Gesture.Tap()
+    .maxDuration(250)
+    .onEnd(() => {
+      'worklet';
+      runOnJS(onEditSkin)(card);
     });
 
-  // Composição: Arrasto tem prioridade; toque puro aciona o ateliê de skins
+  // Gesto de Arrasto 3D: Ativado ao manter pressionado (long press de 200ms)
+  // Desbloqueia totalmente o swipe horizontal do FlatList do carrossel
+  const panGesture = Gesture.Pan()
+    .activateAfterLongPress(200)
+    .failOffsetX([-15, 15])
+    .onBegin(() => {
+      'worklet';
+      scale.value = withSpring(0.96, { damping: 18, stiffness: 200, mass: 0.6 });
+    })
+    .onUpdate((e) => {
+      'worklet';
+      rotateY.value = interpolate(
+        e.translationX,
+        [-CARD_WIDTH / 2, CARD_WIDTH / 2],
+        [-14, 14],
+        'clamp'
+      );
+      rotateX.value = interpolate(
+        e.translationY,
+        [-CARD_HEIGHT / 2, CARD_HEIGHT / 2],
+        [12, -12],
+        'clamp'
+      );
+    })
+    .onFinalize(() => {
+      'worklet';
+      rotateX.value = withSpring(0, { damping: 16, stiffness: 160 });
+      rotateY.value = withSpring(0, { damping: 16, stiffness: 160 });
+      scale.value = withSpring(1, { damping: 16, stiffness: 160 });
+    });
+
+  // Composição: Arrasto 3D ativado sob pressão; toque rápido abre customização
   const cardGesture = Gesture.Exclusive(panGesture, tapGesture);
 
   const animatedCardStyle = useAnimatedStyle(() => {
@@ -169,7 +186,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: 22,
+    borderRadius: 26,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#121316',
@@ -187,7 +204,7 @@ const styles = StyleSheet.create({
   },
   metallicBezel: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 22,
+    borderRadius: 26,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.22)',
   },

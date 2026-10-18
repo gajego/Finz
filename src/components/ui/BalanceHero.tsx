@@ -33,11 +33,15 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
         <Text style={[styles.metaLabel, { color: colors.textMuted }]}>
           FATURA ATUAL • {currentCard ? currentCard.bankName : 'NENHUM CARTÃO'}
         </Text>
-        <Pressable onPress={togglePrivacyMode} hitSlop={12} style={styles.eyeBtn}>
+        <Pressable
+          onPress={togglePrivacyMode}
+          hitSlop={12}
+          style={[styles.eyeBtn, { backgroundColor: colors.surfaceSubtle, borderColor: colors.borderSubtle }]}
+        >
           {privacyMode ? (
-            <EyeOff size={16} color={colors.textSecondary} />
+            <EyeOff size={14} color={colors.textSecondary} />
           ) : (
-            <Eye size={16} color={colors.textSecondary} />
+            <Eye size={14} color={colors.textSecondary} />
           )}
         </Pressable>
       </View>
@@ -55,62 +59,70 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
         </Text>
       </View>
 
-      {/* Badge de Rendimento / Status */}
+      {/* Badge de Rendimento / Status em Pill */}
       <View style={styles.statusRow}>
-        <View style={[styles.badge, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-          <ArrowUpRight size={12} color={colors.success} />
+        <View style={[styles.badge, { backgroundColor: colors.successSubtle }]}>
+          <ArrowUpRight size={13} color={colors.success} />
           <Text style={[styles.badgeText, { color: colors.success }]}>
             {currentCard ? `Limite Total: ${formatBRL(currentCard.limit || 0)}` : 'Nenhum limite ativo'}
           </Text>
         </View>
       </View>
 
-      {/* Barra de Ações Rápidas Táteis */}
+      {/* Barra de Ações Rápidas Táteis em Squircles Elegantes */}
       <View style={styles.actionsBar}>
         <Pressable
           onPress={onOpenReceiptPicker}
-          style={[
+          style={({ pressed }) => [
             styles.actionButton,
             {
-              backgroundColor: colors.surfaceElevated,
+              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
               borderColor: colors.border,
+              opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
-          <FileText size={14} color={colors.primary} />
+          <View style={[styles.actionIconBox, { backgroundColor: colors.surfaceSubtle }]}>
+            <FileText size={15} color={colors.primary} />
+          </View>
           <Text style={[styles.actionText, { color: colors.text }]}>COMPROVANTE</Text>
         </Pressable>
 
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.actionButton,
             {
-              backgroundColor: colors.surfaceElevated,
+              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
               borderColor: colors.border,
+              opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
-          <SlidersHorizontal size={14} color={colors.textSecondary} />
+          <View style={[styles.actionIconBox, { backgroundColor: colors.surfaceSubtle }]}>
+            <SlidersHorizontal size={15} color={colors.textSecondary} />
+          </View>
           <Text style={[styles.actionText, { color: colors.text }]}>LIMITES</Text>
         </Pressable>
 
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.actionButton,
             {
-              backgroundColor: colors.surfaceElevated,
+              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
               borderColor: colors.border,
+              opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
-          <ShieldAlert size={14} color={colors.danger} />
+          <View style={[styles.actionIconBox, { backgroundColor: colors.dangerSubtle }]}>
+            <ShieldAlert size={15} color={colors.danger} />
+          </View>
           <Text style={[styles.actionText, { color: colors.text }]}>BLOQUEAR</Text>
         </Pressable>
       </View>
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {
@@ -131,15 +143,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   eyeBtn: {
-    padding: 2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   balanceRow: {
     marginBottom: 6,
   },
   balanceText: {
     fontFamily: Typography.bold,
-    fontSize: 36,
-    letterSpacing: -1,
+    fontSize: 38,
+    letterSpacing: -1.2,
     fontVariant: ['tabular-nums'],
   },
   statusRow: {
@@ -150,14 +167,15 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
   badgeText: {
-    fontFamily: Typography.medium,
+    fontFamily: Typography.bold,
     fontSize: 11,
+    letterSpacing: 0.3,
   },
   actionsBar: {
     flexDirection: 'row',
@@ -165,18 +183,28 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    height: 44,
-    borderRadius: 12,
+    height: 52,
+    borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  actionIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionText: {
     fontFamily: Typography.bold,
-    fontSize: 11,
-    letterSpacing: 1,
+    fontSize: 10,
+    letterSpacing: 0.8,
   },
-
 });

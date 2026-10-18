@@ -1,11 +1,51 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Sliders, AlertTriangle } from 'lucide-react-native';
+import {
+  Sliders,
+  AlertTriangle,
+  Utensils,
+  Car,
+  Gamepad2,
+  TrendingUp,
+  ShoppingBag,
+  Sparkles,
+  Tag,
+  Coffee,
+  LucideIcon,
+} from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 
-
+const getCategoryIcon = (iconName: string): LucideIcon => {
+  switch (iconName?.toLowerCase()) {
+    case 'utensils':
+    case 'food':
+    case 'alimentação':
+      return Utensils;
+    case 'car':
+    case 'transport':
+    case 'transporte':
+      return Car;
+    case 'gamepad-2':
+    case 'gamepad':
+    case 'leisure':
+    case 'lazer & setup':
+      return Gamepad2;
+    case 'trending-up':
+    case 'investimentos':
+    case 'investing':
+      return TrendingUp;
+    case 'shopping-bag':
+    case 'shopping':
+    case 'compras':
+      return ShoppingBag;
+    case 'coffee':
+      return Coffee;
+    default:
+      return Tag;
+  }
+};
 
 interface CategoryBreakdownProps {
   onOpenBudgetManager: (categoryId?: string) => void;
@@ -45,9 +85,13 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
 
         <Pressable
           onPress={() => onOpenBudgetManager()}
-          style={[
+          style={({ pressed }) => [
             styles.configButton,
-            { backgroundColor: colors.surfaceElevated, borderColor: colors.border },
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.border,
+              opacity: pressed ? 0.75 : 1,
+            },
           ]}
         >
           <Sliders size={12} color={colors.primary} />
@@ -55,19 +99,21 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
         </Pressable>
       </View>
 
-      {/* Grid Bento com Alertas Visuais Vermelhos */}
+      {/* Grid Bento com Cards Arredondados (borderRadius 24) e Ícones Vetoriais */}
       <View style={styles.grid}>
         {categories.map((cat) => {
           const spent = getCategorySpent(cat.id);
-          const percent = Math.min(Math.round((spent / cat.budgetLimit) * 100), 200);
-          const isWarning = percent >= 85;
-          const isExceeded = percent >= 100;
+          const percent =
+            cat.budgetLimit > 0 ? Math.min(Math.round((spent / cat.budgetLimit) * 100), 200) : 0;
+          const isWarning = cat.budgetLimit > 0 && percent >= 85;
+          const isExceeded = cat.budgetLimit > 0 && percent >= 100;
+          const IconComponent = getCategoryIcon(cat.icon);
 
           return (
             <Pressable
               key={cat.id}
               onPress={() => onOpenBudgetManager(cat.id)}
-              style={[
+              style={({ pressed }) => [
                 styles.bentoCard,
                 {
                   backgroundColor: isWarning
@@ -75,27 +121,37 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
                     : mode === 'dark'
                     ? colors.surface
                     : colors.surfaceElevated,
-                  borderColor: isWarning ? '#FF3B30' : colors.border,
+                  borderColor: isWarning ? 'rgba(255, 59, 48, 0.32)' : colors.border,
+                  opacity: pressed ? 0.9 : 1,
                 },
               ]}
             >
+              {/* Topo do Card: Ícone Vetorial Lucide + Nome + Badge Pill de Percentual */}
               <View style={styles.cardHeader}>
-                <View style={styles.nameWithIcon}>
-                  {isWarning && <AlertTriangle size={12} color="#FF3B30" />}
-                  <Text
-                    style={[
-                      styles.categoryName,
-                      { color: isWarning ? '#FF3B30' : colors.text },
-                    ]}
-                  >
-                    {cat.name.toUpperCase()}
-                  </Text>
+                <View
+                  style={[
+                    styles.iconBox,
+                    {
+                      backgroundColor: isWarning
+                        ? 'rgba(255, 59, 48, 0.16)'
+                        : `${cat.color || colors.primary}18`,
+                    },
+                  ]}
+                >
+                  <IconComponent
+                    size={14}
+                    color={isWarning ? '#FF3B30' : cat.color || colors.primary}
+                  />
                 </View>
 
                 <View
                   style={[
                     styles.percentBadge,
-                    isWarning && { backgroundColor: 'rgba(255, 59, 48, 0.2)' },
+                    {
+                      backgroundColor: isWarning
+                        ? 'rgba(255, 59, 48, 0.18)'
+                        : colors.surfaceSubtle,
+                    },
                   ]}
                 >
                   <Text
@@ -104,9 +160,23 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
                       { color: isWarning ? '#FF3B30' : colors.primary },
                     ]}
                   >
-                    {percent}%
+                    {cat.budgetLimit > 0 ? `${percent}%` : 'SEM META'}
                   </Text>
                 </View>
+              </View>
+
+              {/* Nome da Categoria */}
+              <View style={styles.nameRow}>
+                {isWarning && <AlertTriangle size={11} color="#FF3B30" style={{ marginRight: 4 }} />}
+                <Text
+                  style={[
+                    styles.categoryName,
+                    { color: isWarning ? '#FF3B30' : colors.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {cat.name.toUpperCase()}
+                </Text>
               </View>
 
               <View style={styles.amountRow}>
@@ -119,11 +189,11 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
                   {formatBRL(spent)}
                 </Text>
                 <Text style={[styles.limitText, { color: colors.textMuted }]}>
-                  / {formatBRL(cat.budgetLimit)}
+                  {cat.budgetLimit > 0 ? `/ ${formatBRL(cat.budgetLimit)}` : '/ Sem teto'}
                 </Text>
               </View>
 
-              {/* Medidor com Padrão Vermelho em Alerta */}
+              {/* Medidor Suave com Barra Arredondada */}
               <View style={[styles.track, { backgroundColor: colors.surfaceSubtle }]}>
                 <View
                   style={[
@@ -170,9 +240,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
   },
   configButtonText: {
     fontFamily: Typography.bold,
@@ -186,36 +256,48 @@ const styles = StyleSheet.create({
   },
   bentoCard: {
     width: '48.5%',
-    padding: 14,
-    borderRadius: 14,
+    padding: 16,
+    borderRadius: 24,
     borderWidth: 1,
     justifyContent: 'space-between',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  nameWithIcon: {
-    flexDirection: 'row',
+  iconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-  },
-  categoryName: {
-    fontFamily: Typography.bold,
-    fontSize: 10,
-    letterSpacing: 0.8,
   },
   percentBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   percentText: {
     fontFamily: Typography.bold,
-    fontSize: 11,
+    fontSize: 10,
     fontVariant: ['tabular-nums'],
+    letterSpacing: 0.4,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  categoryName: {
+    fontFamily: Typography.bold,
+    fontSize: 11,
+    letterSpacing: 0.8,
   },
   amountRow: {
     flexDirection: 'row',
@@ -232,14 +314,13 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 10,
   },
-
   track: {
-    height: 3,
-    borderRadius: 1.5,
+    height: 4,
+    borderRadius: 2,
     overflow: 'hidden',
   },
   fill: {
-    height: 3,
-    borderRadius: 1.5,
+    height: 4,
+    borderRadius: 2,
   },
 });

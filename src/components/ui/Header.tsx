@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Moon, Sun, Terminal } from 'lucide-react-native';
+import { Moon, Sun, Bell } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography } from '@/theme/typography';
@@ -12,6 +12,20 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const profile = useWalletStore((s) => s.profile);
+  const categories = useWalletStore((s) => s.categories);
+  const transactions = useWalletStore((s) => s.transactions);
+  const activeAlert = useWalletStore((s) => s.activeAlert);
+
+  const hasAlert = React.useMemo(() => {
+    if (activeAlert) return true;
+    return categories.some((cat) => {
+      if (cat.budgetLimit <= 0) return false;
+      const spent = transactions
+        .filter((t) => t.categoryId === cat.id && t.type === 'EXPENSE')
+        .reduce((sum, t) => sum + t.amount, 0);
+      return spent / cat.budgetLimit >= 0.8;
+    });
+  }, [activeAlert, categories, transactions]);
 
   return (
     <View style={styles.container}>
@@ -28,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
         </Text>
       </View>
 
-      {/* Ações: Alternar Tema e Simulador de Eventos */}
+      {/* Ações: Alternar Tema e Central de Notificações */}
       <View style={styles.actionButtons}>
         <Pressable
           onPress={toggleTheme}
@@ -53,7 +67,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
           ]}
           hitSlop={8}
         >
-          <Terminal size={15} color={colors.text} />
+          <Bell size={15} color={hasAlert ? colors.primary : colors.text} />
+          {hasAlert && <View style={[styles.notificationDot, { backgroundColor: '#FF3B30' }]} />}
         </Pressable>
       </View>
     </View>
@@ -82,9 +97,9 @@ const styles = StyleSheet.create({
   },
   versionBadge: {
     borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   versionText: {
     fontFamily: Typography.bold,
@@ -98,15 +113,24 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   actionPill: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 9,
+    right: 9,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
 });
 

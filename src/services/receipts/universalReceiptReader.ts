@@ -1,3 +1,4 @@
+import { NativeModules } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { unzlibSync, inflateSync } from 'fflate';
 import { parsePixReceipt, ParsedReceipt } from './receiptParser';
@@ -8,6 +9,18 @@ try {
   TextRecognition = require('@react-native-ml-kit/text-recognition').default;
 } catch {
   TextRecognition = null;
+}
+
+/**
+ * Verifica se o módulo nativo de OCR do Google ML Kit está devidamente vinculado no runtime atual.
+ * No Expo Go (host.exp.exponent), módulos nativos customizados de terceiros não estão presentes.
+ */
+export function isImageOcrAvailable(): boolean {
+  try {
+    return !!(NativeModules && NativeModules.TextRecognition && typeof NativeModules.TextRecognition.recognize === 'function');
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -57,8 +70,10 @@ export async function readReceiptFromFileOrUri(
  * Extrai texto de imagem via OCR on-device do Google ML Kit
  */
 async function extractTextFromImageOcr(imageUri: string): Promise<string> {
-  if (!TextRecognition) {
-    console.warn('ML Kit TextRecognition não disponível neste ambiente.');
+  if (!isImageOcrAvailable() || !TextRecognition) {
+    console.warn(
+      '[Finz OCR] Google ML Kit não disponível no ambiente atual (ex: Expo Go). Utilize comprovantes em PDF ou gere a build nativa.'
+    );
     return '';
   }
 
@@ -66,7 +81,7 @@ async function extractTextFromImageOcr(imageUri: string): Promise<string> {
     const result = await TextRecognition.recognize(imageUri);
     return result?.text || '';
   } catch (error) {
-    console.error('Falha no OCR da imagem:', error);
+    console.warn('Falha no OCR da imagem:', error);
     return '';
   }
 }

@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
-import { readReceiptFromFileOrUri } from '@/services/receipts/universalReceiptReader';
+import { readReceiptFromFileOrUri, isImageOcrAvailable } from '@/services/receipts/universalReceiptReader';
 import { ParsedReceipt } from '@/services/receipts/receiptParser';
 
 interface ReceiptPickerSheetProps {
@@ -34,7 +34,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
         processUri(result.assets[0].uri, result.assets[0].mimeType || 'image/jpeg');
       }
     } catch (e) {
-      console.error(e);
+      console.warn(e);
       Alert.alert('Erro', 'Não foi possível acessar a galeria.');
     }
   };
@@ -50,12 +50,30 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
         processUri(result.assets[0].uri, result.assets[0].mimeType || 'application/pdf');
       }
     } catch (e) {
-      console.error(e);
+      console.warn(e);
       Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
     }
   };
 
   const processUri = async (uri: string, mimeType?: string) => {
+    const isImage =
+      mimeType?.startsWith('image/') ||
+      uri.toLowerCase().endsWith('.jpg') ||
+      uri.toLowerCase().endsWith('.jpeg') ||
+      uri.toLowerCase().endsWith('.png') ||
+      uri.toLowerCase().endsWith('.webp');
+
+    if (isImage && !isImageOcrAvailable()) {
+      Alert.alert(
+        'OCR em Imagem (Expo Go)',
+        'O reconhecimento óptico em imagens utiliza o Google ML Kit nativo, indisponível no cliente Expo Go.\n\n' +
+          '💡 Como testar agora:\n' +
+          '1. Exporte o comprovante em PDF pelo app do banco (funciona 100% no Expo Go, sem precisar de módulos nativos);\n' +
+          '2. Ou execute "npx expo run:android" para rodar o build nativo completo no emulador.'
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const parsed = await readReceiptFromFileOrUri(uri, mimeType);

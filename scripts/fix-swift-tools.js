@@ -173,3 +173,51 @@ target_compile_options(
   }
 }
 
+// Fix iOS TextRecognition.m to load local image URLs safely (avoiding nil UIImage on iOS)
+const textRecognitionM = path.join(__dirname, '..', 'node_modules', '@react-native-ml-kit', 'text-recognition', 'ios', 'TextRecognition.m');
+if (fs.existsSync(textRecognitionM)) {
+  let trContent = fs.readFileSync(textRecognitionM, 'utf8');
+  if (trContent.includes('NSURL *_url = [NSURL URLWithString:url];') && !trContent.includes('imageWithContentsOfFile:cleanPath')) {
+    const originalBlock = `    NSURL *_url = [NSURL URLWithString:url];
+    NSData *imageData = [NSData dataWithContentsOfURL:_url];
+    UIImage *image = [UIImage imageWithData:imageData];
+    MLKVisionImage *visionImage = [[MLKVisionImage alloc] initWithImage:image];
+    visionImage.orientation = image.imageOrientation;`;
+
+    const patchedBlock = `    UIImage *image = nil;
+    NSString *cleanPath = url;
+    if ([cleanPath hasPrefix:@"file://"]) {
+        cleanPath = [cleanPath substringFromIndex:7];
+    }
+    cleanPath = [cleanPath stringByRemovingPercentEncoding];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:cleanPath]) {
+        image = [UIImage imageWithContentsOfFile:cleanPath];
+    }
+    if (image == nil) {
+        NSURL *_fileUrl = [NSURL fileURLWithPath:cleanPath];
+        NSData *fileData = [NSData dataWithContentsOfURL:_fileUrl];
+        if (fileData) {
+            image = [UIImage imageWithData:fileData];
+        }
+    }
+    if (image == nil) {
+        NSURL *_url = [NSURL URLWithString:url];
+        if (_url) {
+            NSData *imageData = [NSData dataWithContentsOfURL:_url];
+            if (imageData) {
+                image = [UIImage imageWithData:imageData];
+            }
+        }
+    }
+    if (image == nil) {
+        return reject(@"Text Recognition", @"Failed to load image from provided URL/path", nil);
+    }
+    MLKVisionImage *visionImage = [[MLKVisionImage alloc] initWithImage:image];
+    visionImage.orientation = image.imageOrientation;`;
+
+    trContent = trContent.replace(originalBlock, patchedBlock);
+    fs.writeFileSync(textRecognitionM, trContent, 'utf8');
+    console.log('[fix-text-recognition] Patched TextRecognition.m for robust iOS image loading.');
+  }
+}
+

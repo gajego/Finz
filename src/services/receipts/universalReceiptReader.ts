@@ -1,5 +1,5 @@
 import { NativeModules } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { unzlibSync, inflateSync } from 'fflate';
 import { parsePixReceipt, ParsedReceipt } from './receiptParser';
 
@@ -25,7 +25,7 @@ export function isImageOcrAvailable(): boolean {
 
 /**
  * Leitor Universal de Comprovantes:
- * Aceita texto puro, imagens (JPG/PNG) via OCR on-device ou arquivos PDF bancários.
+ * Aceita texto puro, imagens (JPG/PNG/HEIC) via OCR on-device ou arquivos PDF bancários.
  */
 export async function readReceiptFromFileOrUri(
   uri: string,
@@ -34,13 +34,15 @@ export async function readReceiptFromFileOrUri(
   if (!uri) return null;
 
   const lowerUri = uri.toLowerCase();
-  const isPdf = lowerUri.endsWith('.pdf') || mimeType === 'application/pdf';
+  const isPdf = lowerUri.includes('.pdf') || mimeType === 'application/pdf';
   const isImage =
-    lowerUri.endsWith('.jpg') ||
-    lowerUri.endsWith('.jpeg') ||
-    lowerUri.endsWith('.png') ||
-    lowerUri.endsWith('.webp') ||
-    mimeType?.startsWith('image/');
+    mimeType?.startsWith('image/') ||
+    lowerUri.includes('.jpg') ||
+    lowerUri.includes('.jpeg') ||
+    lowerUri.includes('.png') ||
+    lowerUri.includes('.webp') ||
+    lowerUri.includes('.heic') ||
+    lowerUri.includes('.heif');
 
   let extractedText = '';
 
@@ -49,13 +51,23 @@ export async function readReceiptFromFileOrUri(
   } else if (isPdf) {
     extractedText = await extractTextFromPdf(uri);
   } else {
-    // Tenta ler como texto direto se for arquivo de texto
-    try {
-      extractedText = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-    } catch {
-      extractedText = '';
+    // Se for URI de arquivo, lê o arquivo; caso contrário, é o próprio texto compartilhado
+    if (uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('/') || uri.startsWith('http')) {
+      try {
+        extractedText = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+      } catch {
+        try {
+          extractedText = await FileSystem.readAsStringAsync(decodeURI(uri), {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+        } catch {
+          extractedText = uri;
+        }
+      }
+    } else {
+      extractedText = uri;
     }
   }
 
@@ -93,10 +105,22 @@ async function extractTextFromImageOcr(imageUri: string): Promise<string> {
  */
 async function extractTextFromPdf(pdfUri: string): Promise<string> {
   try {
-    // 1. Lê o arquivo como Base64 para preservar dados binários sem corromper bytes UTF-8
-    const base64Data = await FileSystem.readAsStringAsync(pdfUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    let base64Data: string | null = null;
+    try {
+      base64Data = await FileSystem.readAsStringAsync(pdfUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    } catch {
+      try {
+        const decoded = decodeURI(pdfUri);
+        base64Data = await FileSystem.readAsStringAsync(decoded, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+      } catch (err) {
+        console.warn('[Finz PDF] Falha ao ler arquivo PDF com FileSystem legacy:', err);
+        return '';
+      }
+    }
 
     if (!base64Data || base64Data.length === 0) {
       return '';
@@ -105,7 +129,7 @@ async function extractTextFromPdf(pdfUri: string): Promise<string> {
     const bytes = base64ToUint8Array(base64Data);
     return extractPdfTextFromBytes(bytes);
   } catch (error) {
-    console.error('Falha ao processar arquivo PDF:', error);
+    console.warn('[Finz PDF] Falha ao processar arquivo PDF:', error);
     return '';
   }
 }
@@ -114,13 +138,14 @@ async function extractTextFromPdf(pdfUri: string): Promise<string> {
  * Motor seguro de extração de texto PDF:
  * - Varredura linear com limites de complexidade O(N)
  * - Descompactação controlada de streams FlateDecode via fflate
- * - Parsing de fontes embutidas (ToUnicode CMap)
+ * - Parsing de fontes embutidas (ToUnicode CMap) com intervalos estritamente limitados
  * - Extração de blocos de renderização de texto (BT ... ET)
+ * - Suporte a arrays TJ contendo strings hexadecimais (<004e0075>) e literais ((Texto))
  */
 export function extractPdfTextFromBytes(bytes: Uint8Array): string {
   try {
     // Proteção contra arquivos gigantescos (comprovantes bancários costumam ter < 2MB)
-    const MAX_PROCESS_BYTES = 10 * 1024 * 1024; // 10 MB
+    const MAX_PROCESS_BYTES = 5 * 1024 * 1024; // 5 MB
     const targetBytes =
       bytes.length > MAX_PROCESS_BYTES
         ? bytes.subarray(0, MAX_PROCESS_BYTES)
@@ -129,7 +154,7 @@ export function extractPdfTextFromBytes(bytes: Uint8Array): string {
     const binaryStr = uint8ArrayToLatin1(targetBytes);
     const extractedLines: string[] = [];
 
-    // Passo A: Extração de mapas de caracteres Unicode (CMap) para fontes subsetted
+    // Passo A: Extração segura de mapas de caracteres Unicode (CMap) para fontes subsetted
     const cmapMap = extractCMaps(binaryStr, targetBytes);
 
     // Passo B: Percorre streams de dados do PDF
@@ -137,7 +162,8 @@ export function extractPdfTextFromBytes(bytes: Uint8Array): string {
     const endStreamMarker = 'endstream';
     let pos = 0;
     let streamCount = 0;
-    const MAX_STREAMS = 150;
+    const MAX_STREAMS = 100;
+    const decompressedChunks: string[] = [];
 
     while (
       (pos = binaryStr.indexOf(streamMarker, pos)) !== -1 &&
@@ -145,13 +171,9 @@ export function extractPdfTextFromBytes(bytes: Uint8Array): string {
     ) {
       streamCount++;
 
-      // Identifica o dicionário correspondente ao stream atual
-      const lastBoundary = Math.max(
-        0,
-        binaryStr.lastIndexOf('endobj', pos),
-        binaryStr.lastIndexOf('endstream', pos)
-      );
-      const precedingDict = binaryStr.slice(lastBoundary, pos);
+      // Identifica o dicionário delimitado imediatamente anterior ao stream (máx 1KB para evitar alocações de megabytes)
+      const dictStart = Math.max(0, pos - 1024);
+      const precedingDict = binaryStr.slice(dictStart, pos);
 
       // Pula streams de imagens puras (economiza 95% do processamento e evita ruído binário)
       const isImage = /\/Subtype\s*\/Image/i.test(precedingDict);
@@ -169,26 +191,32 @@ export function extractPdfTextFromBytes(bytes: Uint8Array): string {
         continue;
       }
 
+      const streamLen = endPos - dataStart;
+      if (streamLen <= 0 || streamLen > 2 * 1024 * 1024) {
+        continue;
+      }
+
       const rawStreamBytes = targetBytes.subarray(dataStart, endPos);
       let contentStr = '';
 
       if (isFlate) {
         try {
           const decompressed = unzlibSync(rawStreamBytes);
-          contentStr = uint8ArrayToLatin1(decompressed);
+          contentStr = uint8ArrayToLatin1(decompressed.subarray(0, 500 * 1024));
         } catch {
           try {
             const decompressed = inflateSync(rawStreamBytes);
-            contentStr = uint8ArrayToLatin1(decompressed);
+            contentStr = uint8ArrayToLatin1(decompressed.subarray(0, 500 * 1024));
           } catch {
             contentStr = '';
           }
         }
       } else {
-        contentStr = uint8ArrayToLatin1(rawStreamBytes);
+        contentStr = uint8ArrayToLatin1(rawStreamBytes.subarray(0, 200 * 1024));
       }
 
       if (!contentStr) continue;
+      decompressedChunks.push(contentStr);
 
       // Passo C: Extrai texto contido exclusivamente entre operadores BT e ET
       let btPos = 0;
@@ -210,14 +238,17 @@ export function extractPdfTextFromBytes(bytes: Uint8Array): string {
       }
     }
 
-    // Se nenhum operador BT..ET foi encontrado, executa varredura de fallback para texto simples
+    // Se nenhum operador BT..ET foi encontrado ou pouco texto foi extraído, varre texto decodificado
     if (extractedLines.length === 0) {
-      extractPrintableChunks(binaryStr, extractedLines);
+      for (const chunk of decompressedChunks) {
+        extractPrintableChunks(chunk, extractedLines);
+        if (extractedLines.length >= 20) break;
+      }
     }
 
     return extractedLines.join('\n');
   } catch (error) {
-    console.error('Erro na extração de texto do PDF:', error);
+    console.warn('[Finz PDF] Erro na extração de texto do PDF:', error);
     return '';
   }
 }
@@ -238,7 +269,7 @@ function extractStringsFromPdfBlock(
   while (i < len && itemCount < MAX_ITEMS) {
     const ch = block[i];
 
-    // Arrays de texto com ajustes de kerning: [ (Str1) -120 (Str2) ] TJ
+    // Arrays de texto com ajustes de kerning: [ (Str1) -120 (Str2) ] TJ ou [ <004e0075> -120 <00620061> ] TJ
     if (ch === '[') {
       const endTJ = block.indexOf(']', i + 1);
       if (endTJ !== -1 && endTJ - i < 8000) {
@@ -273,11 +304,19 @@ function extractStringsFromPdfBlock(
               }
             }
             strAccum += decodeCmapText(rawLiteral, cmapMap);
+          } else if (tjContent[j] === '<' && tjContent[j + 1] !== '<') {
+            const endHex = tjContent.indexOf('>', j + 1);
+            if (endHex !== -1 && endHex - j < 2000) {
+              const hex = tjContent.slice(j + 1, endHex);
+              strAccum += decodeHexString(hex, cmapMap);
+              j = endHex + 1;
+            } else {
+              j++;
+            }
           } else if (
             tjContent[j] === '-' &&
             /[0-9]/.test(tjContent[j + 1] || '')
           ) {
-            // Se o kerning for significativamente negativo, representa um espaço entre palavras
             let numStr = '';
             let k = j;
             while (k < tjContent.length && /[\d\.\-]/.test(tjContent[k])) {
@@ -342,25 +381,10 @@ function extractStringsFromPdfBlock(
       // String hexadecimal: <004E0075> Tj
       const endHex = block.indexOf('>', i + 1);
       if (endHex !== -1 && endHex - i < 2000) {
-        const hex = block.slice(i + 1, endHex).replace(/\s+/g, '');
-        let decoded = '';
-
-        if (hex.length >= 4 && (hex.startsWith('FEFF') || hex.startsWith('feff'))) {
-          // UTF-16BE
-          for (let h = 4; h < hex.length; h += 4) {
-            const code = parseInt(hex.slice(h, h + 4), 16);
-            if (!isNaN(code)) decoded += String.fromCharCode(code);
-          }
-        } else {
-          for (let h = 0; h < hex.length; h += 2) {
-            const code = parseInt(hex.slice(h, h + 2), 16);
-            if (!isNaN(code)) decoded += String.fromCharCode(code);
-          }
-        }
-
-        const cmapDecoded = decodeCmapText(decoded, cmapMap);
-        if (cmapDecoded.trim().length > 0) {
-          output.push(cmapDecoded.trim());
+        const hex = block.slice(i + 1, endHex);
+        const decoded = decodeHexString(hex, cmapMap);
+        if (decoded.trim().length > 0) {
+          output.push(decoded.trim());
           itemCount++;
         }
         i = endHex + 1;
@@ -374,7 +398,96 @@ function extractStringsFromPdfBlock(
 }
 
 /**
- * Decodifica ToUnicode CMaps presentes no PDF
+ * Decodifica strings em notação hexadecimal de PDF com suporte a CMap, UTF-16BE e ASCII
+ */
+function decodeHexString(hex: string, cmapMap: Map<number, string>): string {
+  if (!hex) return '';
+  const cleanHex = hex.replace(/[^0-9a-fA-F]/g, '');
+  if (cleanHex.length === 0) return '';
+
+  let decoded = '';
+
+  // 1. Caso com BOM UTF-16BE: FEFF ou feff
+  if (cleanHex.length >= 4 && (cleanHex.startsWith('FEFF') || cleanHex.startsWith('feff'))) {
+    for (let h = 4; h < cleanHex.length; h += 4) {
+      if (h + 4 <= cleanHex.length) {
+        const code = parseInt(cleanHex.slice(h, h + 4), 16);
+        if (!isNaN(code)) decoded += String.fromCharCode(code);
+      }
+    }
+    return decoded;
+  }
+
+  // 2. Se houver CMap definido para o PDF
+  if (cmapMap.size > 0) {
+    // Tenta 2-byte CMap (4 hex digits)
+    if (cleanHex.length >= 4 && cleanHex.length % 4 === 0) {
+      let matched = false;
+      let temp = '';
+      for (let h = 0; h < cleanHex.length; h += 4) {
+        const code = parseInt(cleanHex.slice(h, h + 4), 16);
+        if (cmapMap.has(code)) {
+          temp += cmapMap.get(code);
+          matched = true;
+        } else if (code >= 32 && code <= 126) {
+          temp += String.fromCharCode(code);
+        } else {
+          temp += ' ';
+        }
+      }
+      if (matched) return temp;
+    }
+
+    // Tenta 1-byte CMap (2 hex digits)
+    if (cleanHex.length % 2 === 0) {
+      let matched = false;
+      let temp = '';
+      for (let h = 0; h < cleanHex.length; h += 2) {
+        const code = parseInt(cleanHex.slice(h, h + 2), 16);
+        if (cmapMap.has(code)) {
+          temp += cmapMap.get(code);
+          matched = true;
+        } else if (code >= 32 && code <= 126) {
+          temp += String.fromCharCode(code);
+        }
+      }
+      if (matched) return temp;
+    }
+  }
+
+  // 3. Sem CMap: se for sequência de 2-byte com byte alto nulo (ex: 004E 0075 0062 = "Nub")
+  if (cleanHex.length >= 4 && cleanHex.length % 4 === 0) {
+    let allHighZero = true;
+    for (let h = 0; h < cleanHex.length; h += 4) {
+      if (cleanHex.slice(h, h + 2) !== '00') {
+        allHighZero = false;
+        break;
+      }
+    }
+    if (allHighZero) {
+      for (let h = 0; h < cleanHex.length; h += 4) {
+        const code = parseInt(cleanHex.slice(h + 2, h + 4), 16);
+        if (!isNaN(code)) decoded += String.fromCharCode(code);
+      }
+      return decoded;
+    }
+  }
+
+  // 4. Fallback padrão: 1 byte por cada 2 caracteres hex
+  for (let h = 0; h < cleanHex.length; h += 2) {
+    if (h + 2 <= cleanHex.length) {
+      const code = parseInt(cleanHex.slice(h, h + 2), 16);
+      if (!isNaN(code)) {
+        decoded += String.fromCharCode(code);
+      }
+    }
+  }
+
+  return decoded;
+}
+
+/**
+ * Decodifica ToUnicode CMaps presentes no PDF com limites estritos
  */
 function extractCMaps(
   binaryStr: string,
@@ -385,16 +498,15 @@ function extractCMaps(
   const endStreamMarker = 'endstream';
   let pos = 0;
   let count = 0;
+  const MAX_CMAP_STREAMS = 20;
 
-  while ((pos = binaryStr.indexOf(streamMarker, pos)) !== -1 && count < 60) {
+  while ((pos = binaryStr.indexOf(streamMarker, pos)) !== -1 && count < MAX_CMAP_STREAMS) {
     count++;
-    const lastBoundary = Math.max(
-      0,
-      binaryStr.lastIndexOf('endobj', pos),
-      binaryStr.lastIndexOf('endstream', pos)
-    );
-    const precedingDict = binaryStr.slice(lastBoundary, pos);
+    const dictStart = Math.max(0, pos - 1024);
+    const precedingDict = binaryStr.slice(dictStart, pos);
+
     const isFlate = /\/FlateDecode/i.test(precedingDict);
+    const isToUnicode = /\/ToUnicode|\/CMap/i.test(precedingDict);
 
     let dataStart = pos + streamMarker.length;
     if (binaryStr[dataStart] === '\r') dataStart++;
@@ -404,42 +516,73 @@ function extractCMaps(
     if (endPos === -1) break;
     pos = endPos + endStreamMarker.length;
 
+    // Se o stream for maior que 50KB e não mencionar ToUnicode, pula para poupar CPU
+    if (!isToUnicode && endPos - dataStart > 50000) {
+      continue;
+    }
+
     const rawStreamBytes = targetBytes.subarray(dataStart, endPos);
     let decStr = '';
 
     if (isFlate) {
       try {
         const dec = unzlibSync(rawStreamBytes);
-        decStr = uint8ArrayToLatin1(dec);
+        decStr = uint8ArrayToLatin1(dec.subarray(0, 100 * 1024));
       } catch {
         continue;
       }
     } else {
-      decStr = uint8ArrayToLatin1(rawStreamBytes);
+      decStr = uint8ArrayToLatin1(rawStreamBytes.subarray(0, 50 * 1024));
     }
 
-    if (decStr.includes('begincmap')) {
-      // Processa intervalos de mapeamento de caracteres: <0001> <0001> <0020>
-      const bfrangeRegex =
-        /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g;
-      let bfm;
-      while ((bfm = bfrangeRegex.exec(decStr)) !== null) {
-        const start = parseInt(bfm[1], 16);
-        const end = parseInt(bfm[2], 16);
-        const target = parseInt(bfm[3], 16);
-        for (let code = start; code <= end; code++) {
-          cmapMap.set(code, String.fromCharCode(target + (code - start)));
-        }
-      }
+    if (!decStr.includes('begincmap')) continue;
 
-      // Processa mapeamentos individuais: <0001> <0020>
-      const bfcharRegex = /<([0-9a-fA-F]+)>\s*<([0-9a-fA-F]+)>/g;
-      let bfc;
-      while ((bfc = bfcharRegex.exec(decStr)) !== null) {
-        cmapMap.set(
-          parseInt(bfc[1], 16),
-          String.fromCharCode(parseInt(bfc[2], 16))
-        );
+    // Delimita estritamente ao bloco begincmap ... endcmap
+    const cmapStart = decStr.indexOf('begincmap');
+    const cmapEnd = decStr.indexOf('endcmap', cmapStart);
+    const cmapBody = cmapEnd !== -1 ? decStr.slice(cmapStart, cmapEnd) : decStr.slice(cmapStart);
+
+    // 1. Processa beginbfrange ... endbfrange
+    let bfrangeIdx = 0;
+    while ((bfrangeIdx = cmapBody.indexOf('beginbfrange', bfrangeIdx)) !== -1) {
+      const bfrangeEnd = cmapBody.indexOf('endbfrange', bfrangeIdx);
+      if (bfrangeEnd === -1) break;
+      const bfrangeChunk = cmapBody.slice(bfrangeIdx, bfrangeEnd);
+      bfrangeIdx = bfrangeEnd + 10;
+
+      const rangeRegex = /<([0-9a-fA-F]{1,8})>\s*<([0-9a-fA-F]{1,8})>\s*<([0-9a-fA-F]{1,8})>/g;
+      let m: RegExpExecArray | null;
+      while ((m = rangeRegex.exec(bfrangeChunk)) !== null) {
+        const start = parseInt(m[1], 16);
+        const end = parseInt(m[2], 16);
+        const target = parseInt(m[3], 16);
+        if (!isNaN(start) && !isNaN(end) && !isNaN(target) && end >= start && end - start < 1000) {
+          for (let code = start; code <= end; code++) {
+            cmapMap.set(code, String.fromCharCode(target + (code - start)));
+            if (cmapMap.size >= 5000) break;
+          }
+        }
+        if (cmapMap.size >= 5000) break;
+      }
+    }
+
+    // 2. Processa beginbfchar ... endbfchar
+    let bfcharIdx = 0;
+    while ((bfcharIdx = cmapBody.indexOf('beginbfchar', bfcharIdx)) !== -1) {
+      const bfcharEnd = cmapBody.indexOf('endbfchar', bfcharIdx);
+      if (bfcharEnd === -1) break;
+      const bfcharChunk = cmapBody.slice(bfcharIdx, bfcharEnd);
+      bfcharIdx = bfcharEnd + 10;
+
+      const charRegex = /<([0-9a-fA-F]{1,8})>\s*<([0-9a-fA-F]{1,8})>/g;
+      let m: RegExpExecArray | null;
+      while ((m = charRegex.exec(bfcharChunk)) !== null) {
+        const code = parseInt(m[1], 16);
+        const target = parseInt(m[2], 16);
+        if (!isNaN(code) && !isNaN(target)) {
+          cmapMap.set(code, String.fromCharCode(target));
+          if (cmapMap.size >= 5000) break;
+        }
       }
     }
   }
@@ -451,33 +594,59 @@ function extractCMaps(
  * Traduz texto codificado em CID glyphs para caracteres Unicode caso haja mapa CMap
  */
 function decodeCmapText(raw: string, cmapMap: Map<number, string>): string {
-  if (cmapMap.size === 0 || raw.length < 2) return raw;
+  if (cmapMap.size === 0 || raw.length === 0) return raw;
 
-  // Se o texto parecer 2-byte encoded (ex: primeiros bytes nulos ou no formato Identity-H)
-  let decoded = '';
-  let matchedAny = false;
+  // Se tiver tamanho par e mais de 2 caracteres, tenta decodificar como 2-byte CID
+  let decoded2Byte = '';
+  let matched2Byte = 0;
 
   for (let i = 0; i < raw.length; i += 2) {
-    const code = (raw.charCodeAt(i) << 8) | raw.charCodeAt(i + 1);
-    if (cmapMap.has(code)) {
-      decoded += cmapMap.get(code);
-      matchedAny = true;
+    if (i + 1 < raw.length) {
+      const code = (raw.charCodeAt(i) << 8) | raw.charCodeAt(i + 1);
+      if (cmapMap.has(code)) {
+        decoded2Byte += cmapMap.get(code);
+        matched2Byte++;
+      } else {
+        decoded2Byte += raw[i] + raw[i + 1];
+      }
     } else {
-      decoded += raw[i] + (raw[i + 1] || '');
+      decoded2Byte += raw[i];
     }
   }
 
-  return matchedAny ? decoded : raw;
+  if (matched2Byte > 0 && matched2Byte >= raw.length / 4) {
+    return decoded2Byte;
+  }
+
+  // Tenta 1-byte CID
+  let decoded1Byte = '';
+  let matched1Byte = 0;
+  for (let i = 0; i < raw.length; i++) {
+    const code = raw.charCodeAt(i);
+    if (cmapMap.has(code)) {
+      decoded1Byte += cmapMap.get(code);
+      matched1Byte++;
+    } else {
+      decoded1Byte += raw[i];
+    }
+  }
+
+  if (matched1Byte > 0) {
+    return decoded1Byte;
+  }
+
+  return raw;
 }
 
 /**
- * Fallback seguro: extrai sequências de caracteres imprimíveis em varredura linear
+ * Extrai sequências de caracteres imprimíveis em texto decodificado (não-binário)
  */
 function extractPrintableChunks(str: string, output: string[]): void {
   let current = '';
-  const MAX_LINES = 200;
+  const MAX_LINES = 100;
+  const maxScan = Math.min(str.length, 200000);
 
-  for (let i = 0; i < str.length && output.length < MAX_LINES; i++) {
+  for (let i = 0; i < maxScan && output.length < MAX_LINES; i++) {
     const code = str.charCodeAt(i);
     if ((code >= 32 && code <= 126) || (code >= 160 && code <= 255)) {
       current += str[i];

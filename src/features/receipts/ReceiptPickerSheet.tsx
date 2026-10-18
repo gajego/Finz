@@ -46,7 +46,21 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
       });
 
       if (!result.canceled && result.assets[0]) {
-        processUri(result.assets[0].uri, result.assets[0].mimeType || 'application/pdf');
+        const asset = result.assets[0];
+        const lowerName = (asset.name || asset.uri).toLowerCase();
+        let mime = asset.mimeType;
+        if (!mime) {
+          if (lowerName.includes('.pdf')) {
+            mime = 'application/pdf';
+          } else if (lowerName.includes('.heic') || lowerName.includes('.heif')) {
+            mime = 'image/heic';
+          } else if (lowerName.includes('.png')) {
+            mime = 'image/png';
+          } else {
+            mime = 'image/jpeg';
+          }
+        }
+        processUri(asset.uri, mime);
       }
     } catch {
       Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
@@ -54,12 +68,15 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
   };
 
   const processUri = async (uri: string, mimeType?: string) => {
+    const lower = uri.toLowerCase();
     const isImage =
       mimeType?.startsWith('image/') ||
-      uri.toLowerCase().endsWith('.jpg') ||
-      uri.toLowerCase().endsWith('.jpeg') ||
-      uri.toLowerCase().endsWith('.png') ||
-      uri.toLowerCase().endsWith('.webp');
+      lower.includes('.jpg') ||
+      lower.includes('.jpeg') ||
+      lower.includes('.png') ||
+      lower.includes('.webp') ||
+      lower.includes('.heic') ||
+      lower.includes('.heif');
 
     if (isImage && !isImageOcrAvailable()) {
       Alert.alert(

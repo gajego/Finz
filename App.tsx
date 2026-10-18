@@ -25,6 +25,7 @@ import { NotificationCenterModal } from './src/features/notifications/Notificati
 import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
 import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
 import { ParsedReceipt } from './src/services/receipts/receiptParser';
+import { useShareReceiver } from './src/services/receipts/useShareReceiver';
 import { BankCard } from './src/types';
 
 export default function App() {
@@ -56,6 +57,11 @@ export default function App() {
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [receiptPickerVisible, setReceiptPickerVisible] = useState(false);
   const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
+
+  // Escuta compartilhamentos externos de comprovantes (SEND / SEND_MULTIPLE de outros apps)
+  useShareReceiver((receipt) => {
+    setImportedReceipt(receipt);
+  });
 
   useEffect(() => {
     if (isInitialized && !profile.onboardingCompleted) {

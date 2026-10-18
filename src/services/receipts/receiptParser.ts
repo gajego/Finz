@@ -23,50 +23,79 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
   // ==========================================
   // 1. EXTRAÇÃO DO VALOR MONETÁRIO
   // ==========================================
-  // Trata variações de OCR: "R$ 45,00", "RS 45,00", "Rs 45,00", "R$45,00",
-  // "Transferência de R$ 45,00", "Valor: 45,00", quebras de linha entre moeda e valor, etc.
+  // Trata variações de OCR e layouts do Nubank: "R$ 45,00", "RS 45,00", "Rs 45,00", "R$45,00",
+  // "Transferência de R$ 45,00", "Você transferiu\nR$ 45,00", quebras de linha entre moeda e valor, etc.
   let amountInCents = 0;
 
-  // Regex prioritário para valor monetário com contexto explícito
-  const explicitAmountPattern =
-    /(?:(?:valor(?:\s+(?:enviado|pago|transferido|da\s+transfer[eê]ncia|do\s+pix))?|total|pago|transfer[eê]ncia(?:\s+de)?)\s*:?\s*)?(?:R\$|RS|Rs|rs|\$)\s*([\d\.]+(?:,\d{2})?)/i;
+  // 1.1 Padrões contextuais de valor na mesma linha
+  const contextualAmountPatterns = [
+    /(?:transfer[eê]ncia(?:\s+(?:pix|enviada|realizada|agendada))?(?:\s+de)?|voc[eê]\s+(?:enviou|transferiu|pagou)|envio(?:\s+de)?|pix\s+enviado)\s*:?\s*(?:R\$|RS|Rs|rs|\$)\s*([\d\.]+(?:,\d{2})?)/i,
+    /(?:valor(?:\s+(?:enviado|pago|transferido|da\s+transfer[eê]ncia|do\s+pix|da\s+compra))?|total|pago)\s*:?\s*(?:R\$|RS|Rs|rs|\$)\s*([\d\.]+(?:,\d{2})?)/i,
+    /(?:valor(?:\s+(?:enviado|pago|transferido|da\s+transfer[eê]ncia|do\s+pix))?|total|pago)\s*:\s*([\d\.]+(?:,\d{2}))(?!\d)/i,
+  ];
 
-  const directMatch = normalized.match(explicitAmountPattern);
-  if (directMatch && directMatch[1]) {
-    amountInCents = parseAmountStringToCents(directMatch[1]);
+  for (const pattern of contextualAmountPatterns) {
+    const m = normalized.match(pattern);
+    if (m && m[1]) {
+      const cents = parseAmountStringToCents(m[1]);
+      if (cents > 0) {
+        amountInCents = cents;
+        break;
+      }
+    }
   }
 
-  // Se não achou na busca direta, procura labels ou símbolos em linhas consecutivas (ex: "Transferência de \n R$ 45,00" ou "R$ \n 45,00")
+  // 1.2 Multi-linha: Rótulo de contexto e valor na linha seguinte (típico do app Nubank)
   if (!amountInCents) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Caso A: Linha com apenas o símbolo de moeda ou label de valor
       if (
-        /^(?:R\$|RS|Rs|rs|\$|valor|valor\s+enviado|valor\s+pago|total)$/i.test(line) &&
+        /^(?:transfer[eê]ncia(?:\s+(?:de|pix|enviada|realizada|agendada))?|voc[eê]\s+(?:enviou|transferiu|pagou)|envio(?:\s+de)?|pix\s+enviado|valor(?:\s+(?:enviado|pago|transferido|da\s+transfer[eê]ncia|do\s+pix|da\s+compra))?|total|pago)\s*:?$/i.test(line) &&
         i + 1 < lines.length
       ) {
         const nextLine = lines[i + 1];
         const match = nextLine.match(/^(?:R\$|RS|Rs|rs|\$)?\s*([\d\.]+(?:,\d{2})?)$/i);
         if (match && match[1]) {
-          amountInCents = parseAmountStringToCents(match[1]);
-          if (amountInCents > 0) break;
+          const cents = parseAmountStringToCents(match[1]);
+          if (cents > 0) {
+            amountInCents = cents;
+            break;
+          }
         }
       }
 
-      // Caso B: Linha "Transferência de" ou "Transferência" e na linha seguinte o valor
-      if (/^transfer[eê]ncia(?:\s+de)?$/i.test(line) && i + 1 < lines.length) {
+      // Linha apenas com o símbolo monetário (R$, RS, etc.) e o valor numérico na próxima
+      if (/^(?:R\$|RS|Rs|rs|\$)$/i.test(line) && i + 1 < lines.length) {
         const nextLine = lines[i + 1];
-        const match = nextLine.match(/(?:R\$|RS|Rs|rs|\$)?\s*([\d\.]+(?:,\d{2})?)/i);
+        const match = nextLine.match(/^([\d\.]+(?:,\d{2})?)$/i);
         if (match && match[1]) {
-          amountInCents = parseAmountStringToCents(match[1]);
-          if (amountInCents > 0) break;
+          const cents = parseAmountStringToCents(match[1]);
+          if (cents > 0) {
+            amountInCents = cents;
+            break;
+          }
         }
       }
     }
   }
 
-  // Fallback: qualquer número no formato brasileiro acompanhado de R$ ou RS
+  // 1.3 Símbolo monetário direto com centavos: "R$ 45,00", "RS 45,00", "R$45,00"
+  if (!amountInCents) {
+    const directMatches = normalized.matchAll(/(?:R\$|RS|Rs|rs|\$)\s*([\d\.]+(?:,\d{2}))(?!\d)/gi);
+    for (const match of directMatches) {
+      if (match && match[1]) {
+        const cents = parseAmountStringToCents(match[1]);
+        // Ignora valores zerados (ex: "Tarifa: R$ 0,00")
+        if (cents > 0) {
+          amountInCents = cents;
+          break;
+        }
+      }
+    }
+  }
+
+  // 1.4 Fallback genérico para R$ com número
   if (!amountInCents) {
     const fallbackMatch = normalized.match(/(?:R\$|RS|Rs|rs|\$)\s*([\d\.,]+)/i);
     if (fallbackMatch && fallbackMatch[1]) {
@@ -74,7 +103,7 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
     }
   }
 
-  // Se ainda assim não encontrou valor válido maior que 0, não é um comprovante reconhecível
+  // Se não encontrou valor válido maior que 0, não é um comprovante reconhecível
   if (!amountInCents || amountInCents <= 0) {
     return null;
   }
@@ -83,7 +112,7 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
   // 2. EXTRAÇÃO DO DESTINATÁRIO / BENEFICIÁRIO
   // ==========================================
   // No comprovante Pix do Nubank e outros bancos, o layout possui seções de "Origem" (quem enviou)
-  // e "Destino" (quem recebeu). É fundamental priorizar a seção de DESTINO para não capturar o próprio usuário pagador.
+  // e "Destino" (quem recebeu). É fundamental priorizar a seção de DESTINO para não capturar o próprio pagador.
   let recipient = 'Destinatário Desconhecido';
 
   // Passo 2.1: Identificar seções demarcadas de Destino vs Origem
@@ -92,9 +121,9 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
   let inOriginSection = false;
 
   const destSectionKeywords =
-    /^(?:destino|dados\s+do\s+recebedor|dados\s+de\s+quem\s+recebeu|quem\s+recebeu|para|destinat[aá]rio|favorecido|recebedor|benefici[aá]rio|estabelecimento|dados\s+da\s+transa[cç][aã]o)$/i;
+    /^(?:destino|dados\s+do\s+recebedor|dados\s+de\s+quem\s+recebeu|quem\s+recebeu|para|destinat[aá]rio|favorecido|recebedor|benefici[aá]rio|recebedor\(a\)|estabelecimento|dados\s+da\s+transa[cç][aã]o)\s*:?$/i;
   const originSectionKeywords =
-    /^(?:origem|dados\s+do\s+pagador|dados\s+de\s+quem\s+pagou|quem\s+pagou|de|pagador|debitar\s+de|dados\s+do\s+titular\s+do\s+cart[aã]o)$/i;
+    /^(?:origem|dados\s+do\s+pagador|dados\s+de\s+quem\s+pagou|quem\s+pagou|de|pagador|pagador\(a\)|debitar\s+de|dados\s+do\s+titular.*)\s*:?$/i;
 
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
@@ -123,14 +152,14 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Ignora se estiver na seção de origem (ex: logo após "Origem" ou "De")
-      if (/^(?:origem|quem\s+pagou|dados\s+do\s+pagador|dados\s+do\s+titular.*)$/i.test(line)) {
+      // Ignora seção de origem (ex: logo após "Origem" ou "De")
+      if (/^(?:origem|quem\s+pagou|dados\s+do\s+pagador|dados\s+do\s+titular.*|de)\s*:?$/i.test(line)) {
         continue;
       }
 
-      // Caso inline: "Para: João Silva", "Destinatário: Maria Santos", "Estabelecimento: DINIZ SUPERMERCADOS"
+      // Caso inline: "Para: João Silva", "Destinatário: Maria Santos", "Estabelecimento: PADARIA REAL"
       const inlineMatch = line.match(
-        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|pago\s+a|enviado\s+para|estabelecimento|local|loja|empresa|com[eé]rcio)\s*:?\s+(.+)$/i
+        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|recebedor|quem\s+recebeu|pago\s+a|enviado\s+para|transfer[eê]ncia\s+para|estabelecimento|local|loja|empresa|com[eé]rcio)\s*:?\s+(.+)$/i
       );
       if (inlineMatch && inlineMatch[1]) {
         const candidate = cleanCandidateName(inlineMatch[1]);
@@ -140,13 +169,13 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
         }
       }
 
-      // Caso com label em linha separada: "Para\nJoão Silva" ou "Estabeleciment\no\nDINIZ SUPERMERCADOS"
+      // Caso com label em linha separada: "Para\nJoão Silva" ou "Destinatário\nJoão Silva"
       if (
-        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|destino|estabelecimento|estabeleciment|local|loja)$/i.test(
+        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|recebedor|quem\s+recebeu|destino|estabelecimento|estabeleciment|local|loja)\s*:?$/i.test(
           line
         )
       ) {
-        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
           let next = lines[j];
           // Trata quebra de OCR comum em telas (ex: "o  DINIZ SUPERMERCADOS")
           next = next.replace(/^[ot]\s+/i, '');
@@ -167,10 +196,10 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
     }
   }
 
-  // Passo 2.3: Se ainda não encontrou, procura linha após "Compra no débito / crédito"
+  // Passo 2.3: Linha de compra no débito / crédito / compras aprovadas
   if (recipient === 'Destinatário Desconhecido') {
     for (let i = 0; i < lines.length; i++) {
-      if (/^compra\s+no\s+(?:d[eé]bito|cr[eé]dito)$/i.test(lines[i])) {
+      if (/^compra\s+(?:no\s+)?(?:d[eé]bito|cr[eé]dito|aprovada)$/i.test(lines[i])) {
         for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
           const cand = cleanCandidateName(lines[j]);
           if (isValidRecipientName(cand) && !/^\d{2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|\d{2}\/)/i.test(cand)) {
@@ -241,7 +270,7 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
       /(\d{2}\/\d{2}\/\d{4}(?:\s*[-–—às\s]+\s*\d{2}:\d{2}(?::\d{2})?)?)/i
     ) ||
     normalized.match(
-      /(\d{2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\s+\d{4}(?:\s*[-–—às\s]+\s*\d{2}:\d{2}(?::\d{2})?)?)/i
+      /(\d{2}\s+(?:de\s+)?(?:jan(?:eiro)?|fev(?:ereiro)?|mar(?:[cç]o)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?)\s+(?:de\s+)?\d{4}(?:\s*[-–—às\s]+\s*\d{2}:\d{2}(?::\d{2})?)?)/i
     ) ||
     normalized.match(
       /(\d{2}\/(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\/\d{4}(?:\s*[-–—às\s]+\s*\d{2}:\d{2}(?::\d{2})?)?)/i
@@ -294,7 +323,7 @@ function findRecipientInLines(destLines: string[]): string {
 
     // Se a linha é apenas "Nome" ou "Estabelecimento" e o valor está na linha seguinte
     if (
-      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social|estabelecimento|estabeleciment|local|loja)$/i.test(l) &&
+      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social|estabelecimento|estabeleciment|local|loja)\s*:?$/i.test(l) &&
       i + 1 < destLines.length
     ) {
       const cand = cleanCandidateName(destLines[i + 1].replace(/^[ot]\s+/i, ''));
@@ -317,15 +346,17 @@ function cleanCandidateName(str: string): string {
   let cleaned = str.trim();
   // Remove prefixos como "Nome:", "Para:", etc.
   cleaned = cleaned.replace(
-    /^(?:nome|para|destinat[aá]rio|favorecido|estabelecimento|estabeleciment)\s*:?\s*/i,
+    /^(?:nome|para|destinat[aá]rio|favorecido|recebedor|benefici[aá]rio|estabelecimento|estabeleciment)\s*:?\s*/i,
     ''
   );
   // Remove CPF/CNPJ após o nome ou sufixos de banco/chave
   cleaned = cleaned
     .split(
-      /(?:\s+CPF|\s+CNPJ|\s+Institui[cç]|\s+Chave|\s+Banco|\s*•|\s*\-|\s*\/)/i
+      /(?:\s+-\s+Nu\s*Pagamentos|\s+-\s+Nu\s*Financeira|\s+CPF|\s+CNPJ|\s+Institui[cç]|\s+Chave|\s+Banco|\s*•|\s+-\s+|\s+\/\s+)/i
     )[0]
     .trim();
+  // Remove aspas ou pontuação final
+  cleaned = cleaned.replace(/^[",'\s]+|[",'\s]+$/g, '');
   return cleaned;
 }
 
@@ -334,8 +365,10 @@ function cleanCandidateName(str: string): string {
  */
 function isValidRecipientName(name: string): boolean {
   if (!name || name.length < 2) return false;
-  // Não pode ser apenas números ou CPF/CNPJ
-  if (/^[\d\.\-\/\s]+$/.test(name)) return false;
+  // Não pode ser valor monetário (ex: R$ 45,00, RS 45,00, $ 45,00)
+  if (/^(?:R\$|RS|Rs|rs|\$)?\s*[\d\.,]+$/i.test(name)) return false;
+  // Não pode ser apenas números ou símbolos de CPF/CNPJ
+  if (/^[\d\.\-\/\s\*]+$/.test(name)) return false;
   // Não pode ser rótulo ou metadado
   if (isMetadataOrLabelLine(name)) return false;
   return true;
@@ -347,7 +380,7 @@ function isValidRecipientName(name: string): boolean {
 function isMetadataOrLabelLine(line: string): boolean {
   const lower = line.toLowerCase().trim();
   if (
-    /^(?:cpf|cnpj|institui[cç][aã]o|banco|chave|chave\s+pix|tipo\s+de\s+chave|ag[eê]ncia|conta|valor|tipo\s+de\s+transa[cç][aã]o|nsu|dados\s+da\s+transa[cç][aã]o|dados\s+do\s+titular.*|n[uú]mero\s+do\s+cart[aã]o|cart[aã]o|pix|c[oó]digo|autentica[cç][aã]o|data|hora|data\s+e\s+hora|descri[cç][aã]o|estabelecimento|estabeleciment|dados\s+do\s+estabelecimento|me\s+ajuda.*|ajuda|nu\s*pagamentos.*|bradesco.*|ita[uú].*|inter.*)/i.test(
+    /^(?:cpf|cnpj|institui[cç][aã]o.*|banco.*|chave.*|chave\s+pix.*|tipo\s+de\s+chave.*|ag[eê]ncia.*|conta.*|tipo\s+de\s+conta.*|valor.*|tarifa.*|tipo\s+de\s+transa[cç][aã]o.*|tipo\s+de\s+transfer[eê]ncia.*|nsu.*|dados\s+da\s+transa[cç][aã]o.*|dados\s+do\s+titular.*|n[uú]mero\s+do\s+cart[aã]o.*|cart[aã]o.*|pix.*|c[oó]digo.*|autentica[cç][aã]o.*|protocolo.*|identificador.*|id\s+da\s+transa[cç][aã]o.*|data.*|hora.*|data\s+e\s+hora.*|descri[cç][aã]o.*|estabelecimento|estabeleciment|dados\s+do\s+estabelecimento|me\s+ajuda.*|ajuda|nu\s*pagamentos.*|nu\s*financeira.*|nubank.*|banco\s*nu.*|bradesco.*|ita[uú].*|inter.*|santander.*|caixa\s*econ.*|mercado\s*pago.*|picpay.*|comprovante.*|transfer[eê]ncia\s+pix.*)/i.test(
       lower
     )
   ) {
@@ -355,5 +388,7 @@ function isMetadataOrLabelLine(line: string): boolean {
   }
   if (/^[\d\.\-\/\*]+$/.test(lower)) return true; // CPF ou CNPJ mascarado
   if (/^\*{3}\.\d{3}\.\d{3}\-\*{2}$/.test(lower)) return true;
+  if (/^[a-f0-9\-]{20,}$/i.test(lower)) return true; // UUID ou ID de transação hexadecimal
   return false;
 }
+

@@ -62,3 +62,32 @@ if (fs.existsSync(workletsCmake)) {
     }
   }
 }
+
+// Fix Windows MAX_PATH in react-native-reanimated CMake
+const reanimatedCmake = path.join(__dirname, '..', 'node_modules', 'react-native-reanimated', 'android', 'CMakeLists.txt');
+const reanimatedCommon = path.join(__dirname, '..', 'node_modules', 'react-native-reanimated', 'Common');
+const reanimatedAndroidCommon = path.join(__dirname, '..', 'node_modules', 'react-native-reanimated', 'android', 'Common');
+
+if (fs.existsSync(reanimatedCmake)) {
+  let cmakeContent = fs.readFileSync(reanimatedCmake, 'utf8');
+  if (cmakeContent.includes('${CMAKE_SOURCE_DIR}/../Common/cpp')) {
+    cmakeContent = cmakeContent.replace(
+      'set(COMMON_CPP_DIR "${CMAKE_SOURCE_DIR}/../Common/cpp")',
+      'set(COMMON_CPP_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Common/cpp")'
+    ).replace(
+      'set(NATIVEVIEW_DIR "${CMAKE_SOURCE_DIR}/../Common/NativeView")',
+      'set(NATIVEVIEW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Common/NativeView")'
+    );
+    fs.writeFileSync(reanimatedCmake, cmakeContent, 'utf8');
+    console.log('[fix-reanimated] Patched CMakeLists.txt for Windows short paths.');
+  }
+
+  if (fs.existsSync(reanimatedCommon) && !fs.existsSync(reanimatedAndroidCommon)) {
+    try {
+      fs.symlinkSync(reanimatedCommon, reanimatedAndroidCommon, 'junction');
+      console.log('[fix-reanimated] Created Common junction for CMake.');
+    } catch {
+      // ignore
+    }
+  }
+}

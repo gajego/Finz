@@ -92,9 +92,9 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
   let inOriginSection = false;
 
   const destSectionKeywords =
-    /^(?:destino|dados\s+do\s+recebedor|dados\s+de\s+quem\s+recebeu|quem\s+recebeu|para|destinat[aá]rio|favorecido|recebedor|benefici[aá]rio)$/i;
+    /^(?:destino|dados\s+do\s+recebedor|dados\s+de\s+quem\s+recebeu|quem\s+recebeu|para|destinat[aá]rio|favorecido|recebedor|benefici[aá]rio|estabelecimento|dados\s+da\s+transa[cç][aã]o)$/i;
   const originSectionKeywords =
-    /^(?:origem|dados\s+do\s+pagador|dados\s+de\s+quem\s+pagou|quem\s+pagou|de|pagador|debitar\s+de)$/i;
+    /^(?:origem|dados\s+do\s+pagador|dados\s+de\s+quem\s+pagou|quem\s+pagou|de|pagador|debitar\s+de|dados\s+do\s+titular\s+do\s+cart[aã]o)$/i;
 
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
@@ -124,13 +124,13 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
       const line = lines[i];
 
       // Ignora se estiver na seção de origem (ex: logo após "Origem" ou "De")
-      if (/^(?:origem|quem\s+pagou|dados\s+do\s+pagador)$/i.test(line)) {
+      if (/^(?:origem|quem\s+pagou|dados\s+do\s+pagador|dados\s+do\s+titular.*)$/i.test(line)) {
         continue;
       }
 
-      // Caso inline: "Para: João Silva" ou "Destinatário: Maria Santos"
+      // Caso inline: "Para: João Silva", "Destinatário: Maria Santos", "Estabelecimento: DINIZ SUPERMERCADOS"
       const inlineMatch = line.match(
-        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|pago\s+a|enviado\s+para)\s*:?\s+(.+)$/i
+        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|pago\s+a|enviado\s+para|estabelecimento|local|loja|empresa|com[eé]rcio)\s*:?\s+(.+)$/i
       );
       if (inlineMatch && inlineMatch[1]) {
         const candidate = cleanCandidateName(inlineMatch[1]);
@@ -140,14 +140,16 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
         }
       }
 
-      // Caso com label em linha separada: "Para\nJoão Silva" ou "Destino\nNome\nJoão Silva"
+      // Caso com label em linha separada: "Para\nJoão Silva" ou "Estabeleciment\no\nDINIZ SUPERMERCADOS"
       if (
-        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|destino)$/i.test(
+        /^(?:para|destinat[aá]rio|favorecido|benefici[aá]rio|quem\s+recebeu|destino|estabelecimento|estabeleciment|local|loja)$/i.test(
           line
         )
       ) {
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          const next = lines[j];
+          let next = lines[j];
+          // Trata quebra de OCR comum em telas (ex: "o  DINIZ SUPERMERCADOS")
+          next = next.replace(/^[ot]\s+/i, '');
           if (/^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social)\s*:?$/i.test(next)) {
             continue;
           }
@@ -168,10 +170,10 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
   // Passo 2.3: Fallback regex caso ainda não tenha sido identificado
   if (recipient === 'Destinatário Desconhecido') {
     const rxMatch = normalized.match(
-      /(?:para|destinat[aá]rio|benefici[aá]rio|pago a)\s*:?\s*([^\n\r]+)/i
+      /(?:para|destinat[aá]rio|benefici[aá]rio|pago a|estabelecimento|estabeleciment[\s\n]*o?)\s*:?\s*([^\n\r]+)/i
     );
     if (rxMatch && rxMatch[1]) {
-      const candidate = cleanCandidateName(rxMatch[1]);
+      const candidate = cleanCandidateName(rxMatch[1].replace(/^[ot]\s+/i, ''));
       if (isValidRecipientName(candidate)) {
         recipient = candidate;
       }
@@ -233,12 +235,17 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
     dateStr = dateMatch[1].trim();
   }
 
+  let receiptType: 'PIX_OUT' | 'EXPENSE' = 'PIX_OUT';
+  if (/compra|d[eé]bito|cr[eé]dito|cart[aã]o|loja|supermercado|estabelecimento/i.test(normalized)) {
+    receiptType = 'EXPENSE';
+  }
+
   return {
     amount: amountInCents,
     recipient,
     bankName,
     dateStr,
-    type: 'PIX_OUT',
+    type: receiptType,
     rawText: text,
   };
 }
@@ -324,7 +331,7 @@ function isValidRecipientName(name: string): boolean {
 function isMetadataOrLabelLine(line: string): boolean {
   const lower = line.toLowerCase().trim();
   if (
-    /^(?:cpf|cnpj|institui[cç][aã]o|banco|chave|chave\s+pix|tipo\s+de\s+chave|ag[eê]ncia|conta|valor|tipo\s+de\s+transa[cç][aã]o|pix|c[oó]digo|autentica[cç][aã]o|data|hora|descri[cç][aã]o|nu\s*pagamentos.*|bradesco.*|ita[uú].*|inter.*)/i.test(
+    /^(?:cpf|cnpj|institui[cç][aã]o|banco|chave|chave\s+pix|tipo\s+de\s+chave|ag[eê]ncia|conta|valor|tipo\s+de\s+transa[cç][aã]o|nsu|dados\s+da\s+transa[cç][aã]o|dados\s+do\s+titular.*|n[uú]mero\s+do\s+cart[aã]o|cart[aã]o|pix|c[oó]digo|autentica[cç][aã]o|data|hora|data\s+e\s+hora|descri[cç][aã]o|nu\s*pagamentos.*|bradesco.*|ita[uú].*|inter.*)/i.test(
       lower
     )
   ) {

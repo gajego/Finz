@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Appearance } from 'react-native';
 import { DarkTheme, LightTheme, ThemeColors } from './colors';
+import { loadThemeMode, persistThemeMode } from '@/services/database/db';
 
 interface ThemeState {
   mode: 'dark' | 'light';
@@ -9,7 +10,9 @@ interface ThemeState {
   setMode: (mode: 'dark' | 'light') => void;
 }
 
-const initialMode: 'dark' | 'light' = Appearance.getColorScheme() === 'light' ? 'light' : 'dark';
+const savedMode = loadThemeMode();
+const initialMode: 'dark' | 'light' =
+  savedMode ?? (Appearance.getColorScheme() === 'light' ? 'light' : 'dark');
 
 export const useTheme = create<ThemeState>((set) => ({
   mode: initialMode,
@@ -17,14 +20,17 @@ export const useTheme = create<ThemeState>((set) => ({
   toggleTheme: () =>
     set((state) => {
       const nextMode = state.mode === 'dark' ? 'light' : 'dark';
+      persistThemeMode(nextMode);
       return {
         mode: nextMode,
         colors: nextMode === 'light' ? LightTheme : DarkTheme,
       };
     }),
-  setMode: (mode) =>
+  setMode: (mode) => {
+    persistThemeMode(mode);
     set({
       mode,
       colors: mode === 'light' ? LightTheme : DarkTheme,
-    }),
+    });
+  },
 }));

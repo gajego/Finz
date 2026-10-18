@@ -224,3 +224,30 @@ export function persistTransaction(tx: Transaction) {
   );
 }
 
+export function persistThemeMode(mode: 'dark' | 'light') {
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['theme_mode', mode]
+    );
+  } catch (e) {
+    console.warn('[db] Falha ao persistir tema:', e);
+  }
+}
+
+export function loadThemeMode(): 'dark' | 'light' | null {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    const row = db.getFirstSync<{ value: string }>(
+      'SELECT value FROM system_meta WHERE key = ?',
+      ['theme_mode']
+    );
+    if (row?.value === 'dark' || row?.value === 'light') {
+      return row.value;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+

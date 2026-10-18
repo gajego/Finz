@@ -12,18 +12,27 @@ function walk(dir) {
       if (content.includes('swift-tools-version: 6.2')) {
         content = content.replace(/swift-tools-version:\s*6\.2/g, 'swift-tools-version: 6.0');
         fs.writeFileSync(fullPath, content, 'utf8');
-        console.log(`[fix-swift-tools] Patched Package.swift: ${fullPath}`);
+        console.log(`[fix-swift] Patched tools version: ${fullPath}`);
       }
     } else if (entry.name.endsWith('.swift')) {
       let content = fs.readFileSync(fullPath, 'utf8');
-      if (content.includes('weak let ')) {
-        content = content.replace(/\bweak\s+let\b/g, 'weak var');
+      let changed = false;
+
+      // "weak let" is Swift 6.2-only; replace with nonisolated(unsafe) weak var
+      // to satisfy both mutability and Sendable requirements on Swift 6.0/6.1
+      if (/\bweak\s+let\b/.test(content)) {
+        content = content.replace(/(\s*)((?:private|internal|public|fileprivate)\s+)?weak\s+let\b/g,
+          (_, indent, access) => `${indent}nonisolated(unsafe) ${access || ''}weak var`);
+        changed = true;
+      }
+
+      if (changed) {
         fs.writeFileSync(fullPath, content, 'utf8');
-        console.log(`[fix-swift-tools] Patched weak let -> weak var: ${fullPath}`);
+        console.log(`[fix-swift] Patched weak let -> nonisolated(unsafe) weak var: ${fullPath}`);
       }
     }
   }
 }
 
 walk(path.join(__dirname, '..', 'node_modules'));
-console.log('[fix-swift-tools] Done checking Swift files.');
+console.log('[fix-swift] Done.');

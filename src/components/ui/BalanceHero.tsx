@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Eye, EyeOff, FileText, SlidersHorizontal, ShieldAlert, ArrowUpRight } from 'lucide-react-native';
+import { Eye, EyeOff, FileText, ArrowUpRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
@@ -69,7 +69,7 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
         </View>
       </View>
 
-      {/* Barra de Ações Rápidas Táteis em Squircles Elegantes */}
+      {/* Ação de Importação de Comprovante */}
       <View style={styles.actionsBar}>
         <Pressable
           onPress={onOpenReceiptPicker}
@@ -78,46 +78,14 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
             {
               backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
               borderColor: colors.border,
-              opacity: pressed ? 0.8 : 1,
+              opacity: pressed ? 0.85 : 1,
             },
           ]}
         >
           <View style={[styles.actionIconBox, { backgroundColor: colors.surfaceSubtle }]}>
-            <FileText size={15} color={colors.primary} />
+            <FileText size={16} color={colors.primary} />
           </View>
-          <Text style={[styles.actionText, { color: colors.text }]}>COMPROVANTE</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.actionButton,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.border,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: colors.surfaceSubtle }]}>
-            <SlidersHorizontal size={15} color={colors.textSecondary} />
-          </View>
-          <Text style={[styles.actionText, { color: colors.text }]}>LIMITES</Text>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.actionButton,
-            {
-              backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
-              borderColor: colors.border,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <View style={[styles.actionIconBox, { backgroundColor: colors.dangerSubtle }]}>
-            <ShieldAlert size={15} color={colors.danger} />
-          </View>
-          <Text style={[styles.actionText, { color: colors.text }]}>BLOQUEAR</Text>
+          <Text style={[styles.actionText, { color: colors.text }]}>IMPORTAR COMPROVANTE</Text>
         </Pressable>
       </View>
     </View>
@@ -204,7 +172,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontFamily: Typography.bold,
-    fontSize: 10,
-    letterSpacing: 0.8,
+    fontSize: 12,
+    letterSpacing: 0.6,
   },
 });

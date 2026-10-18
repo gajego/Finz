@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Svg, { Path, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { Moon, Sun, Bell } from 'lucide-react-native';
+import { Moon, Sun, Bell, Landmark } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, LetterSpacing } from '@/theme/typography';
 
 interface HeaderProps {
   onOpenNotifications?: () => void;
+  onOpenPluggy?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPluggy }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const profile = useWalletStore((s) => s.profile);
   const categories = useWalletStore((s) => s.categories);
@@ -121,8 +122,27 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications }) => {
         </View>
       </View>
 
-      {/* Ações: Alternar Tema e Notificações (Pills de Precisão) */}
+      {/* Ações: Open Finance Pluggy, Alternar Tema e Notificações (Pills de Precisão) */}
       <View style={styles.actionButtons}>
+        {/* Botão Conectar Conta / Open Finance (Pluggy) */}
+        {onOpenPluggy && (
+          <Pressable
+            onPress={onOpenPluggy}
+            style={({ pressed }) => [
+              styles.actionPill,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.borderSubtle,
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+            hitSlop={8}
+            accessibilityLabel="Conectar conta bancária Open Finance"
+          >
+            <Landmark size={17} color={colors.primary} strokeWidth={2.2} />
+          </Pressable>
+        )}
+
         {/* Botão de Alternar Modo Claro/Escuro */}
         <Pressable
           onPress={toggleTheme}

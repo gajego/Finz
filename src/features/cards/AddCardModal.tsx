@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { X, Check, CreditCard, ShieldCheck } from 'lucide-react-native';
+import { X, Check, CreditCard, ShieldCheck, Landmark, ArrowRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
@@ -8,6 +8,7 @@ import { Typography } from '@/theme/typography';
 interface AddCardModalProps {
   visible: boolean;
   onClose: () => void;
+  onOpenPluggy?: () => void;
 }
 
 const PRESET_BANKS = [
@@ -19,7 +20,7 @@ const PRESET_BANKS = [
   { name: 'Mercado Pago', package: 'com.mercadopago.wallet', gradient: ['#009EE3', '#005E8A'] as [string, string], color: '#009EE3' },
 ];
 
-export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose }) => {
+export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, onOpenPluggy }) => {
   const { colors, mode } = useTheme();
   const addCard = useWalletStore((s) => s.addCard);
   const profile = useWalletStore((s) => s.profile);
@@ -85,8 +86,39 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose }) 
               bounces={false}
               contentContainerStyle={styles.scrollContent}
             >
+              {/* Opção Open Finance Automática */}
+              {onOpenPluggy && (
+                <Pressable
+                  onPress={() => {
+                    onClose();
+                    onOpenPluggy();
+                  }}
+                  style={({ pressed }) => [
+                    styles.pluggyBanner,
+                    {
+                      backgroundColor: colors.surfaceSubtle,
+                      borderColor: colors.borderStrong,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <View style={[styles.pluggyIconBox, { backgroundColor: colors.badgeBackground }]}>
+                    <Landmark size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pluggyTitle, { color: colors.text }]}>
+                      CONECTAR VIA OPEN FINANCE
+                    </Text>
+                    <Text style={[styles.pluggyDesc, { color: colors.textSecondary }]}>
+                      Conecte sua conta Pluggy para importar limites e faturas automaticamente.
+                    </Text>
+                  </View>
+                  <ArrowRight size={16} color={colors.primary} />
+                </Pressable>
+              )}
+
               {/* Selecionar Banco */}
-              <Text style={[styles.label, { color: colors.textMuted }]}>SELECIONE SUA INSTITUIÇÃO</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>OU ADICIONE MANUALMENTE</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bankPills}>
                 {PRESET_BANKS.map((b) => {
                   const isSelected = selectedBank.name === b.name;
@@ -286,5 +318,32 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bold,
     fontSize: 12,
     letterSpacing: 1,
+  },
+  pluggyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 18,
+  },
+  pluggyIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pluggyTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 11.5,
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  pluggyDesc: {
+    fontFamily: Typography.regular,
+    fontSize: 11,
+    lineHeight: 15,
   },
 });

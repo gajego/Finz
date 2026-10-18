@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, SafeAreaView, ScrollView, Linking, Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -24,6 +24,8 @@ import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
 import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
+import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
+import { syncPluggyItem } from './src/services/pluggy/pluggyService';
 import { ParsedReceipt } from './src/services/receipts/receiptParser';
 import { useShareReceiver } from './src/services/receipts/useShareReceiver';
 import { BankCard } from './src/types';
@@ -51,6 +53,7 @@ export default function App() {
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
   const [addCardVisible, setAddCardVisible] = useState(false);
+  const [pluggyModalVisible, setPluggyModalVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(false);
@@ -62,6 +65,36 @@ export default function App() {
   useShareReceiver((receipt) => {
     setImportedReceipt(receipt);
   });
+
+  // Escuta retornos da autorização do Open Finance (Pluggy redirect finz://pluggy-callback?itemId=...)
+  useEffect(() => {
+    const handleUrl = async (event: { url: string }) => {
+      const url = event.url;
+      if (url && url.includes('pluggy-callback')) {
+        const match = url.match(/itemId=([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          try {
+            const { cardsCount, txCount } = await syncPluggyItem(match[1]);
+            Alert.alert(
+              'Banco Conectado!',
+              `Sucesso! ${cardsCount} cartão(ões) e ${txCount} transação(ões) foram importados para o Finz.`
+            );
+          } catch (e: any) {
+            Alert.alert('Erro ao sincronizar', e?.message || 'Falha ao importar dados do banco conectado.');
+          }
+        }
+      }
+    };
+
+    const sub = Linking.addEventListener('url', handleUrl);
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl({ url });
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (isInitialized && !profile.onboardingCompleted) {
@@ -90,7 +123,10 @@ export default function App() {
           contentContainerStyle={styles.scrollContent}
         >
           {/* Header Neo-Fintech com identidade de marca industrial */}
-          <Header onOpenNotifications={() => setNotificationsVisible(true)} />
+          <Header
+            onOpenNotifications={() => setNotificationsVisible(true)}
+            onOpenPluggy={() => setPluggyModalVisible(true)}
+          />
 
           {/* Saldo Brutalista, Ações Rápidas e Leitor de Comprovante */}
           <BalanceHero onOpenReceiptPicker={() => setReceiptPickerVisible(true)} />
@@ -118,6 +154,16 @@ export default function App() {
         <AddCardModal
           visible={addCardVisible}
           onClose={() => setAddCardVisible(false)}
+          onOpenPluggy={() => {
+            setAddCardVisible(false);
+            setPluggyModalVisible(true);
+          }}
+        />
+
+        {/* Modal Open Finance Pluggy */}
+        <PluggyConnectModal
+          visible={pluggyModalVisible}
+          onClose={() => setPluggyModalVisible(false)}
         />
 
         {/* Modal de Gestão de Metas por Categoria */}

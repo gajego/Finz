@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Alert } from 'react-native';
 import { Image as ImageIcon, FileText, X, Sparkles, UploadCloud } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
+import { PulseLoader } from '@/components/ui/PulseLoader';
 import { readReceiptFromFileOrUri, isImageOcrAvailable } from '@/services/receipts/universalReceiptReader';
 import { ParsedReceipt } from '@/services/receipts/receiptParser';
 
@@ -82,7 +83,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
       Alert.alert(
         'OCR em Imagem (Expo Go)',
         'O reconhecimento óptico em imagens utiliza o Google ML Kit nativo, indisponível no cliente Expo Go.\n\n' +
-          '💡 Como testar agora:\n' +
+          'Instruções para testar:\n' +
           '1. Exporte o comprovante em PDF pelo app do banco (funciona 100% no Expo Go, sem precisar de módulos nativos);\n' +
           '2. Ou utilize o aplicativo instalado pelo build nativo (IPA no iOS ou APK no Android).'
       );
@@ -140,10 +141,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.loadingText, { color: colors.text }]}>
-                Processando OCR e decodificando comprovante...
-              </Text>
+              <PulseLoader size="large" message="Processando OCR e decodificando comprovante..." />
             </View>
           ) : (
             <View style={styles.optionsList}>

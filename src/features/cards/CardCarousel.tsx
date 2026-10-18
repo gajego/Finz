@@ -1,10 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, NativeSyntheticEvent, NativeScrollEvent, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+  Pressable,
+} from 'react-native';
 import { Plus, CreditCard } from 'lucide-react-native';
 import { BankCard } from '@/types';
 import { CardItem } from './CardItem';
 import { useTheme } from '@/theme/useTheme';
-import { Typography } from '@/theme/typography';
+import { Typography, LetterSpacing } from '@/theme/typography';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
@@ -41,20 +50,34 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         <View style={styles.emptyWrapper}>
           <Pressable
             onPress={onAddCard}
-            style={[
+            style={({ pressed }) => [
               styles.emptyCard,
               {
                 backgroundColor: colors.surfaceElevated,
                 borderColor: colors.borderStrong,
+                opacity: pressed ? 0.85 : 1,
               },
             ]}
           >
-            <View style={[styles.emptyIconCircle, { backgroundColor: colors.surfaceSubtle }]}>
-              <Plus size={22} color={colors.primary} />
+            <View
+              style={[
+                styles.emptyIconCircle,
+                {
+                  backgroundColor: colors.surfaceSubtle,
+                  borderColor: colors.borderSubtle,
+                },
+              ]}
+            >
+              <CreditCard size={22} color={colors.primary} strokeWidth={2} />
+              <View style={[styles.emptyPlusBadge, { backgroundColor: colors.primary }]}>
+                <Plus size={10} color={colors.primaryForeground} strokeWidth={3} />
+              </View>
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>VINCULAR PRIMEIRO CARTÃO</Text>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              VINCULAR PRIMEIRO CARTÃO
+            </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              Cadastre Nubank, Itaú, Inter ou outro banco para gerenciar faturas e conciliar comprovantes Pix.
+              Cadastre Nubank, Itaú, Inter ou outro banco para gerenciar faturas e conciliar comprovantes Pix em um só lugar.
             </Text>
           </Pressable>
         </View>
@@ -82,27 +105,45 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         )}
       />
 
-      {/* Indicadores de Cartão Ativo Minimalistas e Botão Novo */}
+      {/* Indicadores de Cartão Ativo e Botão Pill Minimalista */}
       <View style={styles.footerRow}>
         <View style={styles.pagination}>
-          {cards.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.bar,
-                {
-                  backgroundColor: i === activeIndex ? colors.primary : colors.surfaceSubtle,
-                  width: i === activeIndex ? 24 : 8,
-                },
-              ]}
-            />
-          ))}
+          {cards.map((_, i) => {
+            const isActive = i === activeIndex;
+            return (
+              <View
+                key={i}
+                style={[
+                  styles.bar,
+                  {
+                    backgroundColor: isActive ? colors.primary : colors.surfaceSubtle,
+                    borderColor: isActive ? 'transparent' : colors.borderSubtle,
+                    width: isActive ? 22 : 6,
+                    height: 4,
+                  },
+                ]}
+              />
+            );
+          })}
         </View>
 
         {onAddCard && (
-          <Pressable onPress={onAddCard} hitSlop={10} style={styles.addCardBtn}>
-            <Plus size={13} color={colors.primary} />
-            <Text style={[styles.addCardText, { color: colors.primary }]}>NOVO CARTÃO</Text>
+          <Pressable
+            onPress={onAddCard}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.addCardPill,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.borderSubtle,
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.plusIconWrap, { backgroundColor: colors.badgeBackground }]}>
+              <Plus size={11} color={colors.primary} strokeWidth={2.6} />
+            </View>
+            <Text style={[styles.addCardText, { color: colors.text }]}>NOVO CARTÃO</Text>
           </Pressable>
         )}
       </View>
@@ -128,36 +169,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
-    gap: 8,
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 4,
   },
   emptyIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
+    position: 'relative',
+  },
+  emptyPlusBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyTitle: {
     fontFamily: Typography.bold,
     fontSize: 12,
-    letterSpacing: 1.5,
+    letterSpacing: LetterSpacing.wider,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontFamily: Typography.regular,
     fontSize: 12,
     textAlign: 'center',
-    lineHeight: 16,
-    maxWidth: 240,
+    lineHeight: 17,
+    maxWidth: 260,
   },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 10,
+    paddingHorizontal: 20,
     position: 'relative',
-    height: 24,
+    height: 32,
   },
   pagination: {
     flexDirection: 'row',
@@ -166,19 +225,35 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bar: {
-    height: 3,
-    borderRadius: 1.5,
+    borderRadius: 2,
+    borderWidth: 0.5,
   },
-  addCardBtn: {
+  addCardPill: {
     position: 'absolute',
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 9999,
+    borderWidth: 1,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  plusIconWrap: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addCardText: {
     fontFamily: Typography.bold,
-    fontSize: 10,
-    letterSpacing: 1,
+    fontSize: 9.5,
+    letterSpacing: LetterSpacing.wide,
   },
 });

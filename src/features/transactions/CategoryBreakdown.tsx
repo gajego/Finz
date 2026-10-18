@@ -11,6 +11,8 @@ import {
   Sparkles,
   Tag,
   Coffee,
+  Plus,
+  ArrowRight,
   LucideIcon,
 } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -42,6 +44,8 @@ const getCategoryIcon = (iconName: string): LucideIcon => {
       return ShoppingBag;
     case 'coffee':
       return Coffee;
+    case 'sparkles':
+      return Sparkles;
     default:
       return Tag;
   }
@@ -74,12 +78,12 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
 
   return (
     <View style={styles.container}>
-      {/* Título da Seção e Botão de Gestão */}
+      {/* Cabeçalho da Seção */}
       <View style={styles.sectionHeader}>
-        <View>
+        <View style={styles.headerTitleGroup}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & TETOS MENSAIS</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Toque em uma categoria para ajustar o limite
+            Controle de consumo • Toque para ajustar
           </Text>
         </View>
 
@@ -88,26 +92,72 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
           style={({ pressed }) => [
             styles.configButton,
             {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.border,
-              opacity: pressed ? 0.75 : 1,
+              backgroundColor: mode === 'dark' ? colors.surfaceElevated : colors.surface,
+              borderColor: colors.borderStrong,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+              opacity: pressed ? 0.8 : 1,
             },
           ]}
+          hitSlop={8}
         >
           <Sliders size={12} color={colors.primary} />
           <Text style={[styles.configButtonText, { color: colors.text }]}>AJUSTAR</Text>
         </Pressable>
       </View>
 
-      {/* Grid Bento com Cards Arredondados (borderRadius 24) e Ícones Vetoriais */}
+      {/* Grid Bento Neo-Fintech com Cards Refinados */}
       <View style={styles.grid}>
         {categories.map((cat) => {
           const spent = getCategorySpent(cat.id);
-          const percent =
-            cat.budgetLimit > 0 ? Math.min(Math.round((spent / cat.budgetLimit) * 100), 200) : 0;
-          const isWarning = cat.budgetLimit > 0 && percent >= 85;
-          const isExceeded = cat.budgetLimit > 0 && percent >= 100;
+          const hasLimit = cat.budgetLimit > 0;
+          const percent = hasLimit ? Math.round((spent / cat.budgetLimit) * 100) : 0;
+          const remaining = cat.budgetLimit - spent;
+
+          // Classificação de status dinâmico (3 níveis de threshold)
+          const isCritical = hasLimit && percent > 90;
+          const isWarning = hasLimit && percent >= 70 && percent <= 90;
+          const isSafe = hasLimit && percent < 70;
+
+          const statusColor = isCritical
+            ? colors.danger
+            : isWarning
+            ? colors.warning
+            : isSafe
+            ? colors.success
+            : colors.textMuted;
+
+          const statusBg = isCritical
+            ? colors.dangerSubtle
+            : isWarning
+            ? colors.warningSubtle
+            : isSafe
+            ? colors.successSubtle
+            : colors.surfaceSubtle;
+
+          const cardBorderColor = isCritical
+            ? mode === 'dark'
+              ? 'rgba(255, 59, 48, 0.38)'
+              : 'rgba(225, 29, 72, 0.3)'
+            : isWarning
+            ? mode === 'dark'
+              ? 'rgba(245, 158, 11, 0.32)'
+              : 'rgba(217, 119, 6, 0.25)'
+            : colors.border;
+
+          const cardBgColor = isCritical
+            ? mode === 'dark'
+              ? 'rgba(255, 59, 48, 0.07)'
+              : 'rgba(225, 29, 72, 0.04)'
+            : isWarning
+            ? mode === 'dark'
+              ? 'rgba(245, 158, 11, 0.05)'
+              : 'rgba(217, 119, 6, 0.03)'
+            : mode === 'dark'
+            ? colors.surface
+            : colors.surfaceElevated;
+
           const IconComponent = getCategoryIcon(cat.icon);
+          const categoryThemeColor = cat.color || colors.primary;
 
           return (
             <Pressable
@@ -116,94 +166,107 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
               style={({ pressed }) => [
                 styles.bentoCard,
                 {
-                  backgroundColor: isWarning
-                    ? 'rgba(255, 59, 48, 0.08)'
-                    : mode === 'dark'
-                    ? colors.surface
-                    : colors.surfaceElevated,
-                  borderColor: isWarning ? 'rgba(255, 59, 48, 0.32)' : colors.border,
-                  opacity: pressed ? 0.9 : 1,
+                  backgroundColor: cardBgColor,
+                  borderColor: cardBorderColor,
+                  transform: [{ scale: pressed ? 0.975 : 1 }],
+                  opacity: pressed ? 0.88 : 1,
                 },
               ]}
             >
-              {/* Topo do Card: Ícone Vetorial Lucide + Nome + Badge Pill de Percentual */}
+              {/* Topo do Card: Squircle temático com ícone + Pill Dinâmico de Porcentagem */}
               <View style={styles.cardHeader}>
                 <View
                   style={[
-                    styles.iconBox,
+                    styles.iconSquircle,
                     {
-                      backgroundColor: isWarning
-                        ? 'rgba(255, 59, 48, 0.16)'
-                        : `${cat.color || colors.primary}18`,
+                      backgroundColor: `${categoryThemeColor}14`,
+                      borderColor: `${categoryThemeColor}28`,
                     },
                   ]}
                 >
-                  <IconComponent
-                    size={14}
-                    color={isWarning ? '#FF3B30' : cat.color || colors.primary}
-                  />
+                  <IconComponent size={16} color={categoryThemeColor} />
                 </View>
 
-                <View
-                  style={[
-                    styles.percentBadge,
-                    {
-                      backgroundColor: isWarning
-                        ? 'rgba(255, 59, 48, 0.18)'
-                        : colors.surfaceSubtle,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.percentText,
-                      { color: isWarning ? '#FF3B30' : colors.primary },
-                    ]}
-                  >
-                    {cat.budgetLimit > 0 ? `${percent}%` : 'SEM META'}
+                <View style={[styles.statusPill, { backgroundColor: statusBg }]}>
+                  {isCritical && (
+                    <AlertTriangle size={10} color={statusColor} style={{ marginRight: 3 }} />
+                  )}
+                  <Text style={[styles.statusPillText, { color: statusColor }]}>
+                    {hasLimit ? `${percent}%` : 'SEM TETO'}
                   </Text>
                 </View>
               </View>
 
-              {/* Nome da Categoria */}
-              <View style={styles.nameRow}>
-                {isWarning && <AlertTriangle size={11} color="#FF3B30" style={{ marginRight: 4 }} />}
-                <Text
-                  style={[
-                    styles.categoryName,
-                    { color: isWarning ? '#FF3B30' : colors.text },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {cat.name.toUpperCase()}
-                </Text>
-              </View>
+              {/* Corpo: Título da Categoria */}
+              <Text
+                style={[styles.categoryName, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {cat.name.toUpperCase()}
+              </Text>
 
+              {/* Gasto Atual em Destaque vs Meta Total */}
               <View style={styles.amountRow}>
                 <Text
                   style={[
-                    styles.spentText,
-                    { color: isWarning ? '#FF3B30' : colors.text },
+                    styles.spentAmount,
+                    { color: isCritical ? colors.danger : colors.text },
                   ]}
+                  numberOfLines={1}
                 >
                   {formatBRL(spent)}
                 </Text>
-                <Text style={[styles.limitText, { color: colors.textMuted }]}>
-                  {cat.budgetLimit > 0 ? `/ ${formatBRL(cat.budgetLimit)}` : '/ Sem teto'}
+                <Text
+                  style={[styles.limitAmount, { color: colors.textMuted }]}
+                  numberOfLines={1}
+                >
+                  / {hasLimit ? formatBRL(cat.budgetLimit) : 'Livre'}
                 </Text>
               </View>
 
-              {/* Medidor Suave com Barra Arredondada */}
-              <View style={[styles.track, { backgroundColor: colors.surfaceSubtle }]}>
+              {/* Barra de Progresso com Cantos Arredondados e Altura Suave (7px) */}
+              <View
+                style={[
+                  styles.progressTrack,
+                  {
+                    backgroundColor:
+                      mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : 'rgba(0, 0, 0, 0.06)',
+                  },
+                ]}
+              >
                 <View
                   style={[
-                    styles.fill,
+                    styles.progressFill,
                     {
                       width: `${Math.min(percent, 100)}%`,
-                      backgroundColor: isWarning ? '#FF3B30' : colors.primary,
+                      backgroundColor: statusColor,
                     },
                   ]}
                 />
+              </View>
+
+              {/* Rodapé do Card: Restante ou Ação de Ajuste */}
+              <View style={styles.cardFooter}>
+                {hasLimit ? (
+                  remaining >= 0 ? (
+                    <Text style={[styles.remainingText, { color: colors.textMuted }]}>
+                      Restam {formatBRL(remaining)}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.remainingText, { color: colors.danger, fontFamily: Typography.bold }]}>
+                      Excedido em {formatBRL(Math.abs(remaining))}
+                    </Text>
+                  )
+                ) : (
+                  <View style={styles.setCeilingRow}>
+                    <Text style={[styles.setCeilingText, { color: colors.primary }]}>
+                      Definir teto
+                    </Text>
+                    <ArrowRight size={10} color={colors.primary} />
+                  </View>
+                )}
               </View>
             </Pressable>
           );
@@ -216,19 +279,22 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 22,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  headerTitleGroup: {
+    flex: 1,
   },
   sectionTitle: {
     fontFamily: Typography.bold,
     fontSize: 12,
-    letterSpacing: 2,
+    letterSpacing: 1.6,
   },
   sectionSubtitle: {
     fontFamily: Typography.regular,
@@ -256,10 +322,9 @@ const styles = StyleSheet.create({
   },
   bentoCard: {
     width: '48.5%',
-    padding: 16,
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 22,
     borderWidth: 1,
-    justifyContent: 'space-between',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -269,58 +334,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  iconSquircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  percentBadge: {
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 3.5,
     borderRadius: 999,
   },
-  percentText: {
+  statusPillText: {
     fontFamily: Typography.bold,
     fontSize: 10,
     fontVariant: ['tabular-nums'],
-    letterSpacing: 0.4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
+    letterSpacing: 0.3,
   },
   categoryName: {
     fontFamily: Typography.bold,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 0.8,
+    marginBottom: 4,
   },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  spentText: {
+  spentAmount: {
     fontFamily: Typography.bold,
     fontSize: 16,
     fontVariant: ['tabular-nums'],
+    letterSpacing: -0.3,
   },
-  limitText: {
+  limitAmount: {
+    fontFamily: Typography.medium,
+    fontSize: 10,
+  },
+  progressTrack: {
+    height: 7,
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressFill: {
+    height: 7,
+    borderRadius: 999,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  remainingText: {
     fontFamily: Typography.regular,
     fontSize: 10,
   },
-  track: {
-    height: 4,
-    borderRadius: 2,
-    overflow: 'hidden',
+  setCeilingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
-  fill: {
-    height: 4,
-    borderRadius: 2,
+  setCeilingText: {
+    fontFamily: Typography.bold,
+    fontSize: 10,
+    letterSpacing: 0.2,
   },
 });

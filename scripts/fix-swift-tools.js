@@ -91,3 +91,85 @@ if (fs.existsSync(reanimatedCmake)) {
     }
   }
 }
+
+// Fix Windows MAX_PATH in react-native-reanimated Common/NativeView/CMakeLists.txt
+const nativeViewDir = path.join(__dirname, '..', 'node_modules', 'react-native-reanimated', 'Common', 'NativeView');
+const nativeViewCmake = path.join(nativeViewDir, 'CMakeLists.txt');
+const codegenJniDir = path.join(__dirname, '..', 'node_modules', 'react-native-reanimated', 'android', 'build', 'generated', 'source', 'codegen', 'jni');
+const nativeViewCodegenJunction = path.join(nativeViewDir, 'codegen');
+
+if (fs.existsSync(nativeViewDir)) {
+  if (fs.existsSync(codegenJniDir) && !fs.existsSync(nativeViewCodegenJunction)) {
+    try {
+      fs.symlinkSync(codegenJniDir, nativeViewCodegenJunction, 'junction');
+      console.log('[fix-reanimated] Created NativeView/codegen junction.');
+    } catch (e) {
+      console.warn('[fix-reanimated] Failed to create codegen junction:', e.message);
+    }
+  }
+
+  if (fs.existsSync(nativeViewCmake)) {
+    let nvContent = fs.readFileSync(nativeViewCmake, 'utf8');
+    if (!nvContent.includes('RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}')) {
+      const patchedNv = `cmake_minimum_required(VERSION 3.13)
+set(CMAKE_VERBOSE_MAKEFILE on)
+
+set(CODEGEN_JNI_DIR \${CMAKE_CURRENT_SOURCE_DIR}/codegen)
+set(CODEGEN_COMPONENTS_DIR \${CODEGEN_JNI_DIR}/react/renderer/components/rnreanimated)
+file(
+  GLOB CODEGEN_ORIGINAL_SRCS CONFIGURE_DEPENDS
+  RELATIVE \${CMAKE_CURRENT_SOURCE_DIR}
+  codegen/*.cpp
+  codegen/react/renderer/components/rnreanimated/*.cpp
+)
+
+set(CODEGEN_OVERWRITTEN_JNI_DIR .)
+set(CODEGEN_OVERWRITTEN_COMPONENTS_DIR \${CODEGEN_OVERWRITTEN_JNI_DIR}/react/renderer/components/rnreanimated)
+file(
+  GLOB CODEGEN_OVERWRITTEN_SRCS CONFIGURE_DEPENDS
+  RELATIVE \${CMAKE_CURRENT_SOURCE_DIR}
+  *.cpp
+  react/renderer/components/rnreanimated/*.cpp
+)
+
+add_library(
+  react_codegen_rnreanimated
+  OBJECT
+  \${CODEGEN_OVERWRITTEN_SRCS}
+  \${CODEGEN_ORIGINAL_SRCS}
+)
+
+target_compile_reactnative_options(react_codegen_rnreanimated PRIVATE)
+
+target_include_directories(
+  react_codegen_rnreanimated
+  PUBLIC
+  \${CMAKE_CURRENT_SOURCE_DIR}
+  \${CMAKE_CURRENT_SOURCE_DIR}/react/renderer/components/rnreanimated
+  \${CODEGEN_JNI_DIR}
+  \${CODEGEN_COMPONENTS_DIR}
+)
+
+target_link_libraries(
+  react_codegen_rnreanimated
+  fbjni
+  jsi
+  reactnative
+)
+
+target_compile_options(
+  react_codegen_rnreanimated
+  PRIVATE
+  -DLOG_TAG=\\"ReactNative\\"
+  -fexceptions
+  -frtti
+  -std=c++20
+  -Wall
+)
+`;
+      fs.writeFileSync(nativeViewCmake, patchedNv, 'utf8');
+      console.log('[fix-reanimated] Patched Common/NativeView/CMakeLists.txt for Windows short paths.');
+    }
+  }
+}
+

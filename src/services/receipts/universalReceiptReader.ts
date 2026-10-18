@@ -81,7 +81,7 @@ async function extractTextFromImageOcr(imageUri: string): Promise<string> {
     const result = await TextRecognition.recognize(imageUri);
     return result?.text || '';
   } catch (error) {
-    console.warn('Falha no OCR da imagem:', error);
+    console.warn('[Finz OCR] Falha no OCR da imagem:', error);
     return '';
   }
 }

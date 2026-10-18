@@ -45,7 +45,7 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
       cardId,
       amount: receipt.amount,
       type: receipt.type,
-      merchant: `Pix: ${receipt.recipient}`,
+      merchant: receipt.type === 'EXPENSE' ? receipt.recipient : `Pix: ${receipt.recipient}`,
       categoryId: selectedCategoryId,
       rawText: receipt.rawText,
     });
@@ -83,7 +83,9 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
                     COMPROVANTE IDENTIFICADO
                   </Text>
                 </View>
-                <Text style={[styles.title, { color: colors.text }]}>PIX IMPORTADO COM SUCESSO</Text>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  {receipt.type === 'EXPENSE' ? 'COMPRA IMPORTADA COM SUCESSO' : 'PIX IMPORTADO COM SUCESSO'}
+                </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   O Finz leu os dados do seu comprovante localmente sem enviar nada para a internet.
                 </Text>
@@ -100,7 +102,9 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
             ]}
           >
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>VALOR DO PIX</Text>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
+                {receipt.type === 'EXPENSE' ? 'VALOR DA COMPRA' : 'VALOR DO PIX'}
+              </Text>
               <Text style={[styles.detailAmount, { color: colors.text }]}>
                 {formatBRL(receipt.amount)}
               </Text>
@@ -109,7 +113,9 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
             <View style={styles.divider} />
 
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>PAGO PARA</Text>
+              <Text style={[styles.detailLabel, { color: colors.textMuted }]}>
+                {receipt.type === 'EXPENSE' ? 'ESTABELECIMENTO' : 'PAGO PARA'}
+              </Text>
               <Text style={[styles.detailValue, { color: colors.text }]} numberOfLines={1}>
                 {receipt.recipient}
               </Text>

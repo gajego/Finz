@@ -167,7 +167,23 @@ export function parsePixReceipt(text: string): ParsedReceipt | null {
     }
   }
 
-  // Passo 2.3: Fallback regex caso ainda não tenha sido identificado
+  // Passo 2.3: Se ainda não encontrou, procura linha após "Compra no débito / crédito"
+  if (recipient === 'Destinatário Desconhecido') {
+    for (let i = 0; i < lines.length; i++) {
+      if (/^compra\s+no\s+(?:d[eé]bito|cr[eé]dito)$/i.test(lines[i])) {
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          const cand = cleanCandidateName(lines[j]);
+          if (isValidRecipientName(cand) && !/^\d{2}\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|\d{2}\/)/i.test(cand)) {
+            recipient = cand;
+            break;
+          }
+        }
+        if (recipient !== 'Destinatário Desconhecido') break;
+      }
+    }
+  }
+
+  // Passo 2.4: Fallback regex caso ainda não tenha sido identificado
   if (recipient === 'Destinatário Desconhecido') {
     const rxMatch = normalized.match(
       /(?:para|destinat[aá]rio|benefici[aá]rio|pago a|estabelecimento|estabeleciment[\s\n]*o?)\s*:?\s*([^\n\r]+)/i
@@ -267,21 +283,21 @@ function findRecipientInLines(destLines: string[]): string {
   for (let i = 0; i < destLines.length; i++) {
     const l = destLines[i];
 
-    // Se a linha tem "Nome: Fulano"
+    // Se a linha tem "Nome: Fulano" ou "Estabelecimento: Fulano"
     const nameMatch = l.match(
-      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social)\s*:?\s+(.+)$/i
+      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social|estabelecimento|local|loja)\s*:?\s+(.+)$/i
     );
     if (nameMatch && nameMatch[1]) {
       const cand = cleanCandidateName(nameMatch[1]);
       if (isValidRecipientName(cand)) return cand;
     }
 
-    // Se a linha é apenas "Nome" e o valor está na linha seguinte (típico do Nubank)
+    // Se a linha é apenas "Nome" ou "Estabelecimento" e o valor está na linha seguinte
     if (
-      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social)$/i.test(l) &&
+      /^(?:nome|nome\s+do\s+recebedor|raz[aã]o\s+social|estabelecimento|estabeleciment|local|loja)$/i.test(l) &&
       i + 1 < destLines.length
     ) {
-      const cand = cleanCandidateName(destLines[i + 1]);
+      const cand = cleanCandidateName(destLines[i + 1].replace(/^[ot]\s+/i, ''));
       if (isValidRecipientName(cand)) return cand;
     }
 
@@ -301,7 +317,7 @@ function cleanCandidateName(str: string): string {
   let cleaned = str.trim();
   // Remove prefixos como "Nome:", "Para:", etc.
   cleaned = cleaned.replace(
-    /^(?:nome|para|destinat[aá]rio|favorecido)\s*:?\s*/i,
+    /^(?:nome|para|destinat[aá]rio|favorecido|estabelecimento|estabeleciment)\s*:?\s*/i,
     ''
   );
   // Remove CPF/CNPJ após o nome ou sufixos de banco/chave
@@ -331,7 +347,7 @@ function isValidRecipientName(name: string): boolean {
 function isMetadataOrLabelLine(line: string): boolean {
   const lower = line.toLowerCase().trim();
   if (
-    /^(?:cpf|cnpj|institui[cç][aã]o|banco|chave|chave\s+pix|tipo\s+de\s+chave|ag[eê]ncia|conta|valor|tipo\s+de\s+transa[cç][aã]o|nsu|dados\s+da\s+transa[cç][aã]o|dados\s+do\s+titular.*|n[uú]mero\s+do\s+cart[aã]o|cart[aã]o|pix|c[oó]digo|autentica[cç][aã]o|data|hora|data\s+e\s+hora|descri[cç][aã]o|nu\s*pagamentos.*|bradesco.*|ita[uú].*|inter.*)/i.test(
+    /^(?:cpf|cnpj|institui[cç][aã]o|banco|chave|chave\s+pix|tipo\s+de\s+chave|ag[eê]ncia|conta|valor|tipo\s+de\s+transa[cç][aã]o|nsu|dados\s+da\s+transa[cç][aã]o|dados\s+do\s+titular.*|n[uú]mero\s+do\s+cart[aã]o|cart[aã]o|pix|c[oó]digo|autentica[cç][aã]o|data|hora|data\s+e\s+hora|descri[cç][aã]o|estabelecimento|estabeleciment|dados\s+do\s+estabelecimento|me\s+ajuda.*|ajuda|nu\s*pagamentos.*|bradesco.*|ita[uú].*|inter.*)/i.test(
       lower
     )
   ) {

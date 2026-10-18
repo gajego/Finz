@@ -33,8 +33,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
       if (!result.canceled && result.assets[0]) {
         processUri(result.assets[0].uri, result.assets[0].mimeType || 'image/jpeg');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
       Alert.alert('Erro', 'Não foi possível acessar a galeria.');
     }
   };
@@ -49,8 +48,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
       if (!result.canceled && result.assets[0]) {
         processUri(result.assets[0].uri, result.assets[0].mimeType || 'application/pdf');
       }
-    } catch (e) {
-      console.warn(e);
+    } catch {
       Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
     }
   };

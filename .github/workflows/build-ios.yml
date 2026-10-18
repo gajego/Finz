@@ -10,31 +10,36 @@ on:
 jobs:
   build:
     name: Compilar IPA para iOS
-    runs-on: macos-14 # Máquinas Apple Silicon ultra-rápidas e gratuitas no GitHub
+    runs-on: macos-15 # macOS com suporte completo e nativo ao Xcode 16
 
     steps:
       - name: 1. Baixar código do repositório
         uses: actions/checkout@v4
 
-      - name: 2. Configurar Node.js 20
+      - name: 2. Configurar Xcode 16 (Exigido pelo React Native 0.88 / Expo SDK 58)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '^16'
+
+      - name: 3. Configurar Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
 
-      - name: 3. Instalar Dependências do Projeto
+      - name: 4. Instalar Dependências do Projeto
         run: npm ci --legacy-peer-deps
 
-      - name: 4. Gerar Projeto Nativo iOS (Expo Prebuild)
+      - name: 5. Gerar Projeto Nativo iOS (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
 
-      - name: 5. Instalar CocoaPods
+      - name: 6. Instalar CocoaPods
         run: |
           cd ios
           pod install
           cd ..
 
-      - name: 6. Compilar App Nativo com xcodebuild (Sem assinatura)
+      - name: 7. Compilar App Nativo com xcodebuild (Sem assinatura)
         run: |
           xcodebuild -workspace ios/Finz.xcworkspace \
                      -scheme Finz \
@@ -44,17 +49,18 @@ jobs:
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
+                     CODE_SIGN_ENTITLEMENTS="" \
                      build
 
-      - name: 7. Empacotar .app em .ipa para Sideloadly
+      - name: 8. Empacotar .app em .ipa para Sideloadly
         run: |
           mkdir -p build_output/Payload
-          cp -r ios/build/Build/Products/Release-iphoneos/Finz.app build_output/Payload/
+          cp -r ios/build/Build/Products/Release-iphoneos/*.app build_output/Payload/
           cd build_output
           zip -r Finz-unsigned.ipa Payload
           cd ..
 
-      - name: 8. Disponibilizar download do .ipa
+      - name: 9. Disponibilizar download do .ipa
         uses: actions/upload-artifact@v4
         with:
           name: Finz-iOS-Unsigned

@@ -27,11 +27,12 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: 4. Vincular Node.js para os Scripts do Xcode (Corrige erro 65 em EXConstants)
+      - name: 4. Vincular Node.js para os Scripts do Xcode
         run: |
           sudo ln -sf "$(which node)" /usr/local/bin/node
           sudo ln -sf "$(which node)" /opt/homebrew/bin/node || true
           echo "NODE_BINARY=$(which node)" >> $GITHUB_ENV
+          echo "PATH=$(dirname $(which node)):$PATH" >> $GITHUB_ENV
 
       - name: 5. Instalar Dependências do Projeto
         run: npm ci --legacy-peer-deps
@@ -45,19 +46,25 @@ jobs:
           pod install
           cd ..
 
-      - name: 8. Compilar App Nativo com xcodebuild (Sem assinatura)
+      - name: 8. Compilar App Nativo com xcodebuild (Ad-Hoc para Sideloadly)
         run: |
+          set -o pipefail
           xcodebuild -workspace ios/Finz.xcworkspace \
                      -scheme Finz \
                      -configuration Release \
                      -destination "generic/platform=iOS" \
                      -derivedDataPath ios/build \
-                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGN_IDENTITY="-" \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGN_ENTITLEMENTS="" \
+                     AD_HOC_CODE_SIGNING_ALLOWED=YES \
                      COMPILER_INDEX_STORE_ENABLE=NO \
-                     build
+                     build 2>&1 | tee xcodebuild.log
+
+      - name: Diagnosticar Erros do Xcode (Se houver falha)
+        if: failure()
+        run: |
+          echo "=== ERROS IDENTIFICADOS NO LOG ==="
+          grep -E "(error:|fatal error:|\*\* BUILD FAILED \*\*)" xcodebuild.log -A 2 -B 2 || tail -n 60 xcodebuild.log
 
       - name: 9. Empacotar .app em .ipa para Sideloadly
         run: |

@@ -27,32 +27,39 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: 4. Instalar Dependências do Projeto
+      - name: 4. Vincular Node.js para os Scripts do Xcode (Corrige erro 65 em EXConstants)
+        run: |
+          sudo ln -sf "$(which node)" /usr/local/bin/node
+          sudo ln -sf "$(which node)" /opt/homebrew/bin/node || true
+          echo "NODE_BINARY=$(which node)" >> $GITHUB_ENV
+
+      - name: 5. Instalar Dependências do Projeto
         run: npm ci --legacy-peer-deps
 
-      - name: 5. Gerar Projeto Nativo iOS (Expo Prebuild)
+      - name: 6. Gerar Projeto Nativo iOS (Expo Prebuild)
         run: npx expo prebuild --platform ios --clean
 
-      - name: 6. Instalar CocoaPods
+      - name: 7. Instalar CocoaPods
         run: |
           cd ios
           pod install
           cd ..
 
-      - name: 7. Compilar App Nativo com xcodebuild (Sem assinatura)
+      - name: 8. Compilar App Nativo com xcodebuild (Sem assinatura)
         run: |
           xcodebuild -workspace ios/Finz.xcworkspace \
                      -scheme Finz \
                      -configuration Release \
-                     -sdk iphoneos \
+                     -destination "generic/platform=iOS" \
                      -derivedDataPath ios/build \
                      CODE_SIGNING_ALLOWED=NO \
                      CODE_SIGNING_REQUIRED=NO \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGN_ENTITLEMENTS="" \
+                     COMPILER_INDEX_STORE_ENABLE=NO \
                      build
 
-      - name: 8. Empacotar .app em .ipa para Sideloadly
+      - name: 9. Empacotar .app em .ipa para Sideloadly
         run: |
           mkdir -p build_output/Payload
           cp -r ios/build/Build/Products/Release-iphoneos/*.app build_output/Payload/
@@ -60,7 +67,7 @@ jobs:
           zip -r Finz-unsigned.ipa Payload
           cd ..
 
-      - name: 9. Disponibilizar download do .ipa
+      - name: 10. Disponibilizar download do .ipa
         uses: actions/upload-artifact@v4
         with:
           name: Finz-iOS-Unsigned

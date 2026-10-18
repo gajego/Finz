@@ -84,7 +84,7 @@ export const ReceiptPickerSheet: React.FC<ReceiptPickerSheetProps> = ({
         'O reconhecimento óptico em imagens utiliza o Google ML Kit nativo, indisponível no cliente Expo Go.\n\n' +
           '💡 Como testar agora:\n' +
           '1. Exporte o comprovante em PDF pelo app do banco (funciona 100% no Expo Go, sem precisar de módulos nativos);\n' +
-          '2. Ou execute "npx expo run:android" para rodar o build nativo completo no emulador.'
+          '2. Ou utilize o aplicativo instalado pelo build nativo (IPA no iOS ou APK no Android).'
       );
       return;
     }

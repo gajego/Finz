@@ -199,9 +199,18 @@ export async function getValidApiKey(): Promise<string> {
 
 /**
  * Cria um Connect Token para inicializar o Pluggy Connect Widget
+ * @param itemId Opcional: ID de um item existente para abrir em modo de atualização
  */
-export async function createConnectToken(): Promise<string> {
+export async function createConnectToken(itemId?: string): Promise<string> {
   const apiKey = await getValidApiKey();
+
+  const options: Record<string, any> = {
+    oauthRedirectUri: 'finz://pluggy-callback',
+  };
+
+  if (itemId) {
+    options.itemId = itemId;
+  }
 
   const response = await fetch(`${PLUGGY_API_BASE}/connect_token`, {
     method: 'POST',
@@ -209,12 +218,7 @@ export async function createConnectToken(): Promise<string> {
       'Content-Type': 'application/json',
       'X-API-KEY': apiKey,
     },
-    body: JSON.stringify({
-      options: {
-        oauthRedirectUri: 'finz://pluggy-callback',
-        avoidDuplicates: true,
-      },
-    }),
+    body: JSON.stringify({ options }),
   });
 
   if (!response.ok) {
@@ -229,8 +233,8 @@ export async function createConnectToken(): Promise<string> {
 /**
  * Abre o widget oficial da Pluggy no navegador/in-app para o usuário conectar seu banco
  */
-export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark'): Promise<string> {
-  const connectToken = await createConnectToken();
+export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', itemId?: string): Promise<string> {
+  const connectToken = await createConnectToken(itemId);
   const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&theme=${theme}`;
   await Linking.openURL(widgetUrl);
   return widgetUrl;
@@ -400,6 +404,25 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
  * Sincroniza todos os bancos conectados anteriormente
  */
 export async function syncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: number }> {
+  // 1. Busca todos os itens remotos cadastrados na Pluggy
+  try {
+    const apiKey = await getValidApiKey();
+    const itemsRes = await fetch(`${PLUGGY_API_BASE}/items`, {
+      headers: { 'X-API-KEY': apiKey },
+    });
+    if (itemsRes.ok) {
+      const data = await itemsRes.json();
+      const remoteItems: any[] = data.results || [];
+      for (const it of remoteItems) {
+        if (it?.id) {
+          savePluggyItemId(it.id);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Pluggy] Erro ao sincronizar lista de itens remotos:', e);
+  }
+
   const itemIds = getPluggyItemIds();
   let cardsTotal = 0;
   let txTotal = 0;

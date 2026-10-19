@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, SafeAreaView, ScrollView, Linking, Alert } from 'react-native';
+import {
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Linking,
+  Alert,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
@@ -109,6 +117,17 @@ export default function App() {
   }, [isInitialized, profile.onboardingCompleted]);
 
 
+  // Paginação dinâmica por rolagem para baixo do extrato
+  const [txVisibleCount, setTxVisibleCount] = useState(15);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    // Dispara carregamento de mais itens quando o scroll estiver a 250px do final
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250) {
+      setTxVisibleCount((prev) => prev + 15);
+    }
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -118,7 +137,6 @@ export default function App() {
     setBudgetModalVisible(true);
   };
 
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -127,6 +145,8 @@ export default function App() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          scrollEventThrottle={32}
+          onScroll={handleScroll}
         >
           {/* Header Neo-Fintech com identidade de marca industrial */}
           <Header
@@ -153,7 +173,10 @@ export default function App() {
           <CategoryBreakdown onOpenBudgetManager={handleOpenBudgetModal} />
 
           {/* Extrato com Estilo Editorial Suíço e Estornos */}
-          <TransactionList />
+          <TransactionList
+            visibleCount={txVisibleCount}
+            onEndReached={() => setTxVisibleCount((prev) => prev + 15)}
+          />
         </ScrollView>
 
         {/* Modal de Adição de Cartão */}

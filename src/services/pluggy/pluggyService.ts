@@ -386,21 +386,36 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   // Define o cartão principal alvo para associar transações de contas correntes
   const primaryCardId = cardsToProcess.length > 0 ? cardsToProcess[0].id : `pluggy_card_${itemId}`;
 
-  // 3. Sincroniza transações de todas as contas do conector
+  // Início do mês atual: YYYY-MM-01 para coletar todo o histórico mensal
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const fromDate = `${year}-${month}-01`;
+
+  // 3. Sincroniza todas as transações do mês de todas as contas do conector (paginação completa)
   for (const acc of accounts) {
     try {
-      const txRes = await fetch(`${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&pageSize=20`, {
-        headers: { 'X-API-KEY': apiKey },
-      });
-      if (txRes.ok) {
+      let page = 1;
+      let totalPages = 1;
+      const pageSize = 100;
+
+      // Define a qual cartão esta transação deve ser vinculada
+      const targetCardId =
+        acc.type === 'CREDIT'
+          ? `pluggy_card_${acc.id}`
+          : primaryCardId;
+
+      do {
+        const txUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&from=${fromDate}&pageSize=${pageSize}&page=${page}`;
+        const txRes = await fetch(txUrl, {
+          headers: { 'X-API-KEY': apiKey },
+        });
+
+        if (!txRes.ok) break;
+
         const txData = await txRes.json();
         const txs: PluggyTransaction[] = txData.results || [];
-
-        // Define a qual cartão esta transação deve ser vinculada
-        const targetCardId =
-          acc.type === 'CREDIT'
-            ? `pluggy_card_${acc.id}`
-            : primaryCardId;
+        totalPages = txData.totalPages || 1;
 
         for (const t of txs) {
           const txId = `pluggy_tx_${t.id}`;
@@ -448,7 +463,9 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
             notifyNewTransaction(transaction, bankName);
           }
         }
-      }
+
+        page++;
+      } while (page <= totalPages);
     } catch (e) {
       console.warn(`[Pluggy] Erro ao sincronizar transações da conta ${acc.id}:`, e);
     }

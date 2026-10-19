@@ -148,8 +148,15 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     if (tx.type === 'EXPENSE') {
       const category = state.categories.find((c) => c.id === tx.categoryId);
       if (category && category.budgetLimit > 0) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         const totalSpent = updatedTransactions
-          .filter((t) => t.categoryId === category.id && t.type === 'EXPENSE')
+          .filter(
+            (t) =>
+              t.categoryId === category.id &&
+              t.type === 'EXPENSE' &&
+              t.timestamp >= startOfMonth
+          )
           .reduce((sum, t) => sum + t.amount, 0);
 
         const percent = Math.round((totalSpent / category.budgetLimit) * 100);

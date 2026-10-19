@@ -1,14 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { ReceiptText } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { TransactionItem } from './TransactionItem';
 
-export const TransactionList: React.FC = () => {
+interface TransactionListProps {
+  visibleCount?: number;
+  onEndReached?: () => void;
+}
+
+export const TransactionList: React.FC<TransactionListProps> = ({
+  visibleCount = 15,
+  onEndReached,
+}) => {
   const { colors } = useTheme();
   const transactions = useWalletStore((s) => s.transactions);
+
+  const visibleTransactions = transactions.slice(0, visibleCount);
+  const hasMore = transactions.length > visibleTransactions.length;
 
   return (
     <View style={styles.container}>
@@ -22,7 +33,9 @@ export const TransactionList: React.FC = () => {
           ]}
         >
           <Text style={[styles.countBadge, { color: colors.textSecondary }]}>
-            {transactions.length} {transactions.length === 1 ? 'EVENTO' : 'EVENTOS'}
+            {hasMore
+              ? `${visibleTransactions.length} DE ${transactions.length} EVENTOS`
+              : `${transactions.length} ${transactions.length === 1 ? 'EVENTO' : 'EVENTOS'}`}
           </Text>
         </View>
       </View>
@@ -45,9 +58,38 @@ export const TransactionList: React.FC = () => {
         </View>
       ) : (
         <View style={styles.list}>
-          {transactions.map((tx) => (
+          {visibleTransactions.map((tx) => (
             <TransactionItem key={tx.id} transaction={tx} />
           ))}
+
+          {/* Indicador de Paginação por Rolagem */}
+          {hasMore && (
+            <View style={styles.loadMoreContainer}>
+              <Pressable
+                onPress={onEndReached}
+                style={({ pressed }) => [
+                  styles.loadMorePill,
+                  {
+                    backgroundColor: colors.surfaceElevated,
+                    borderColor: colors.borderSubtle,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.loadMoreText, { color: colors.textSecondary }]}>
+                  Role para baixo para carregar mais ({visibleTransactions.length}/{transactions.length})
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {!hasMore && transactions.length > 15 && (
+            <View style={styles.endContainer}>
+              <Text style={[styles.endText, { color: colors.textMuted }]}>
+                Todas as {transactions.length} movimentações carregadas
+              </Text>
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -111,6 +153,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  loadMoreContainer: {
+    paddingTop: 16,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
+  loadMorePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  loadMoreText: {
+    fontFamily: Typography.medium,
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
+  endContainer: {
+    paddingTop: 18,
+    paddingBottom: 8,
+    alignItems: 'center',
+  },
+  endText: {
+    fontFamily: Typography.medium,
+    fontSize: 10.5,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
 

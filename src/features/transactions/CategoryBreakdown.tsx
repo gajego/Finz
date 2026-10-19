@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import {
   Sliders,
@@ -61,9 +61,30 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
   const transactions = useWalletStore((s) => s.transactions);
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
+  // Intervalo do mês atual em milissegundos
+  const currentMonthStart = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+  }, []);
+
+  const currentMonthEnd = useMemo(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+  }, []);
+
+  const currentMonthName = useMemo(() => {
+    const d = new Date();
+    const name = d.toLocaleDateString('pt-BR', { month: 'long' });
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }, []);
+
+  // Soma exclusivamente as despesas do mês corrente para a categoria
   const getCategorySpent = (categoryId: string) => {
     return transactions
-      .filter((t) => t.categoryId === categoryId && t.type === 'EXPENSE')
+      .filter((t) => {
+        if (t.categoryId !== categoryId || t.type !== 'EXPENSE') return false;
+        return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
+      })
       .reduce((sum, t) => sum + t.amount, 0);
   };
 
@@ -83,7 +104,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
         <View style={styles.headerTitleGroup}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & TETOS MENSAIS</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Controle de consumo • Toque para ajustar
+            Gastos de {currentMonthName} • Toque para ajustar
           </Text>
         </View>
 

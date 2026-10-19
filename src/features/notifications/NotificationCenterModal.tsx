@@ -60,11 +60,19 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const notifications = useMemo<SystemNotification[]>(() => {
     const list: SystemNotification[] = [];
 
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
     // 1. Alertas Reais de Tetos e Metas por Categoria
     categories.forEach((cat) => {
       if (cat.budgetLimit > 0) {
         const spent = transactions
-          .filter((t) => t.categoryId === cat.id && t.type === 'EXPENSE')
+          .filter(
+            (t) =>
+              t.categoryId === cat.id &&
+              t.type === 'EXPENSE' &&
+              t.timestamp >= startOfMonth
+          )
           .reduce((sum, t) => sum + t.amount, 0);
 
         const percent = Math.round((spent / cat.budgetLimit) * 100);

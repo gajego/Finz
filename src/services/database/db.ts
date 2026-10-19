@@ -20,7 +20,8 @@ export function initDatabase() {
       accent_color TEXT NOT NULL,
       cardholder_name TEXT NOT NULL,
       balance INTEGER NOT NULL,
-      limit_cents INTEGER NOT NULL
+      limit_cents INTEGER NOT NULL,
+      bank_balance INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS categories (
@@ -47,6 +48,13 @@ export function initDatabase() {
       value TEXT NOT NULL
     );
   `);
+
+  // Migração segura para colunas adicionadas posteriormente
+  try {
+    db.execSync('ALTER TABLE cards ADD COLUMN bank_balance INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
 
   // Purgar mocks antigos e inicializar banco limpo
   purgeMockDataIfPresent();
@@ -141,6 +149,7 @@ export function loadAllDataFromSQLite(): {
     cardholderName: r.cardholder_name,
     balance: r.balance,
     limit: r.limit_cents,
+    bankBalance: r.bank_balance || 0,
   }));
 
   const categories: Category[] = catRows.map((r) => ({
@@ -185,8 +194,8 @@ export function persistProfile(profile: UserProfile) {
 
 export function persistCard(card: BankCard) {
   db.runSync(
-    `INSERT INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       card.id,
       card.bankName,
@@ -199,7 +208,15 @@ export function persistCard(card: BankCard) {
       card.cardholderName,
       card.balance,
       card.limit,
+      card.bankBalance || 0,
     ]
+  );
+}
+
+export function persistCardBankBalance(cardId: string, bankBalanceCents: number) {
+  db.runSync(
+    'UPDATE cards SET bank_balance = ? WHERE id = ?',
+    [bankBalanceCents, cardId]
   );
 }
 

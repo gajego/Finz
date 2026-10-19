@@ -1,14 +1,17 @@
 import { create } from 'zustand';
 import { UserProfile, BankCard, Transaction, Category, SmartAlert } from '@/types';
 import {
+  db,
   initDatabase,
   loadAllDataFromSQLite,
   persistCard,
   persistCardSkin,
+  persistCardBankBalance,
   persistCategoryBudget,
   persistTransaction,
   persistProfile,
 } from '@/services/database/db';
+import { notifyBalanceChange } from '@/services/notifications/notificationService';
 
 interface WalletState {
   profile: UserProfile;
@@ -27,6 +30,7 @@ interface WalletState {
   togglePrivacyMode: () => void;
   addCard: (card: Omit<BankCard, 'id'>) => void;
   updateCardSkin: (cardId: string, wallpaperUri: string | undefined, gradient: [string, string]) => void;
+  updateCardBankBalance: (cardId: string, bankBalance: number) => void;
   updateCategoryBudget: (categoryId: string, newLimitInCents: number) => void;
   dismissAlert: () => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
@@ -52,6 +56,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     if (get().isInitialized) return;
     try {
       initDatabase();
+      // Migração segura para a tabela cards
+      try {
+        db.execSync('ALTER TABLE cards ADD COLUMN bank_balance INTEGER DEFAULT 0;');
+      } catch {
+        // Coluna já existe
+      }
       const data = loadAllDataFromSQLite();
       set({
         cards: data.cards,
@@ -97,6 +107,20 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         c.id === cardId ? { ...c, wallpaperUri, gradient } : c
       ),
     }));
+  },
+
+  updateCardBankBalance: (cardId, bankBalance) => {
+    const card = get().cards.find((c) => c.id === cardId);
+    const oldBalance = card?.bankBalance;
+    persistCardBankBalance(cardId, bankBalance);
+    set((state) => ({
+      cards: state.cards.map((c) =>
+        c.id === cardId ? { ...c, bankBalance } : c
+      ),
+    }));
+    if (card && oldBalance !== undefined && oldBalance !== bankBalance) {
+      notifyBalanceChange(card.bankName, oldBalance, bankBalance);
+    }
   },
 
   updateCategoryBudget: (categoryId, newLimitInCents) => {

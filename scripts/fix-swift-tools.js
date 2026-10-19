@@ -263,3 +263,31 @@ if (fs.existsSync(textRecognitionM)) {
   }
 }
 
+// Fix expo-notifications crash on builds where native modules are not yet compiled
+function patchExpoNotificationsNative() {
+  const notifBuildDir = path.join(__dirname, '..', 'node_modules', 'expo-notifications', 'build');
+  if (!fs.existsSync(notifBuildDir)) return;
+  const files = fs.readdirSync(notifBuildDir).filter(f => f.endsWith('.native.js'));
+  for (const file of files) {
+    const fullPath = path.join(notifBuildDir, file);
+    let content = fs.readFileSync(fullPath, 'utf8');
+    if (content.includes('requireNativeModule(')) {
+      if (!content.includes('requireOptionalNativeModule')) {
+        content = content.replace(
+          /import\s*\{\s*requireNativeModule\s*\}\s*from\s*'expo';/,
+          "import { requireNativeModule, requireOptionalNativeModule } from 'expo';"
+        );
+      }
+      content = content.replace(
+        /requireNativeModule\((['"][^'"]+['"])\)/g,
+        "(typeof requireOptionalNativeModule === 'function' ? requireOptionalNativeModule($1) : (globalThis.expo?.modules?.[$1] || null)) || {}"
+      );
+      fs.writeFileSync(fullPath, content, 'utf8');
+      console.log(`[fix-expo-notifications] Patched ${file} with safe optional loader.`);
+    }
+  }
+}
+patchExpoNotificationsNative();
+
+
+

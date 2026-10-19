@@ -5,6 +5,7 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { ParsedReceipt } from '@/services/receipts/receiptParser';
+import { notifyNewTransaction } from '@/services/notifications/notificationService';
 
 interface ReceiptImportModalProps {
   receipt: ParsedReceipt | null;
@@ -41,14 +42,17 @@ export const ReceiptImportModal: React.FC<ReceiptImportModalProps> = ({
   };
 
   const handleConfirm = () => {
+    const merchantName = receipt.type === 'EXPENSE' ? receipt.recipient : `Pix: ${receipt.recipient}`;
     addTransaction({
       cardId,
       amount: receipt.amount,
       type: receipt.type,
-      merchant: receipt.type === 'EXPENSE' ? receipt.recipient : `Pix: ${receipt.recipient}`,
+      merchant: merchantName,
       categoryId: selectedCategoryId,
       rawText: receipt.rawText,
     });
+    // Dispara notificação nativa no celular do usuário
+    notifyNewTransaction(merchantName, receipt.amount, matchedCard?.bankName || receipt.bankName || 'Finz');
     onClose();
   };
 

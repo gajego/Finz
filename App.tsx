@@ -26,8 +26,10 @@ import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
 import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { syncPluggyItem } from './src/services/pluggy/pluggyService';
+import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { ParsedReceipt } from './src/services/receipts/receiptParser';
 import { useShareReceiver } from './src/services/receipts/useShareReceiver';
+import { initNotifications } from './src/services/notifications/notificationService';
 import { BankCard } from './src/types';
 
 export default function App() {
@@ -46,8 +48,12 @@ export default function App() {
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
   const profile = useWalletStore((s) => s.profile);
 
+  // Monitoramento periódico contínuo da Pluggy a cada 5 segundos com sincronização e diff de transações
+  usePluggyMonitor(5000);
+
   useEffect(() => {
     initStore();
+    initNotifications();
   }, [initStore]);
 
   // Modais de Controle

@@ -1,7 +1,8 @@
 import { Linking } from 'react-native';
-import { db } from '@/services/database/db';
-import { BankCard, Transaction } from '@/types';
+import { db, loadAllDataFromSQLite } from '@/services/database/db';
+import { BankCard, Transaction, TransactionType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
+import { notifyNewTransaction } from '@/services/notifications/notificationService';
 
 const PLUGGY_API_BASE = 'https://api.pluggy.ai';
 
@@ -260,7 +261,7 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
     console.warn('[Pluggy] Erro ao buscar dados do conector:', e);
   }
 
-  // 2. Busca contas e cartões de crédito
+  // 2. Busca contas e cartões de crédito da instituição
   const accRes = await fetch(`${PLUGGY_API_BASE}/accounts?itemId=${itemId}`, {
     headers: { 'X-API-KEY': apiKey },
   });
@@ -273,36 +274,97 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   const accounts: PluggyAccount[] = accData.results || [];
 
   const store = useWalletStore.getState();
+  const theme = getBankPresetTheme(bankName);
+  const cardholder = (store.profile.fullName || store.profile.nickname || 'MEU CARTAO').toUpperCase();
+
+  // Identifica contas do tipo BANK (conta corrente) e CREDIT (cartão de crédito)
+  const bankAccounts = accounts.filter((a) => a.type === 'BANK');
+  const creditAccounts = accounts.filter((a) => a.type === 'CREDIT');
+
+  // Saldo real em conta corrente em centavos (soma se houver mais de uma conta corrente)
+  const totalBankBalanceCents = bankAccounts.reduce(
+    (sum, acc) => sum + Math.round((acc.balance || 0) * 100),
+    0
+  );
+
   let cardsCount = 0;
   let txCount = 0;
 
-  for (const acc of accounts) {
-    const isCredit = acc.type === 'CREDIT';
-    const lastFour = (acc.number || '').replace(/\D/g, '').slice(-4) || '1234';
-    const limitCents = acc.creditData?.limit
-      ? Math.round(acc.creditData.limit * 100)
-      : Math.max(Math.round(Math.abs(acc.balance) * 100), 200000);
-    const balanceCents = Math.round(Math.abs(acc.balance) * 100);
+  // Lista de cartões a salvar: se tiver contas de crédito, cada uma vira um cartão vinculado ao saldo bancário.
+  // Se não tiver contas de crédito, a conta corrente vira o cartão principal.
+  const cardsToProcess: BankCard[] = [];
 
-    const theme = getBankPresetTheme(bankName);
+  if (creditAccounts.length > 0) {
+    for (const cAcc of creditAccounts) {
+      const cardId = `pluggy_card_${cAcc.id}`;
+      const lastFour = (cAcc.number || '').replace(/\D/g, '').slice(-4) || '1234';
+      const balanceCents = Math.round(Math.abs(cAcc.balance || 0) * 100);
+      const limitCents = cAcc.creditData?.limit
+        ? Math.round(cAcc.creditData.limit * 100)
+        : Math.max(balanceCents, 200000);
 
-    const cardId = `pluggy_card_${acc.id}`;
-    const card: BankCard = {
-      id: cardId,
-      bankName: bankName,
-      packageName: theme.packageName,
-      lastFourDigits: lastFour,
-      gradient: theme.gradient,
-      accentColor: theme.color,
-      cardholderName: (store.profile.fullName || store.profile.nickname || 'MEU CARTAO').toUpperCase(),
-      balance: balanceCents,
-      limit: limitCents,
-    };
+      // Preserva skin personalizada caso o usuário já tenha customizado
+      const existingCardRow = db.getFirstSync<{ wallpaper_uri?: string; gradient_0?: string; gradient_1?: string }>(
+        'SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?',
+        [cardId]
+      );
 
-    // Salva ou atualiza no banco SQLite e memória
+      const gradient: [string, string] =
+        existingCardRow?.gradient_0 && existingCardRow?.gradient_1
+          ? [existingCardRow.gradient_0, existingCardRow.gradient_1]
+          : theme.gradient;
+
+      cardsToProcess.push({
+        id: cardId,
+        bankName,
+        packageName: theme.packageName,
+        lastFourDigits: lastFour,
+        gradient,
+        wallpaperUri: existingCardRow?.wallpaper_uri || undefined,
+        accentColor: theme.color,
+        cardholderName: cardholder,
+        balance: balanceCents, // Fatura do cartão em centavos
+        limit: limitCents,
+        bankBalance: totalBankBalanceCents, // Saldo em conta corrente em centavos
+      });
+    }
+  } else if (bankAccounts.length > 0) {
+    for (const bAcc of bankAccounts) {
+      const cardId = `pluggy_card_${bAcc.id}`;
+      const lastFour = (bAcc.number || '').replace(/\D/g, '').slice(-4) || '0001';
+      const bankBalanceCents = Math.round((bAcc.balance || 0) * 100);
+
+      const existingCardRow = db.getFirstSync<{ wallpaper_uri?: string; gradient_0?: string; gradient_1?: string }>(
+        'SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?',
+        [cardId]
+      );
+
+      const gradient: [string, string] =
+        existingCardRow?.gradient_0 && existingCardRow?.gradient_1
+          ? [existingCardRow.gradient_0, existingCardRow.gradient_1]
+          : theme.gradient;
+
+      cardsToProcess.push({
+        id: cardId,
+        bankName,
+        packageName: theme.packageName,
+        lastFourDigits: lastFour,
+        gradient,
+        wallpaperUri: existingCardRow?.wallpaper_uri || undefined,
+        accentColor: theme.color,
+        cardholderName: cardholder,
+        balance: 0,
+        limit: 0,
+        bankBalance: bankBalanceCents,
+      });
+    }
+  }
+
+  // Persiste cada cartão atualizado no SQLite
+  for (const card of cardsToProcess) {
     db.runSync(
-      `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         card.id,
         card.bankName,
@@ -310,30 +372,22 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
         card.lastFourDigits,
         card.gradient[0],
         card.gradient[1],
-        null,
+        card.wallpaperUri || null,
         card.accentColor,
         card.cardholderName,
         card.balance,
         card.limit,
+        card.bankBalance || 0,
       ]
     );
-
-    // Atualiza estado do Zustand
-    const existingCards = store.cards;
-    const exists = existingCards.some((c) => c.id === card.id);
-    if (exists) {
-      useWalletStore.setState({
-        cards: existingCards.map((c) => (c.id === card.id ? card : c)),
-      });
-    } else {
-      useWalletStore.setState({
-        cards: [...existingCards, card],
-        activeCardIndex: existingCards.length,
-      });
-    }
     cardsCount++;
+  }
 
-    // 3. Busca transações recentes da conta / fatura
+  // Define o cartão principal alvo para associar transações de contas correntes
+  const primaryCardId = cardsToProcess.length > 0 ? cardsToProcess[0].id : `pluggy_card_${itemId}`;
+
+  // 3. Sincroniza transações de todas as contas do conector
+  for (const acc of accounts) {
     try {
       const txRes = await fetch(`${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&pageSize=20`, {
         headers: { 'X-API-KEY': apiKey },
@@ -342,17 +396,31 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
         const txData = await txRes.json();
         const txs: PluggyTransaction[] = txData.results || [];
 
+        // Define a qual cartão esta transação deve ser vinculada
+        const targetCardId =
+          acc.type === 'CREDIT'
+            ? `pluggy_card_${acc.id}`
+            : primaryCardId;
+
         for (const t of txs) {
           const txId = `pluggy_tx_${t.id}`;
           const amountCents = Math.round(Math.abs(t.amount) * 100);
           const timestamp = new Date(t.date).getTime() || Date.now();
           const categoryId = mapPluggyCategoryToFinz(t.category);
 
+          // Verifica se já existia previamente no SQLite local (diffing)
+          const existingTx = db.getFirstSync<{ id: string }>(
+            'SELECT id FROM transactions WHERE id = ?',
+            [txId]
+          );
+
+          const txType: TransactionType = t.type === 'CREDIT' ? 'REFUND' : 'EXPENSE';
+
           const transaction: Transaction = {
             id: txId,
-            cardId: card.id,
+            cardId: targetCardId,
             amount: amountCents,
-            type: 'EXPENSE',
+            type: txType,
             merchant: t.description || 'Transação Open Finance',
             categoryId: categoryId,
             timestamp: timestamp,
@@ -373,7 +441,12 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
               transaction.rawText || null,
             ]
           );
-          txCount++;
+
+          // Se a transação não existia no banco local, dispara notificação em tempo real
+          if (!existingTx) {
+            txCount++;
+            notifyNewTransaction(transaction, bankName);
+          }
         }
       }
     } catch (e) {
@@ -381,19 +454,11 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
     }
   }
 
-  // Recarrega transações no Zustand
-  const refreshedTransactions = db.getAllSync<any>('SELECT * FROM transactions ORDER BY timestamp DESC LIMIT 100');
+  // Recarrega cartões e transações no Zustand Store garantindo estado reativo
+  const updatedData = loadAllDataFromSQLite();
   useWalletStore.setState({
-    transactions: refreshedTransactions.map((r) => ({
-      id: r.id,
-      cardId: r.card_id,
-      amount: r.amount,
-      type: r.type,
-      merchant: r.merchant,
-      categoryId: r.category_id,
-      timestamp: r.timestamp,
-      rawText: r.raw_text,
-    })),
+    cards: updatedData.cards,
+    transactions: updatedData.transactions,
   });
 
   savePluggyItemId(itemId);

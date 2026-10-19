@@ -144,6 +144,23 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
             </Text>
           )}
         </View>
+
+        {currentCard?.bankBalance !== undefined && currentCard.bankBalance > 0 && (
+          <View
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: mode === 'dark' ? 'rgba(0, 208, 158, 0.1)' : 'rgba(0, 208, 158, 0.08)',
+                borderColor: mode === 'dark' ? 'rgba(0, 208, 158, 0.3)' : 'rgba(0, 208, 158, 0.2)',
+              },
+            ]}
+          >
+            <ShieldCheck size={12} color="#00D09E" />
+            <Text style={[styles.statusText, { color: '#00D09E' }]}>
+              Conta: {formatBRL(currentCard.bankBalance)}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Botão de Ação: Leitor / Importador de Comprovantes */}
@@ -222,6 +239,8 @@ const styles = StyleSheet.create({
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
     marginBottom: 18,
     marginTop: 2,
   },

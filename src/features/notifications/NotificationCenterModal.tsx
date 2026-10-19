@@ -157,11 +157,12 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
       });
     }
 
-    // 4. Últimas atividades reais registradas (até 2 eventos recentes)
+    // 4. Últimas atividades reais registradas (até 5 eventos recentes)
     if (transactions.length > 0) {
-      const recentTxs = transactions.slice(0, 2);
+      const recentTxs = transactions.slice(0, 5);
       recentTxs.forEach((tx) => {
         const isRefund = tx.type === 'REFUND';
+        const card = cards.find((c) => c.id === tx.cardId);
         const dateObj = new Date(tx.timestamp);
         const dateStr = dateObj.toLocaleDateString('pt-BR', {
           day: '2-digit',
@@ -173,8 +174,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         list.push({
           id: `tx_audit_${tx.id}`,
           severity: isRefund ? 'success' : 'info',
-          title: isRefund ? 'Estorno Confirmado' : 'Transação Registrada',
-          description: `${tx.merchant} • ${formatBRL(tx.amount)}`,
+          title: isRefund ? 'Estorno / Depósito' : 'Nova Movimentação',
+          description: `${tx.merchant} • ${formatBRL(tx.amount)}${card ? ` • ${card.bankName}` : ''}`,
           tag: 'ATIVIDADE',
           timestamp: dateStr,
         });

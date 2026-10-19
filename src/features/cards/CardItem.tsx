@@ -361,10 +361,27 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
               </View>
 
               <View style={styles.limitContainer}>
-                <Text style={styles.limitLabel}>DISPONÍVEL</Text>
-                <Text style={styles.limitValue}>
-                  {formatBRL(card.limit - card.balance)}
-                </Text>
+                {card.bankBalance !== undefined && card.bankBalance > 0 ? (
+                  <>
+                    <Text style={styles.balanceLabel}>SALDO CONTA</Text>
+                    <Text style={styles.balanceValue}>
+                      {formatBRL(card.bankBalance)}
+                    </Text>
+                    <View style={styles.limitSubRow}>
+                      <Text style={styles.limitSubLabel}>DISPONÍVEL</Text>
+                      <Text style={styles.limitSubValue}>
+                        {formatBRL(card.limit - card.balance)}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.limitLabel}>DISPONÍVEL</Text>
+                    <Text style={styles.limitValue}>
+                      {formatBRL(card.limit - card.balance)}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           </View>
@@ -490,6 +507,37 @@ const styles = StyleSheet.create({
   },
   limitContainer: {
     alignItems: 'flex-end',
+  },
+  balanceLabel: {
+    color: '#00D09E',
+    fontFamily: Typography.bold,
+    fontSize: 8,
+    letterSpacing: LetterSpacing.wider,
+    marginBottom: 1,
+  },
+  balanceValue: {
+    color: '#00D09E',
+    fontFamily: Typography.bold,
+    fontSize: 15,
+    letterSpacing: LetterSpacing.tight,
+    fontVariant: ['tabular-nums'],
+  },
+  limitSubRow: {
+    alignItems: 'flex-end',
+    marginTop: 2,
+  },
+  limitSubLabel: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontFamily: Typography.bold,
+    fontSize: 7.5,
+    letterSpacing: LetterSpacing.wider,
+  },
+  limitSubValue: {
+    color: 'rgba(255, 255, 255, 0.88)',
+    fontFamily: Typography.medium,
+    fontSize: 12,
+    letterSpacing: LetterSpacing.tight,
+    fontVariant: ['tabular-nums'],
   },
   limitLabel: {
     color: 'rgba(255, 255, 255, 0.55)',

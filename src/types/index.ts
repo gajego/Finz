@@ -17,6 +17,7 @@ export interface BankCard {
   cardholderName: string;
   balance: number;
   limit: number;
+  bankBalance?: number;
 }
 
 export type TransactionType = 'EXPENSE' | 'REFUND' | 'PIX_OUT' | 'PIX_IN';

@@ -19,7 +19,7 @@
     "android": {
       "package": "com.finz.app",
       "adaptiveIcon": {
-        "backgroundColor": "#040405",
+        "backgroundColor": "#0c0d12",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

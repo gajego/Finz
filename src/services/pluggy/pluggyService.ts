@@ -229,9 +229,9 @@ export async function createConnectToken(): Promise<string> {
 /**
  * Abre o widget oficial da Pluggy no navegador/in-app para o usuário conectar seu banco
  */
-export async function openPluggyConnectWidget(): Promise<string> {
+export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark'): Promise<string> {
   const connectToken = await createConnectToken();
-  const widgetUrl = `https://connect.pluggy.ai/?connectToken=${connectToken}`;
+  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&theme=${theme}`;
   await Linking.openURL(widgetUrl);
   return widgetUrl;
 }

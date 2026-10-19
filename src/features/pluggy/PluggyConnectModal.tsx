@@ -91,7 +91,7 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
 
       // 2. Gera connect token e abre o Connect Widget
       setLoadingMessage('Gerando Connect Token e abrindo widget...');
-      await openPluggyConnectWidget();
+      await openPluggyConnectWidget(mode === 'dark' ? 'dark' : 'light');
 
       setLoading(false);
       onClose();

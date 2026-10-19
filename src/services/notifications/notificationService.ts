@@ -61,7 +61,6 @@ export async function setupNotificationChannels(): Promise<void> {
       enableVibrate: true,
       enableLights: true,
       lightColor: '#00D09E',
-      sound: 'default',
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -75,7 +74,6 @@ export async function setupNotificationChannels(): Promise<void> {
       enableVibrate: true,
       enableLights: true,
       lightColor: '#00D09E',
-      sound: 'default',
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -185,7 +183,7 @@ export async function sendLocalNotification({
         title,
         body,
         data,
-        sound: 'default',
+        sound: true,
         color: '#00D09E',
         badge,
       },
@@ -222,25 +220,45 @@ export async function notifyNewTransaction(
   let merchant: string;
   let amountCents: number;
   let bankName: string;
+  let isCredit = false;
 
   if (typeof param1 === 'object' && param1 !== null) {
     // Recebeu objeto Transaction
     merchant = param1.merchant;
     amountCents = param1.amount;
     bankName = (typeof param2 === 'string' ? param2 : '') || 'Finz';
+    isCredit = param1.type === 'REFUND';
   } else {
     // Recebeu (merchant, amountCents, bankName)
     merchant = param1;
     amountCents = typeof param2 === 'number' ? param2 : 0;
     bankName = param3 || 'Finz';
+    isCredit = amountCents < 0;
   }
 
-  const isCredit = amountCents < 0;
+  const isPix = /pix/i.test(merchant);
   const formattedAmount = formatCentsToBRL(Math.abs(amountCents));
-  const actionLabel = isCredit ? 'creditado' : 'debitado';
 
-  const title = bankName ? `${bankName}` : 'Finz - Transação';
-  const body = `${merchant}: ${formattedAmount} ${actionLabel}`;
+  let title: string;
+  let body: string;
+
+  if (isPix) {
+    if (isCredit) {
+      title = `Pix Recebido • ${bankName}`;
+      body = `Você recebeu ${formattedAmount} via Pix: ${merchant}`;
+    } else {
+      title = `Pix Enviado • ${bankName}`;
+      body = `Envio de ${formattedAmount} via Pix: ${merchant}`;
+    }
+  } else {
+    if (isCredit) {
+      title = `Crédito Recebido • ${bankName}`;
+      body = `${merchant}: ${formattedAmount} creditado`;
+    } else {
+      title = `Nova Transação • ${bankName}`;
+      body = `${merchant}: ${formattedAmount} debitado`;
+    }
+  }
 
   await sendLocalNotification({
     title,
@@ -252,6 +270,7 @@ export async function notifyNewTransaction(
       amountCents,
       bankName,
       isCredit,
+      isPix,
     },
   });
 }

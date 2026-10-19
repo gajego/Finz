@@ -2,7 +2,7 @@ import { Linking } from 'react-native';
 import { db, loadAllDataFromSQLite } from '@/services/database/db';
 import { BankCard, Transaction, TransactionType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
-import { notifyNewTransaction } from '@/services/notifications/notificationService';
+import { notifyNewTransaction, notifyBalanceChange } from '@/services/notifications/notificationService';
 
 const PLUGGY_API_BASE = 'https://api.pluggy.ai';
 
@@ -360,8 +360,13 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
     }
   }
 
-  // Persiste cada cartão atualizado no SQLite
+  // Persiste cada cartão atualizado no SQLite e monitora alterações de saldo bancário
   for (const card of cardsToProcess) {
+    const previousRow = db.getFirstSync<{ bank_balance: number }>(
+      'SELECT bank_balance FROM cards WHERE id = ?',
+      [card.id]
+    );
+
     db.runSync(
       `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -381,18 +386,26 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
       ]
     );
     cardsCount++;
+
+    // Dispara notificação nativa se o saldo bancário da conta corrente mudou
+    if (
+      previousRow &&
+      typeof previousRow.bank_balance === 'number' &&
+      card.bankBalance !== undefined &&
+      previousRow.bank_balance !== card.bankBalance
+    ) {
+      notifyBalanceChange(card.bankName, previousRow.bank_balance, card.bankBalance);
+    }
   }
 
   // Define o cartão principal alvo para associar transações de contas correntes
   const primaryCardId = cardsToProcess.length > 0 ? cardsToProcess[0].id : `pluggy_card_${itemId}`;
 
-  // Início do mês atual: YYYY-MM-01 para coletar todo o histórico mensal
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const fromDate = `${year}-${month}-01`;
+  // Janela retroativa dos últimos 30 dias (YYYY-MM-DD)
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const fromDate = thirtyDaysAgo.toISOString().slice(0, 10);
 
-  // 3. Sincroniza todas as transações do mês de todas as contas do conector (paginação completa)
+  // 3. Sincroniza todas as transações dos últimos 30 dias de todas as contas do conector
   for (const acc of accounts) {
     try {
       let page = 1;
@@ -405,19 +418,43 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
           ? `pluggy_card_${acc.id}`
           : primaryCardId;
 
-      do {
-        const txUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&from=${fromDate}&pageSize=${pageSize}&page=${page}`;
-        const txRes = await fetch(txUrl, {
+      const newTxsToNotify: Transaction[] = [];
+
+      // Consulta a Pluggy com a janela de 30 dias
+      let queryBaseUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&from=${fromDate}&pageSize=${pageSize}`;
+      let firstRes = await fetch(`${queryBaseUrl}&page=1`, {
+        headers: { 'X-API-KEY': apiKey },
+      });
+
+      let data = firstRes.ok ? await firstRes.json() : null;
+      let currentResults: PluggyTransaction[] = data?.results || [];
+
+      // Fallback sem restrição de 'from' caso a query com data retorne vazio na primeira página
+      // Garante que transações reais ou de sandbox sejam trazidas mesmo com divergência de fuso/data
+      if (!firstRes.ok || currentResults.length === 0) {
+        queryBaseUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&pageSize=${pageSize}`;
+        const fallbackRes = await fetch(`${queryBaseUrl}&page=1`, {
           headers: { 'X-API-KEY': apiKey },
         });
+        if (fallbackRes.ok) {
+          data = await fallbackRes.json();
+          currentResults = data?.results || [];
+        }
+      }
 
-        if (!txRes.ok) break;
+      totalPages = data?.totalPages || 1;
 
-        const txData = await txRes.json();
-        const txs: PluggyTransaction[] = txData.results || [];
-        totalPages = txData.totalPages || 1;
+      while (page <= totalPages) {
+        if (page > 1) {
+          const nextRes = await fetch(`${queryBaseUrl}&page=${page}`, {
+            headers: { 'X-API-KEY': apiKey },
+          });
+          if (!nextRes.ok) break;
+          const nextData = await nextRes.json();
+          currentResults = nextData?.results || [];
+        }
 
-        for (const t of txs) {
+        for (const t of currentResults) {
           const txId = `pluggy_tx_${t.id}`;
           const amountCents = Math.round(Math.abs(t.amount) * 100);
           const timestamp = new Date(t.date).getTime() || Date.now();
@@ -457,15 +494,35 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
             ]
           );
 
-          // Se a transação não existia no banco local, dispara notificação em tempo real
+          // Se a transação não existia no banco local, agenda notificação
           if (!existingTx) {
             txCount++;
-            notifyNewTransaction(transaction, bankName);
+            newTxsToNotify.push(transaction);
           }
         }
 
         page++;
-      } while (page <= totalPages);
+      }
+
+      // Notifica o usuário sobre movimentações novas (Pix ou transações)
+      if (newTxsToNotify.length > 0) {
+        if (newTxsToNotify.length <= 5) {
+          for (const newTx of newTxsToNotify) {
+            await notifyNewTransaction(newTx, bankName);
+          }
+        } else {
+          // Notifica os 3 mais recentes individualmente
+          for (const newTx of newTxsToNotify.slice(0, 3)) {
+            await notifyNewTransaction(newTx, bankName);
+          }
+          // Notificação de resumo para o restante do lote
+          await notifyNewTransaction(
+            `${newTxsToNotify.length} movimentações recebidas`,
+            0,
+            bankName
+          );
+        }
+      }
     } catch (e) {
       console.warn(`[Pluggy] Erro ao sincronizar transações da conta ${acc.id}:`, e);
     }

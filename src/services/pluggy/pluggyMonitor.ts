@@ -25,12 +25,6 @@ export async function pollPluggyNow(): Promise<{ cardsTotal: number; txTotal: nu
     return null;
   }
 
-  // Verifica se há bancos/itens conectados
-  const items = getPluggyItemIds();
-  if (!items || items.length === 0) {
-    return null;
-  }
-
   try {
     isSyncing = true;
     const result = await syncAllPluggyItems();

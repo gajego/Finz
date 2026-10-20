@@ -271,7 +271,7 @@ export async function createConnectToken(itemId?: string): Promise<string> {
  */
 export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', itemId?: string): Promise<string> {
   const connectToken = await createConnectToken(itemId);
-  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&includeSandbox=true&theme=${theme}&products=ACCOUNTS,CREDIT_CARDS,TRANSACTIONS`;
+  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&includeSandbox=true&theme=${theme}`;
   await Linking.openURL(widgetUrl);
   return widgetUrl;
 }

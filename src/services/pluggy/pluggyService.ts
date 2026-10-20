@@ -242,20 +242,88 @@ export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', 
 }
 
 /**
+ * Busca transações com estratégia resiliente (tenta v2 com 30 dias, v2 sem filtro, e v1 de fallback)
+ */
+async function fetchTransactionsFromPluggy(
+  accountId: string,
+  apiKey: string,
+  fromDate: string,
+  pageSize: number = 100
+): Promise<PluggyTransaction[]> {
+  const allTxs: PluggyTransaction[] = [];
+  
+  // Lista ordenada de estratégias de consulta para garantir cobertura total
+  const attempts = [
+    // 1. Endpoint moderno v2 com janela de 30 dias
+    `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`,
+    // 2. Endpoint moderno v2 sem filtro (retorna histórico disponível completo da instituição)
+    `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&pageSize=${pageSize}`,
+    // 3. Endpoint v1 com filtro de data
+    `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`,
+    // 4. Endpoint v1 sem restrição
+    `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&pageSize=${pageSize}`,
+  ];
+
+  for (const baseUrl of attempts) {
+    try {
+      let page = 1;
+      let totalPages = 1;
+
+      const res = await fetch(`${baseUrl}&page=1`, {
+        headers: { 'X-API-KEY': apiKey },
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const results: PluggyTransaction[] = data?.results || [];
+      totalPages = data?.totalPages || 1;
+
+      if (results.length > 0) {
+        allTxs.push(...results);
+
+        // Pagina as páginas subsequentes (até 5 páginas para não estourar payload)
+        while (page < totalPages && page < 5) {
+          page++;
+          try {
+            const nextRes = await fetch(`${baseUrl}&page=${page}`, {
+              headers: { 'X-API-KEY': apiKey },
+            });
+            if (!nextRes.ok) break;
+            const nextData = await nextRes.json();
+            const nextResults: PluggyTransaction[] = nextData?.results || [];
+            allTxs.push(...nextResults);
+          } catch {
+            break;
+          }
+        }
+
+        // Se capturou registros válidos nesta estratégia, encerra tentativas
+        return allTxs;
+      }
+    } catch (e) {
+      console.warn(`[Pluggy] Falha ao consultar transações em ${baseUrl}:`, e);
+    }
+  }
+
+  return allTxs;
+}
+
+/**
  * Sincroniza contas e cartões de um ItemId conectado
  */
 export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
   const apiKey = await getValidApiKey();
 
   // 1. Busca dados do conector (banco)
-  let bankName = 'BANCO CONECTADO';
+  let connectorName = 'BANCO CONECTADO';
   try {
     const itemRes = await fetch(`${PLUGGY_API_BASE}/items/${itemId}`, {
       headers: { 'X-API-KEY': apiKey },
     });
     if (itemRes.ok) {
       const itemData = await itemRes.json();
-      bankName = itemData?.connector?.name?.toUpperCase() || bankName;
+      connectorName = itemData?.connector?.name?.toUpperCase() || connectorName;
     }
   } catch (e) {
     console.warn('[Pluggy] Erro ao buscar dados do conector:', e);
@@ -274,7 +342,6 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   const accounts: PluggyAccount[] = accData.results || [];
 
   const store = useWalletStore.getState();
-  const theme = getBankPresetTheme(bankName);
   const cardholder = (store.profile.fullName || store.profile.nickname || 'MEU CARTAO').toUpperCase();
 
   // Identifica contas do tipo BANK (conta corrente) e CREDIT (cartão de crédito)
@@ -303,6 +370,21 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
         ? Math.round(cAcc.creditData.limit * 100)
         : Math.max(balanceCents, 200000);
 
+      // Nome do cartão em si retornado pela Pluggy (evita nome genérico 'PLUGGY')
+      let cardDisplayName = cAcc.name?.trim() || '';
+      if (!cardDisplayName || /pluggy/i.test(cardDisplayName)) {
+        if (connectorName && !/pluggy/i.test(connectorName)) {
+          cardDisplayName = connectorName;
+        } else if (cAcc.creditData?.brand) {
+          cardDisplayName = `${cAcc.creditData.brand}${cAcc.creditData?.level ? ` ${cAcc.creditData.level}` : ''}`;
+        } else {
+          cardDisplayName = 'CARTÃO DE CRÉDITO';
+        }
+      }
+      cardDisplayName = cardDisplayName.toUpperCase();
+
+      const theme = getBankPresetTheme(cardDisplayName || connectorName);
+
       // Preserva skin personalizada caso o usuário já tenha customizado
       const existingCardRow = db.getFirstSync<{ wallpaper_uri?: string; gradient_0?: string; gradient_1?: string }>(
         'SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?',
@@ -316,7 +398,7 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
 
       cardsToProcess.push({
         id: cardId,
-        bankName,
+        bankName: cardDisplayName,
         packageName: theme.packageName,
         lastFourDigits: lastFour,
         gradient,
@@ -334,6 +416,19 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
       const lastFour = (bAcc.number || '').replace(/\D/g, '').slice(-4) || '0001';
       const bankBalanceCents = Math.round((bAcc.balance || 0) * 100);
 
+      // Nome da conta/cartão em si retornado pela Pluggy
+      let accountDisplayName = bAcc.name?.trim() || '';
+      if (!accountDisplayName || /pluggy/i.test(accountDisplayName)) {
+        if (connectorName && !/pluggy/i.test(connectorName)) {
+          accountDisplayName = connectorName;
+        } else {
+          accountDisplayName = 'CONTA CORRENTE';
+        }
+      }
+      accountDisplayName = accountDisplayName.toUpperCase();
+
+      const theme = getBankPresetTheme(accountDisplayName || connectorName);
+
       const existingCardRow = db.getFirstSync<{ wallpaper_uri?: string; gradient_0?: string; gradient_1?: string }>(
         'SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?',
         [cardId]
@@ -346,7 +441,7 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
 
       cardsToProcess.push({
         id: cardId,
-        bankName,
+        bankName: accountDisplayName,
         packageName: theme.packageName,
         lastFourDigits: lastFour,
         gradient,
@@ -408,118 +503,92 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   // 3. Sincroniza todas as transações dos últimos 30 dias de todas as contas do conector
   for (const acc of accounts) {
     try {
-      let page = 1;
-      let totalPages = 1;
-      const pageSize = 100;
-
       // Define a qual cartão esta transação deve ser vinculada
       const targetCardId =
         acc.type === 'CREDIT'
           ? `pluggy_card_${acc.id}`
           : primaryCardId;
 
+      const matchedCard = cardsToProcess.find((c) => c.id === targetCardId) || cardsToProcess[0];
+      const targetCardName = matchedCard?.bankName || connectorName;
+
       const newTxsToNotify: Transaction[] = [];
 
-      // Consulta a Pluggy com a janela de 30 dias
-      let queryBaseUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&from=${fromDate}&pageSize=${pageSize}`;
-      let firstRes = await fetch(`${queryBaseUrl}&page=1`, {
-        headers: { 'X-API-KEY': apiKey },
-      });
+      // Consulta resiliente em todas as variações de endpoints (v2 e v1)
+      const currentResults = await fetchTransactionsFromPluggy(acc.id, apiKey, fromDate, 100);
 
-      let data = firstRes.ok ? await firstRes.json() : null;
-      let currentResults: PluggyTransaction[] = data?.results || [];
+      for (const t of currentResults) {
+        const txId = `pluggy_tx_${t.id}`;
+        const amountCents = Math.round(Math.abs(t.amount) * 100);
+        const timestamp = new Date(t.date).getTime() || Date.now();
+        const categoryId = mapPluggyCategoryToFinz(t.category);
 
-      // Fallback sem restrição de 'from' caso a query com data retorne vazio na primeira página
-      // Garante que transações reais ou de sandbox sejam trazidas mesmo com divergência de fuso/data
-      if (!firstRes.ok || currentResults.length === 0) {
-        queryBaseUrl = `${PLUGGY_API_BASE}/transactions?accountId=${acc.id}&pageSize=${pageSize}`;
-        const fallbackRes = await fetch(`${queryBaseUrl}&page=1`, {
-          headers: { 'X-API-KEY': apiKey },
-        });
-        if (fallbackRes.ok) {
-          data = await fallbackRes.json();
-          currentResults = data?.results || [];
-        }
-      }
+        // Verifica se já existia previamente no SQLite local (diffing)
+        const existingTx = db.getFirstSync<{ id: string }>(
+          'SELECT id FROM transactions WHERE id = ?',
+          [txId]
+        );
 
-      totalPages = data?.totalPages || 1;
+        // Classificação inteligente de Pix e Crédito/Débito
+        const isCredit = t.type === 'CREDIT' || (typeof t.amount === 'number' && t.amount > 0);
+        const isPix = /pix/i.test(t.description || '');
 
-      while (page <= totalPages) {
-        if (page > 1) {
-          const nextRes = await fetch(`${queryBaseUrl}&page=${page}`, {
-            headers: { 'X-API-KEY': apiKey },
-          });
-          if (!nextRes.ok) break;
-          const nextData = await nextRes.json();
-          currentResults = nextData?.results || [];
+        let txType: TransactionType;
+        if (isPix) {
+          txType = isCredit ? 'PIX_IN' : 'PIX_OUT';
+        } else {
+          txType = isCredit ? 'REFUND' : 'EXPENSE';
         }
 
-        for (const t of currentResults) {
-          const txId = `pluggy_tx_${t.id}`;
-          const amountCents = Math.round(Math.abs(t.amount) * 100);
-          const timestamp = new Date(t.date).getTime() || Date.now();
-          const categoryId = mapPluggyCategoryToFinz(t.category);
+        const transaction: Transaction = {
+          id: txId,
+          cardId: targetCardId,
+          amount: amountCents,
+          type: txType,
+          merchant: t.description || 'Transação Open Finance',
+          categoryId: categoryId,
+          timestamp: timestamp,
+          rawText: `Pluggy: ${t.description}`,
+        };
 
-          // Verifica se já existia previamente no SQLite local (diffing)
-          const existingTx = db.getFirstSync<{ id: string }>(
-            'SELECT id FROM transactions WHERE id = ?',
-            [txId]
-          );
+        db.runSync(
+          `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            transaction.id,
+            transaction.cardId,
+            transaction.amount,
+            transaction.type,
+            transaction.merchant,
+            transaction.categoryId,
+            transaction.timestamp,
+            transaction.rawText || null,
+          ]
+        );
 
-          const txType: TransactionType = t.type === 'CREDIT' ? 'REFUND' : 'EXPENSE';
-
-          const transaction: Transaction = {
-            id: txId,
-            cardId: targetCardId,
-            amount: amountCents,
-            type: txType,
-            merchant: t.description || 'Transação Open Finance',
-            categoryId: categoryId,
-            timestamp: timestamp,
-            rawText: `Pluggy: ${t.description}`,
-          };
-
-          db.runSync(
-            `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              transaction.id,
-              transaction.cardId,
-              transaction.amount,
-              transaction.type,
-              transaction.merchant,
-              transaction.categoryId,
-              transaction.timestamp,
-              transaction.rawText || null,
-            ]
-          );
-
-          // Se a transação não existia no banco local, agenda notificação
-          if (!existingTx) {
-            txCount++;
-            newTxsToNotify.push(transaction);
-          }
+        // Se a transação não existia no banco local, agenda notificação
+        if (!existingTx) {
+          txCount++;
+          newTxsToNotify.push(transaction);
         }
-
-        page++;
       }
 
       // Notifica o usuário sobre movimentações novas (Pix ou transações)
       if (newTxsToNotify.length > 0) {
         if (newTxsToNotify.length <= 5) {
           for (const newTx of newTxsToNotify) {
-            await notifyNewTransaction(newTx, bankName);
+            await notifyNewTransaction(newTx, targetCardName);
           }
         } else {
           // Notifica os 3 mais recentes individualmente
           for (const newTx of newTxsToNotify.slice(0, 3)) {
-            await notifyNewTransaction(newTx, bankName);
+            await notifyNewTransaction(newTx, targetCardName);
           }
           // Notificação de resumo para o restante do lote
           await notifyNewTransaction(
             `${newTxsToNotify.length} movimentações recebidas`,
             0,
-            bankName
+            targetCardName
           );
         }
       }
@@ -528,7 +597,7 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
     }
   }
 
-  // Recarrega cartões e transações no Zustand Store garantindo estado reativo
+  // Recarrega cartões e transações no Zustand Store garantindo estado reativo imediato
   const updatedData = loadAllDataFromSQLite();
   useWalletStore.setState({
     cards: updatedData.cards,
@@ -575,6 +644,13 @@ export async function syncAllPluggyItems(): Promise<{ cardsTotal: number; txTota
       console.warn(`[Pluggy] Erro ao sincronizar item ${itemId}:`, e);
     }
   }
+
+  // Recarrega todos os dados no Zustand Store após o ciclo completo de sincronização
+  const updatedData = loadAllDataFromSQLite();
+  useWalletStore.setState({
+    cards: updatedData.cards,
+    transactions: updatedData.transactions,
+  });
 
   return { cardsTotal, txTotal };
 }

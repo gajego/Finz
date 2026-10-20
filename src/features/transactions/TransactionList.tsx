@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { ReceiptText } from 'lucide-react-native';
+import { ArrowLeftRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
@@ -49,11 +49,11 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           ]}
         >
           <View style={[styles.emptyIconCircle, { backgroundColor: colors.surfaceSubtle }]}>
-            <ReceiptText size={24} color={colors.textMuted} />
+            <ArrowLeftRight size={22} color={colors.textMuted} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>NENHUM REGISTRO</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>NENHUMA MOVIMENTAÇÃO</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-            Compartilhe um comprovante Pix ou escaneie um documento acima para registrar gastos.
+            Conecte seu banco via Open Finance ou toque em sincronizar para importar suas movimentações e compras.
           </Text>
         </View>
       ) : (

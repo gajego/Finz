@@ -56,6 +56,19 @@ export function initDatabase() {
     // Coluna já existe
   }
 
+  // Higienização de cartões legados com nome genérico 'PLUGGY'
+  try {
+    db.runSync(`
+      UPDATE cards 
+      SET bank_name = 'NUBANK' 
+      WHERE UPPER(bank_name) = 'PLUGGY' 
+         OR UPPER(bank_name) = 'PLUGGY BANK' 
+         OR UPPER(bank_name) = 'BANCO CONECTADO';
+    `);
+  } catch {
+    // Tabela ainda vazia ou migrada
+  }
+
   // Purgar mocks antigos e inicializar banco limpo
   purgeMockDataIfPresent();
   checkAndExecuteMonthlyTurnover();

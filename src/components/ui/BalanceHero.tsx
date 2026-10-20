@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import {
   Eye,
   EyeOff,
-  FileText,
+  RefreshCw,
+  Landmark,
   ArrowUpRight,
   ShieldCheck,
   AlertTriangle,
@@ -14,10 +15,16 @@ import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 
 interface BalanceHeroProps {
-  onOpenReceiptPicker?: () => void;
+  onOpenPluggy?: () => void;
+  onSyncNow?: () => void;
+  isSyncing?: boolean;
 }
 
-export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker }) => {
+export const BalanceHero: React.FC<BalanceHeroProps> = ({
+  onOpenPluggy,
+  onSyncNow,
+  isSyncing = false,
+}) => {
   const { colors, mode } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
@@ -163,10 +170,10 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
         )}
       </View>
 
-      {/* Botão de Ação: Leitor / Importador de Comprovantes */}
+      {/* Botão de Ação: Sincronização Open Finance Pluggy */}
       <View style={styles.actionsBar}>
         <Pressable
-          onPress={onOpenReceiptPicker}
+          onPress={currentCard ? onSyncNow : onOpenPluggy}
           style={({ pressed }) => [
             styles.actionButton,
             {
@@ -186,10 +193,20 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({ onOpenReceiptPicker })
               },
             ]}
           >
-            <FileText size={16} color={colors.primary} />
+            {isSyncing ? (
+              <RefreshCw size={15} color={colors.primary} />
+            ) : currentCard ? (
+              <RefreshCw size={15} color={colors.primary} />
+            ) : (
+              <Landmark size={15} color={colors.primary} />
+            )}
           </View>
           <Text style={[styles.actionText, { color: colors.text }]}>
-            IMPORTAR COMPROVANTE
+            {isSyncing
+              ? 'ATUALIZANDO DADOS OPEN FINANCE...'
+              : currentCard
+              ? 'SINCRONIZAR BANCO • OPEN FINANCE'
+              : 'CONECTAR BANCO • OPEN FINANCE'}
           </Text>
         </Pressable>
       </View>

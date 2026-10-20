@@ -30,13 +30,9 @@ import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
-import { ReceiptImportModal } from './src/features/receipts/ReceiptImportModal';
-import { ReceiptPickerSheet } from './src/features/receipts/ReceiptPickerSheet';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
-import { syncPluggyItem } from './src/services/pluggy/pluggyService';
+import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
-import { ParsedReceipt } from './src/services/receipts/receiptParser';
-import { useShareReceiver } from './src/services/receipts/useShareReceiver';
 import { initNotifications } from './src/services/notifications/notificationService';
 import { BankCard } from './src/types';
 
@@ -72,13 +68,27 @@ export default function App() {
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
-  const [receiptPickerVisible, setReceiptPickerVisible] = useState(false);
-  const [importedReceipt, setImportedReceipt] = useState<ParsedReceipt | null>(null);
+  const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
 
-  // Escuta compartilhamentos externos de comprovantes (SEND / SEND_MULTIPLE de outros apps)
-  useShareReceiver((receipt) => {
-    setImportedReceipt(receipt);
-  });
+  // Sincronização manual acionada pelo usuário na barra Open Finance
+  const handleSyncPluggy = async () => {
+    setIsSyncingPluggy(true);
+    try {
+      const res = await syncAllPluggyItems();
+      if (res.cardsTotal > 0 || res.txTotal > 0) {
+        Alert.alert(
+          'Open Finance Atualizado',
+          `Sucesso! ${res.cardsTotal} cartão(ões) e ${res.txTotal} movimentação(ões) sincronizados.`
+        );
+      } else {
+        Alert.alert('Open Finance', 'Tudo atualizado! Nenhuma nova movimentação pendente.');
+      }
+    } catch (e: any) {
+      Alert.alert('Erro ao sincronizar', e?.message || 'Falha ao sincronizar dados com o Open Finance.');
+    } finally {
+      setIsSyncingPluggy(false);
+    }
+  };
 
   // Escuta retornos da autorização do Open Finance (Pluggy redirect finz://pluggy-callback?itemId=...)
   useEffect(() => {
@@ -154,8 +164,12 @@ export default function App() {
             onOpenPluggy={() => setPluggyModalVisible(true)}
           />
 
-          {/* Saldo Brutalista, Ações Rápidas e Leitor de Comprovante */}
-          <BalanceHero onOpenReceiptPicker={() => setReceiptPickerVisible(true)} />
+          {/* Saldo Brutalista, Limites e Barra de Ação Open Finance */}
+          <BalanceHero
+            onOpenPluggy={() => setPluggyModalVisible(true)}
+            onSyncNow={handleSyncPluggy}
+            isSyncing={isSyncingPluggy}
+          />
 
           {/* Alerta Inteligente Vermelho quando limite é atingido */}
           <AlertBanner onOpenBudgetManager={() => handleOpenBudgetModal()} />
@@ -221,20 +235,6 @@ export default function App() {
           onClose={() => setNotificationsVisible(false)}
           onNavigateToBudgets={handleOpenBudgetModal}
           onNavigateToAddCard={() => setAddCardVisible(true)}
-        />
-
-        {/* Folha de Seleção e Leitura de Comprovante (Foto / PDF) */}
-        <ReceiptPickerSheet
-          visible={receiptPickerVisible}
-          onClose={() => setReceiptPickerVisible(false)}
-          onReceiptExtracted={(receipt) => setImportedReceipt(receipt)}
-        />
-
-        {/* Modal de Comprovante Pix Identificado */}
-        <ReceiptImportModal
-          receipt={importedReceipt}
-          visible={!!importedReceipt}
-          onClose={() => setImportedReceipt(null)}
         />
       </SafeAreaView>
     </GestureHandlerRootView>

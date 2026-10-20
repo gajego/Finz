@@ -11,9 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.finz.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSPhotoLibraryUsageDescription": "O Finz precisa de acesso às suas fotos para importar comprovantes de pagamento.",
-        "NSCameraUsageDescription": "O Finz precisa de acesso à câmera para fotografar comprovantes de pagamento."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -26,41 +24,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.READ_MEDIA_IMAGES",
         "android.permission.POST_NOTIFICATIONS"
-      ],
-      "intentFilters": [
-        {
-          "action": "SEND",
-          "data": [
-            {
-              "mimeType": "text/plain"
-            },
-            {
-              "mimeType": "image/*"
-            },
-            {
-              "mimeType": "application/pdf"
-            }
-          ],
-          "category": [
-            "DEFAULT"
-          ]
-        },
-        {
-          "action": "SEND_MULTIPLE",
-          "data": [
-            {
-              "mimeType": "image/*"
-            },
-            {
-              "mimeType": "application/pdf"
-            }
-          ],
-          "category": [
-            "DEFAULT"
-          ]
-        }
       ]
     },
     "web": {
@@ -70,8 +34,6 @@
       "expo-image",
       "expo-sqlite",
       "expo-font",
-      "expo-image-picker",
-      "expo-document-picker",
       "expo-notifications"
     ],
     "extra": {

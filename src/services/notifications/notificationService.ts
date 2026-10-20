@@ -227,7 +227,7 @@ export async function notifyNewTransaction(
     merchant = param1.merchant;
     amountCents = param1.amount;
     bankName = (typeof param2 === 'string' ? param2 : '') || 'Finz';
-    isCredit = param1.type === 'REFUND';
+    isCredit = param1.type === 'REFUND' || param1.type === 'PIX_IN';
   } else {
     // Recebeu (merchant, amountCents, bankName)
     merchant = param1;
@@ -236,7 +236,9 @@ export async function notifyNewTransaction(
     isCredit = amountCents < 0;
   }
 
-  const isPix = /pix/i.test(merchant);
+  const isPix =
+    /pix/i.test(merchant) ||
+    (typeof param1 === 'object' && param1 !== null && (param1.type === 'PIX_IN' || param1.type === 'PIX_OUT'));
   const formattedAmount = formatCentsToBRL(Math.abs(amountCents));
 
   let title: string;

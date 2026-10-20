@@ -241,7 +241,6 @@ export async function createConnectToken(itemId?: string): Promise<string> {
   const options: Record<string, any> = {
     oauthRedirectUri: 'finz://pluggy-callback',
     includeSandbox: true,
-    products: ['ACCOUNTS', 'CREDIT_CARDS', 'TRANSACTIONS', 'PAYMENT_DATA'],
   };
 
   if (itemId) {

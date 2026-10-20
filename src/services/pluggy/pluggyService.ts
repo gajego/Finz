@@ -54,9 +54,31 @@ export function savePluggyCredentials(clientId: string, clientSecret: string) {
 }
 
 /**
- * Retorna as credenciais da Pluggy salvas
+ * Retorna as credenciais da Pluggy e a origem (process.env ou SQLite)
  */
-export function getPluggyCredentials(): PluggyCredentials | null {
+export function getPluggyCredentialsWithSource(): {
+  creds: PluggyCredentials | null;
+  source: 'env' | 'sqlite' | 'none';
+} {
+  // 1. Tenta obter do process.env (EXPO_PUBLIC_... ou direto)
+  const envClientId =
+    (typeof process !== 'undefined' && (process.env?.EXPO_PUBLIC_PLUGGY_CLIENT_ID || process.env?.PLUGGY_CLIENT_ID)) ||
+    '';
+  const envClientSecret =
+    (typeof process !== 'undefined' && (process.env?.EXPO_PUBLIC_PLUGGY_CLIENT_SECRET || process.env?.PLUGGY_CLIENT_SECRET)) ||
+    '';
+
+  if (envClientId.trim() && envClientSecret.trim()) {
+    return {
+      creds: {
+        clientId: envClientId.trim(),
+        clientSecret: envClientSecret.trim(),
+      },
+      source: 'env',
+    };
+  }
+
+  // 2. Fallback para credenciais salvas no SQLite local
   try {
     db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
     const clientIdRow = db.getFirstSync<{ value: string }>(
@@ -70,14 +92,25 @@ export function getPluggyCredentials(): PluggyCredentials | null {
 
     if (clientIdRow?.value && clientSecretRow?.value) {
       return {
-        clientId: clientIdRow.value,
-        clientSecret: clientSecretRow.value,
+        creds: {
+          clientId: clientIdRow.value.trim(),
+          clientSecret: clientSecretRow.value.trim(),
+        },
+        source: 'sqlite',
       };
     }
-    return null;
-  } catch {
-    return null;
+  } catch (e) {
+    console.warn('[Pluggy] Erro ao ler credenciais do SQLite:', e);
   }
+
+  return { creds: null, source: 'none' };
+}
+
+/**
+ * Retorna as credenciais da Pluggy salvas (.env com prioridade, fallback para SQLite)
+ */
+export function getPluggyCredentials(): PluggyCredentials | null {
+  return getPluggyCredentialsWithSource().creds;
 }
 
 /**
@@ -207,6 +240,7 @@ export async function createConnectToken(itemId?: string): Promise<string> {
 
   const options: Record<string, any> = {
     oauthRedirectUri: 'finz://pluggy-callback',
+    includeSandbox: true,
   };
 
   if (itemId) {
@@ -236,13 +270,13 @@ export async function createConnectToken(itemId?: string): Promise<string> {
  */
 export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', itemId?: string): Promise<string> {
   const connectToken = await createConnectToken(itemId);
-  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&theme=${theme}`;
+  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&includeSandbox=true&theme=${theme}`;
   await Linking.openURL(widgetUrl);
   return widgetUrl;
 }
 
 /**
- * Busca transações com estratégia resiliente (tenta v2 com 30 dias, v2 sem filtro, e v1 de fallback)
+ * Busca transações com estratégia resiliente e cursor-based pagination da Pluggy v2
  */
 async function fetchTransactionsFromPluggy(
   accountId: string,
@@ -251,59 +285,111 @@ async function fetchTransactionsFromPluggy(
   pageSize: number = 100
 ): Promise<PluggyTransaction[]> {
   const allTxs: PluggyTransaction[] = [];
-  
-  // Lista ordenada de estratégias de consulta para garantir cobertura total
-  const attempts = [
-    // 1. Endpoint moderno v2 com janela de 30 dias
-    `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`,
-    // 2. Endpoint moderno v2 sem filtro (retorna histórico disponível completo da instituição)
-    `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&pageSize=${pageSize}`,
-    // 3. Endpoint v1 com filtro de data
-    `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`,
-    // 4. Endpoint v1 sem restrição
-    `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&pageSize=${pageSize}`,
-  ];
 
-  for (const baseUrl of attempts) {
-    try {
-      let page = 1;
-      let totalPages = 1;
+  // Estratégia 1: Endpoint v2 oficial com filtro de data (últimos 30 dias) e cursor pagination
+  try {
+    let nextUrl: string | null = `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`;
+    let pageCount = 0;
 
-      const res = await fetch(`${baseUrl}&page=1`, {
+    while (nextUrl && pageCount < 10) {
+      pageCount++;
+      console.log(`[Pluggy] GET ${nextUrl} (Página ${pageCount})...`);
+      const res: Response = await fetch(nextUrl, {
         headers: { 'X-API-KEY': apiKey },
       });
 
-      if (!res.ok) continue;
+      if (!res.ok) {
+        const errorText: string = await res.text();
+        console.warn(`[Pluggy] /v2/transactions retorno ${res.status}: ${errorText}`);
+        break;
+      }
 
-      const data = await res.json();
+      const data: any = await res.json();
       const results: PluggyTransaction[] = data?.results || [];
-      totalPages = data?.totalPages || 1;
-
       if (results.length > 0) {
         allTxs.push(...results);
-
-        // Pagina as páginas subsequentes (até 5 páginas para não estourar payload)
-        while (page < totalPages && page < 5) {
-          page++;
-          try {
-            const nextRes = await fetch(`${baseUrl}&page=${page}`, {
-              headers: { 'X-API-KEY': apiKey },
-            });
-            if (!nextRes.ok) break;
-            const nextData = await nextRes.json();
-            const nextResults: PluggyTransaction[] = nextData?.results || [];
-            allTxs.push(...nextResults);
-          } catch {
-            break;
-          }
-        }
-
-        // Se capturou registros válidos nesta estratégia, encerra tentativas
-        return allTxs;
       }
-    } catch (e) {
-      console.warn(`[Pluggy] Falha ao consultar transações em ${baseUrl}:`, e);
+
+      // Cursor de paginação da Pluggy: campo `next`
+      if (data?.next) {
+        nextUrl = data.next.startsWith('http')
+          ? data.next
+          : `${PLUGGY_API_BASE}/v2/transactions${data.next.startsWith('?') ? '' : '?'}${data.next}`;
+      } else {
+        nextUrl = null;
+      }
     }
+
+    if (allTxs.length > 0) {
+      console.log(`[Pluggy] ✅ Total de ${allTxs.length} transação(ões) obtidas via v2 (com data).`);
+      return allTxs;
+    }
+  } catch (err) {
+    console.warn(`[Pluggy] Falha ao consultar /v2/transactions com filtro de data para conta ${accountId}:`, err);
+  }
+
+  // Estratégia 2: Se não retornou nada com filtro de data, consulta v2 sem filtro de data (todo o histórico do banco)
+  try {
+    let nextUrl: string | null = `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&pageSize=${pageSize}`;
+    let pageCount = 0;
+
+    while (nextUrl && pageCount < 5) {
+      pageCount++;
+      console.log(`[Pluggy] GET v2 sem filtro: ${nextUrl}...`);
+      const res: Response = await fetch(nextUrl, {
+        headers: { 'X-API-KEY': apiKey },
+      });
+
+      if (!res.ok) {
+        const errorText: string = await res.text();
+        console.warn(`[Pluggy] /v2/transactions sem data retorno ${res.status}: ${errorText}`);
+        break;
+      }
+
+      const data: any = await res.json();
+      const results: PluggyTransaction[] = data?.results || [];
+      if (results.length > 0) {
+        allTxs.push(...results);
+      }
+
+      if (data?.next) {
+        nextUrl = data.next.startsWith('http')
+          ? data.next
+          : `${PLUGGY_API_BASE}/v2/transactions${data.next.startsWith('?') ? '' : '?'}${data.next}`;
+      } else {
+        nextUrl = null;
+      }
+    }
+
+    if (allTxs.length > 0) {
+      console.log(`[Pluggy] ✅ Total de ${allTxs.length} transação(ões) obtidas via v2 (sem filtro de data).`);
+      return allTxs;
+    }
+  } catch (err) {
+    console.warn(`[Pluggy] Falha ao consultar /v2/transactions sem filtro para conta ${accountId}:`, err);
+  }
+
+  // Estratégia 3: Fallback para endpoint v1 legado (/transactions)
+  try {
+    const v1Url = `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`;
+    console.log(`[Pluggy] Fallback v1: ${v1Url}...`);
+    const res: Response = await fetch(v1Url, {
+      headers: { 'X-API-KEY': apiKey },
+    });
+
+    if (res.ok) {
+      const data: any = await res.json();
+      const results: PluggyTransaction[] = data?.results || [];
+      if (results.length > 0) {
+        console.log(`[Pluggy] ✅ Total de ${results.length} transação(ões) obtidas via v1.`);
+        return results;
+      }
+    } else {
+      const errorText: string = await res.text();
+      console.warn(`[Pluggy] /transactions v1 retorno ${res.status}: ${errorText}`);
+    }
+  } catch (err) {
+    console.warn(`[Pluggy] Falha ao consultar fallback v1 para conta ${accountId}:`, err);
   }
 
   return allTxs;

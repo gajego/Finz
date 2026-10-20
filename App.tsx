@@ -52,8 +52,8 @@ export default function App() {
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
   const profile = useWalletStore((s) => s.profile);
 
-  // Monitoramento periódico contínuo da Pluggy a cada 5 segundos com sincronização e diff de transações
-  usePluggyMonitor(5000);
+  // Monitoramento periódico contínuo da Pluggy a cada 10 segundos com requisições teste e diff de transações
+  usePluggyMonitor(10000);
 
   useEffect(() => {
     initStore();

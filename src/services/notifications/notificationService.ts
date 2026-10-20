@@ -170,10 +170,19 @@ export async function sendLocalNotification({
   badge,
 }: SendLocalNotificationParams): Promise<string | undefined> {
   if (!Notifications) {
-    console.log('[NotificationService] Notificação enviada:', title, body);
+    console.log('[NotificationService] Notificação enviada (sem módulo nativo):', title, body);
     return undefined;
   }
   try {
+    const hasPerm = await hasNotificationPermissions();
+    if (!hasPerm) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        console.warn('[NotificationService] ⚠️ Notificação cancelada: permissão não concedida no dispositivo (iOS/Android).');
+        return undefined;
+      }
+    }
+
     // Configura trigger com canal específico no Android para acionar alta prioridade
     const trigger =
       Platform.OS === 'android' && channelId ? { channelId } : null;
@@ -190,11 +199,25 @@ export async function sendLocalNotification({
       trigger,
     });
 
+    console.log(`[NotificationService] ✅ Notificação enviada com sucesso [${identifier}]: "${title}" - "${body}"`);
     return identifier;
   } catch (error) {
     console.error('[NotificationService] Falha ao disparar notificação local:', error);
     return undefined;
   }
+}
+
+/**
+ * Dispara notificação de teste para verificar se o sistema nativo está 100% ativo
+ */
+export async function sendTestNotification(): Promise<string | undefined> {
+  await requestNotificationPermissions();
+  return sendLocalNotification({
+    title: '🔔 Finz • Notificações Ativas',
+    body: 'Teste recebido com sucesso! Seus alertas bancários em tempo real estão funcionando no seu celular.',
+    channelId: NOTIFICATION_CHANNELS.ALERTS,
+    data: { type: 'TEST_NOTIFICATION' },
+  });
 }
 
 /**
@@ -340,6 +363,7 @@ export const notificationService = {
   hasPermissions: hasNotificationPermissions,
   setupChannels: setupNotificationChannels,
   sendLocalNotification,
+  sendTestNotification,
   notifyNewTransaction,
   notifyBalanceChange,
   formatCentsToBRL,

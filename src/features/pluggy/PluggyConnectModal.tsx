@@ -23,17 +23,20 @@ import {
   Trash2,
   ArrowRight,
   CheckCircle2,
+  Bell,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, LetterSpacing } from '@/theme/typography';
 import {
   getPluggyCredentials,
+  getPluggyCredentialsWithSource,
   savePluggyCredentials,
   clearPluggyCredentials,
   openPluggyConnectWidget,
   syncAllPluggyItems,
   getPluggyItemIds,
 } from '@/services/pluggy/pluggyService';
+import { sendTestNotification } from '@/services/notifications/notificationService';
 import { PulseLoader } from '@/components/ui/PulseLoader';
 
 interface PluggyConnectModalProps {
@@ -52,6 +55,7 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [credsSource, setCredsSource] = useState<'env' | 'sqlite' | 'none'>('none');
 
   useEffect(() => {
     if (visible) {
@@ -60,9 +64,10 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
   }, [visible]);
 
   const loadState = () => {
-    const creds = getPluggyCredentials();
+    const { creds, source } = getPluggyCredentialsWithSource();
     const items = getPluggyItemIds();
     setConnectedItemsCount(items.length);
+    setCredsSource(source);
 
     if (creds) {
       setClientId(creds.clientId);
@@ -72,6 +77,25 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
     } else {
       setHasSavedCreds(false);
       setIsEditing(true);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      const id = await sendTestNotification();
+      if (id) {
+        Alert.alert(
+          'Notificação Enviada!',
+          'Uma notificação nativa de teste foi enviada para o seu aparelho. Verifique a barra de notificações do seu celular (iOS/Android).'
+        );
+      } else {
+        Alert.alert(
+          'Atenção às Permissões',
+          'Não foi possível disparar a notificação. Verifique se as notificações do app Finz estão autorizadas nas Configurações do seu celular.'
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Erro ao disparar', e?.message || 'Falha ao disparar notificação local.');
     }
   };
 
@@ -215,12 +239,16 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
                   >
                     <CheckCircle2 size={14} color={colors.success} />
                     <Text style={[styles.statusPillText, { color: colors.success }]}>
-                      AUTENTICADO COM PLUGGY
+                      {credsSource === 'env'
+                        ? 'CREDENCIAS VIA PROCESS.ENV'
+                        : 'AUTENTICADO COM PLUGGY'}
                     </Text>
                   </View>
 
                   <Text style={[styles.connectedDesc, { color: colors.textSecondary }]}>
-                    Seu Client ID está configurado. Você pode abrir o widget oficial para conectar um novo banco ou sincronizar os cartões e faturas existentes.
+                    {credsSource === 'env'
+                      ? 'Suas chaves de API estão sendo carregadas de forma segura das variáveis de ambiente (.env).'
+                      : 'Seu Client ID está configurado. Você pode abrir o widget oficial para conectar um novo banco ou sincronizar os cartões e faturas existentes.'}
                   </Text>
 
                   {connectedItemsCount > 0 && (
@@ -270,6 +298,24 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
                     <RefreshCw size={16} color={colors.text} />
                     <Text style={[styles.actionBtnSecondaryText, { color: colors.text }]}>
                       SINCRONIZAR AGORA
+                    </Text>
+                  </Pressable>
+
+                  {/* Botão de Teste Nativo de Notificação */}
+                  <Pressable
+                    onPress={handleTestNotification}
+                    style={({ pressed }) => [
+                      styles.actionBtnSecondary,
+                      {
+                        backgroundColor: colors.surfaceElevated,
+                        borderColor: colors.borderSubtle,
+                        opacity: pressed ? 0.85 : 1,
+                      },
+                    ]}
+                  >
+                    <Bell size={16} color={colors.primary} />
+                    <Text style={[styles.actionBtnSecondaryText, { color: colors.primary }]}>
+                      TESTAR NOTIFICAÇÃO NO CELULAR
                     </Text>
                   </Pressable>
 

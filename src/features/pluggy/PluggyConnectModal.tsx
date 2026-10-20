@@ -24,6 +24,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Bell,
+  CreditCard,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, LetterSpacing } from '@/theme/typography';
@@ -259,6 +260,13 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
                       </Text>
                     </View>
                   )}
+
+                  <View style={[styles.infoBanner, { backgroundColor: colors.surfaceSubtle, borderColor: colors.borderSubtle, marginTop: 4 }]}>
+                    <CreditCard size={15} color={colors.primary} />
+                    <Text style={[styles.infoBannerText, { color: colors.textSecondary, fontSize: 11 }]}>
+                      Busque pelo nome do seu banco (ex: Nubank, Itaú) ou "Sandbox Open Finance" para testar cartões e faturas.
+                    </Text>
+                  </View>
 
                   {/* Botão Primário: Conectar Novo Banco no Widget */}
                   <Pressable

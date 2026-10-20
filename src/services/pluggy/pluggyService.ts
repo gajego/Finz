@@ -241,6 +241,7 @@ export async function createConnectToken(itemId?: string): Promise<string> {
   const options: Record<string, any> = {
     oauthRedirectUri: 'finz://pluggy-callback',
     includeSandbox: true,
+    products: ['ACCOUNTS', 'CREDIT_CARDS', 'TRANSACTIONS', 'PAYMENT_DATA'],
   };
 
   if (itemId) {
@@ -270,7 +271,7 @@ export async function createConnectToken(itemId?: string): Promise<string> {
  */
 export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', itemId?: string): Promise<string> {
   const connectToken = await createConnectToken(itemId);
-  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&includeSandbox=true&theme=${theme}`;
+  const widgetUrl = `https://connect.pluggy.ai/?connect_token=${encodeURIComponent(connectToken)}&connectToken=${encodeURIComponent(connectToken)}&includeSandbox=true&theme=${theme}&products=ACCOUNTS,CREDIT_CARDS,TRANSACTIONS`;
   await Linking.openURL(widgetUrl);
   return widgetUrl;
 }

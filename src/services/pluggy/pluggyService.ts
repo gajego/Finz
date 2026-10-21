@@ -36,6 +36,18 @@ export interface PluggyTransaction {
   date: string;
   category?: string;
   type: 'DEBIT' | 'CREDIT';
+  operationType?: string;
+  merchant?: {
+    businessName?: string;
+    category?: string;
+  };
+  creditCardMetadata?: {
+    purchaseDate?: string;
+    transactionDateTime?: string;
+    cardNumber?: string;
+    installmentNumber?: number;
+    totalInstallments?: number;
+  };
 }
 
 /**
@@ -281,24 +293,21 @@ export async function openPluggyConnectWidget(theme: 'light' | 'dark' = 'dark', 
 }
 
 /**
- * Busca transações com estratégia resiliente e cursor-based pagination da Pluggy v2
+ * Busca transações com cursor-based pagination da Pluggy v2
  */
-async function fetchTransactionsFromPluggy(
+export async function fetchTransactionsFromPluggy(
   accountId: string,
   apiKey: string,
-  fromDate: string,
-  pageSize: number = 100
+  maxPages: number = 15
 ): Promise<PluggyTransaction[]> {
   const allTxs: PluggyTransaction[] = [];
+  let nextUrl: string | null = `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}`;
+  let pageCount = 0;
 
-  // Estratégia 1: Endpoint v2 oficial com filtro de data (últimos 30 dias) e cursor pagination
   try {
-    let nextUrl: string | null = `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`;
-    let pageCount = 0;
-
-    while (nextUrl && pageCount < 10) {
+    while (nextUrl && pageCount < maxPages) {
       pageCount++;
-      console.log(`[Pluggy] GET ${nextUrl} (Página ${pageCount})...`);
+      console.log(`[Pluggy] GET ${nextUrl} (Página ${pageCount}/${maxPages})...`);
       const res: Response = await fetch(nextUrl, {
         headers: { 'X-API-KEY': apiKey },
       });
@@ -310,100 +319,49 @@ async function fetchTransactionsFromPluggy(
       }
 
       const data: any = await res.json();
-      const results: PluggyTransaction[] = data?.results || [];
+      const results: PluggyTransaction[] = Array.isArray(data?.results) ? data.results : [];
       if (results.length > 0) {
         allTxs.push(...results);
       }
 
-      // Cursor de paginação da Pluggy: campo `next`
+      // Cursor pagination da Pluggy v2 via data.next
       if (data?.next) {
         nextUrl = data.next.startsWith('http')
           ? data.next
-          : `${PLUGGY_API_BASE}/v2/transactions${data.next.startsWith('?') ? '' : '?'}${data.next}`;
+          : `https://api.pluggy.ai/v2/transactions${data.next.startsWith('?') ? '' : '?'}${data.next}`;
       } else {
         nextUrl = null;
       }
     }
 
-    if (allTxs.length > 0) {
-      console.log(`[Pluggy] ✅ Total de ${allTxs.length} transação(ões) obtidas via v2 (com data).`);
-      return allTxs;
-    }
+    console.log(`[Pluggy] ✅ Total de ${allTxs.length} transação(ões) obtidas via v2 para conta ${accountId}.`);
   } catch (err) {
-    console.warn(`[Pluggy] Falha ao consultar /v2/transactions com filtro de data para conta ${accountId}:`, err);
-  }
-
-  // Estratégia 2: Se não retornou nada com filtro de data, consulta v2 sem filtro de data (todo o histórico do banco)
-  try {
-    let nextUrl: string | null = `${PLUGGY_API_BASE}/v2/transactions?accountId=${accountId}&pageSize=${pageSize}`;
-    let pageCount = 0;
-
-    while (nextUrl && pageCount < 5) {
-      pageCount++;
-      console.log(`[Pluggy] GET v2 sem filtro: ${nextUrl}...`);
-      const res: Response = await fetch(nextUrl, {
-        headers: { 'X-API-KEY': apiKey },
-      });
-
-      if (!res.ok) {
-        const errorText: string = await res.text();
-        console.warn(`[Pluggy] /v2/transactions sem data retorno ${res.status}: ${errorText}`);
-        break;
-      }
-
-      const data: any = await res.json();
-      const results: PluggyTransaction[] = data?.results || [];
-      if (results.length > 0) {
-        allTxs.push(...results);
-      }
-
-      if (data?.next) {
-        nextUrl = data.next.startsWith('http')
-          ? data.next
-          : `${PLUGGY_API_BASE}/v2/transactions${data.next.startsWith('?') ? '' : '?'}${data.next}`;
-      } else {
-        nextUrl = null;
-      }
-    }
-
-    if (allTxs.length > 0) {
-      console.log(`[Pluggy] ✅ Total de ${allTxs.length} transação(ões) obtidas via v2 (sem filtro de data).`);
-      return allTxs;
-    }
-  } catch (err) {
-    console.warn(`[Pluggy] Falha ao consultar /v2/transactions sem filtro para conta ${accountId}:`, err);
-  }
-
-  // Estratégia 3: Fallback para endpoint v1 legado (/transactions)
-  try {
-    const v1Url = `${PLUGGY_API_BASE}/transactions?accountId=${accountId}&from=${fromDate}&pageSize=${pageSize}`;
-    console.log(`[Pluggy] Fallback v1: ${v1Url}...`);
-    const res: Response = await fetch(v1Url, {
-      headers: { 'X-API-KEY': apiKey },
-    });
-
-    if (res.ok) {
-      const data: any = await res.json();
-      const results: PluggyTransaction[] = data?.results || [];
-      if (results.length > 0) {
-        console.log(`[Pluggy] ✅ Total de ${results.length} transação(ões) obtidas via v1.`);
-        return results;
-      }
-    } else {
-      const errorText: string = await res.text();
-      console.warn(`[Pluggy] /transactions v1 retorno ${res.status}: ${errorText}`);
-    }
-  } catch (err) {
-    console.warn(`[Pluggy] Falha ao consultar fallback v1 para conta ${accountId}:`, err);
+    console.warn(`[Pluggy] Falha ao consultar /v2/transactions para conta ${accountId}:`, err);
   }
 
   return allTxs;
 }
 
+// Locks em memória para garantir idempotência contra chamadas paralelas concorrentes
+const activeItemSyncs = new Map<string, Promise<{ cardsCount: number; txCount: number }>>();
+let activeSyncAllPromise: Promise<{ cardsTotal: number; txTotal: number }> | null = null;
+
 /**
- * Sincroniza contas e cartões de um ItemId conectado
+ * Sincroniza contas e cartões de um ItemId conectado (com lock de concorrência)
  */
 export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
+  const running = activeItemSyncs.get(itemId);
+  if (running) {
+    return running;
+  }
+  const promise = doSyncPluggyItem(itemId).finally(() => {
+    activeItemSyncs.delete(itemId);
+  });
+  activeItemSyncs.set(itemId, promise);
+  return promise;
+}
+
+async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
   const apiKey = await getValidApiKey();
 
   // 1. Busca dados do conector (banco)
@@ -430,7 +388,7 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   }
 
   const accData = await accRes.json();
-  const accounts: PluggyAccount[] = accData.results || [];
+  const accounts: PluggyAccount[] = Array.isArray(accData?.results) ? accData.results : [];
 
   const store = useWalletStore.getState();
   const cardholder = (store.profile.fullName || store.profile.nickname || 'MEU CARTAO').toUpperCase();
@@ -441,7 +399,10 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
 
   // Saldo real em conta corrente em centavos (soma se houver mais de uma conta corrente)
   const totalBankBalanceCents = bankAccounts.reduce(
-    (sum, acc) => sum + Math.round((acc.balance || 0) * 100),
+    (sum, acc) => {
+      const bal = typeof acc.balance === 'number' && Number.isFinite(acc.balance) ? acc.balance : 0;
+      return sum + Math.round(bal * 100);
+    },
     0
   );
 
@@ -455,10 +416,12 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   if (creditAccounts.length > 0) {
     for (const cAcc of creditAccounts) {
       const cardId = `pluggy_card_${cAcc.id}`;
-      const lastFour = (cAcc.number || '').replace(/\D/g, '').slice(-4) || '1234';
-      const balanceCents = Math.round(Math.abs(cAcc.balance || 0) * 100);
-      const limitCents = cAcc.creditData?.limit
-        ? Math.round(cAcc.creditData.limit * 100)
+      const lastFour = (cAcc.number ? String(cAcc.number) : '').replace(/\D/g, '').slice(-4) || '1234';
+      const rawBal = typeof cAcc.balance === 'number' && Number.isFinite(cAcc.balance) ? cAcc.balance : 0;
+      const balanceCents = Math.round(Math.abs(rawBal) * 100);
+      const rawLimit = cAcc.creditData?.limit;
+      const limitCents = typeof rawLimit === 'number' && Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.round(rawLimit * 100)
         : Math.max(balanceCents, 200000);
 
       // Nome do cartão em si retornado pela Pluggy (evita nome genérico 'PLUGGY')
@@ -504,8 +467,9 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   } else if (bankAccounts.length > 0) {
     for (const bAcc of bankAccounts) {
       const cardId = `pluggy_card_${bAcc.id}`;
-      const lastFour = (bAcc.number || '').replace(/\D/g, '').slice(-4) || '0001';
-      const bankBalanceCents = Math.round((bAcc.balance || 0) * 100);
+      const lastFour = (bAcc.number ? String(bAcc.number) : '').replace(/\D/g, '').slice(-4) || '0001';
+      const rawBal = typeof bAcc.balance === 'number' && Number.isFinite(bAcc.balance) ? bAcc.balance : 0;
+      const bankBalanceCents = Math.round(rawBal * 100);
 
       // Nome da conta/cartão em si retornado pela Pluggy
       let accountDisplayName = bAcc.name?.trim() || '';
@@ -544,85 +508,166 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
         bankBalance: bankBalanceCents,
       });
     }
-  }
-
-  // Persiste cada cartão atualizado no SQLite e monitora alterações de saldo bancário
-  for (const card of cardsToProcess) {
-    const previousRow = db.getFirstSync<{ bank_balance: number }>(
-      'SELECT bank_balance FROM cards WHERE id = ?',
-      [card.id]
-    );
-
-    db.runSync(
-      `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        card.id,
-        card.bankName,
-        card.packageName,
-        card.lastFourDigits,
-        card.gradient[0],
-        card.gradient[1],
-        card.wallpaperUri || null,
-        card.accentColor,
-        card.cardholderName,
-        card.balance,
-        card.limit,
-        card.bankBalance || 0,
-      ]
-    );
-    cardsCount++;
-
-    // Dispara notificação nativa se o saldo bancário da conta corrente mudou
-    if (
-      previousRow &&
-      typeof previousRow.bank_balance === 'number' &&
-      card.bankBalance !== undefined &&
-      previousRow.bank_balance !== card.bankBalance
-    ) {
-      notifyBalanceChange(card.bankName, previousRow.bank_balance, card.bankBalance);
+  } else if (accounts.length > 0) {
+    for (const acc of accounts) {
+      const cardId = `pluggy_card_${acc.id}`;
+      const lastFour = (acc.number ? String(acc.number) : '').replace(/\D/g, '').slice(-4) || '0001';
+      const rawBal = typeof acc.balance === 'number' && Number.isFinite(acc.balance) ? acc.balance : 0;
+      const balanceCents = Math.round(rawBal * 100);
+      const theme = getBankPresetTheme(acc.name || connectorName);
+      cardsToProcess.push({
+        id: cardId,
+        bankName: (acc.name || connectorName).toUpperCase(),
+        packageName: theme.packageName,
+        lastFourDigits: lastFour,
+        gradient: theme.gradient,
+        accentColor: theme.color,
+        cardholderName: cardholder,
+        balance: 0,
+        limit: 0,
+        bankBalance: balanceCents,
+      });
     }
   }
 
-  // Define o cartão principal alvo para associar transações de contas correntes
-  const primaryCardId = cardsToProcess.length > 0 ? cardsToProcess[0].id : `pluggy_card_${itemId}`;
+  // Se nenhum cartão foi gerado, cria um genérico para o conector
+  if (cardsToProcess.length === 0) {
+    const cardId = `pluggy_card_${itemId}`;
+    const theme = getBankPresetTheme(connectorName);
+    cardsToProcess.push({
+      id: cardId,
+      bankName: connectorName.toUpperCase(),
+      packageName: theme.packageName,
+      lastFourDigits: '0001',
+      gradient: theme.gradient,
+      accentColor: theme.color,
+      cardholderName: cardholder,
+      balance: 0,
+      limit: 0,
+      bankBalance: 0,
+    });
+  }
 
-  // Janela retroativa dos últimos 30 dias (YYYY-MM-DD)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const fromDate = thirtyDaysAgo.toISOString().slice(0, 10);
+  // Persiste cada cartão atualizado no SQLite e monitora alterações de saldo bancário de forma atômica
+  const cardBalanceNotifications: Array<{ bankName: string; prev: number; curr: number }> = [];
 
-  // 3. Sincroniza todas as transações dos últimos 30 dias de todas as contas do conector
+  const saveCardsBatch = () => {
+    for (const card of cardsToProcess) {
+      const previousRow = db.getFirstSync<{ bank_balance: number }>(
+        'SELECT bank_balance FROM cards WHERE id = ?',
+        [card.id]
+      );
+
+      db.runSync(
+        `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          card.id,
+          card.bankName,
+          card.packageName,
+          card.lastFourDigits,
+          card.gradient[0],
+          card.gradient[1],
+          card.wallpaperUri || null,
+          card.accentColor,
+          card.cardholderName,
+          card.balance,
+          card.limit,
+          card.bankBalance || 0,
+        ]
+      );
+      cardsCount++;
+
+      // Detecta alteração de saldo bancário na conta corrente
+      const previousBankBalance = Number(previousRow?.bank_balance ?? 0);
+      const newBankBalance = Number(card.bankBalance ?? 0);
+      if (previousRow && previousBankBalance !== newBankBalance) {
+        cardBalanceNotifications.push({
+          bankName: card.bankName,
+          prev: previousBankBalance,
+          curr: newBankBalance,
+        });
+      }
+    }
+  };
+
+  if (typeof (db as any).withTransactionSync === 'function') {
+    (db as any).withTransactionSync(saveCardsBatch);
+  } else {
+    saveCardsBatch();
+  }
+
+  for (const notif of cardBalanceNotifications) {
+    await notifyBalanceChange(notif.bankName, notif.prev, notif.curr);
+  }
+
+  // Define o cartão principal alvo para associar transações
+  const primaryCardId = cardsToProcess[0].id;
+
+  // Carrega IDs existentes previamente para diffing O(1) de alta performance sem falsos positivos
+  const existingTxRows = db.getAllSync<{ id: string }>('SELECT id FROM transactions');
+  const existingTxIds = new Set<string>(existingTxRows.map((r) => r.id));
+
+  // 3. Sincroniza todas as transações de todas as contas do conector
   for (const acc of accounts) {
     try {
-      // Define a qual cartão esta transação deve ser vinculada
-      const targetCardId =
-        acc.type === 'CREDIT'
-          ? `pluggy_card_${acc.id}`
-          : primaryCardId;
-
+      // Define a qual cartão esta transação deve ser vinculada:
+      // Se houver um cartão explicitamente criado com pluggy_card_${acc.id}, usa ele;
+      // caso contrário, vincula ao cartão principal (primaryCardId).
+      const exactCard = cardsToProcess.find((c) => c.id === `pluggy_card_${acc.id}`);
+      const targetCardId = exactCard ? exactCard.id : primaryCardId;
       const matchedCard = cardsToProcess.find((c) => c.id === targetCardId) || cardsToProcess[0];
       const targetCardName = matchedCard?.bankName || connectorName;
 
       const newTxsToNotify: Transaction[] = [];
 
-      // Consulta resiliente em todas as variações de endpoints (v2 e v1)
-      const currentResults = await fetchTransactionsFromPluggy(acc.id, apiKey, fromDate, 100);
+      // Consulta v2 oficial com cursor pagination sem from/pageSize
+      const currentResults = await fetchTransactionsFromPluggy(acc.id, apiKey);
+
+      const transactionsToPersist: Transaction[] = [];
 
       for (const t of currentResults) {
-        const txId = `pluggy_tx_${t.id}`;
-        const amountCents = Math.round(Math.abs(t.amount) * 100);
-        const timestamp = new Date(t.date).getTime() || Date.now();
-        const categoryId = mapPluggyCategoryToFinz(t.category);
+        if (!t || typeof t !== 'object') continue;
+        const rawId = t.id ? String(t.id).trim() : '';
+        if (!rawId) continue;
+        const txId = `pluggy_tx_${rawId}`;
 
-        // Verifica se já existia previamente no SQLite local (diffing)
-        const existingTx = db.getFirstSync<{ id: string }>(
-          'SELECT id FROM transactions WHERE id = ?',
-          [txId]
-        );
+        // Coerção segura de amount
+        const rawAmount = typeof t.amount === 'number' && Number.isFinite(t.amount)
+          ? t.amount
+          : typeof t.amount === 'string'
+          ? parseFloat(t.amount)
+          : 0;
+        const safeAmount = Number.isFinite(rawAmount) ? rawAmount : 0;
+        const amountCents = Math.round(Math.abs(safeAmount) * 100);
+
+        // Captura de data precisa e resiliente a datas inválidas
+        const dateStr =
+          (t.creditCardMetadata?.purchaseDate && String(t.creditCardMetadata.purchaseDate).trim()) ||
+          (t.creditCardMetadata?.transactionDateTime && String(t.creditCardMetadata.transactionDateTime).trim()) ||
+          (t.date && String(t.date).trim());
+        const parsedTime = dateStr ? new Date(dateStr).getTime() : NaN;
+        const timestamp = Number.isFinite(parsedTime) && parsedTime > 0 ? parsedTime : Date.now();
+
+        // Nome/Merchant limpo com fallback robusto
+        const rawMerchantName =
+          (t.merchant?.businessName && String(t.merchant.businessName).trim()) ||
+          (t.description && String(t.description).trim()) ||
+          'Transação Open Finance';
+
+        let cleanDescription = rawMerchantName
+          .replace(/^(compra\s+no\s+(débito|debito|crédito|credito)|compra\s+[àa]\s+vista|pagamento\s+via\s+pix|pix\s+(enviado|recebido))[|\s:-]+/i, '')
+          .trim();
+        if (!cleanDescription) {
+          cleanDescription = rawMerchantName || 'Transação Open Finance';
+        }
+
+        const categoryId = mapPluggyCategoryToFinz(t.category || t.merchant?.category);
 
         // Classificação inteligente de Pix e Crédito/Débito
-        const isCredit = t.type === 'CREDIT' || (typeof t.amount === 'number' && t.amount > 0);
-        const isPix = /pix/i.test(t.description || '');
+        const isCredit = t.type === 'CREDIT' || safeAmount > 0;
+        const descForPix = `${t.description || ''} ${t.operationType || ''} ${cleanDescription}`;
+        const isPix = /pix/i.test(descForPix);
 
         let txType: TransactionType;
         if (isPix) {
@@ -636,48 +681,65 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
           cardId: targetCardId,
           amount: amountCents,
           type: txType,
-          merchant: t.description || 'Transação Open Finance',
+          merchant: cleanDescription,
           categoryId: categoryId,
           timestamp: timestamp,
-          rawText: `Pluggy: ${t.description}`,
+          rawText: `Pluggy: ${t.description || cleanDescription}`,
         };
 
-        db.runSync(
-          `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            transaction.id,
-            transaction.cardId,
-            transaction.amount,
-            transaction.type,
-            transaction.merchant,
-            transaction.categoryId,
-            transaction.timestamp,
-            transaction.rawText || null,
-          ]
-        );
+        transactionsToPersist.push(transaction);
 
-        // Se a transação não existia no banco local, agenda notificação
-        if (!existingTx) {
+        // Diffing: se a transação não existia previamente no SQLite local, contabiliza e agenda notificação
+        if (!existingTxIds.has(txId)) {
+          existingTxIds.add(txId);
           txCount++;
           newTxsToNotify.push(transaction);
         }
       }
 
+      // Executa inserções transacionais em lote de alto desempenho (ACID)
+      if (transactionsToPersist.length > 0) {
+        const insertBatch = () => {
+          for (const tx of transactionsToPersist) {
+            db.runSync(
+              `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                tx.id,
+                tx.cardId,
+                tx.amount,
+                tx.type,
+                tx.merchant,
+                tx.categoryId,
+                tx.timestamp,
+                tx.rawText || null,
+              ]
+            );
+          }
+        };
+
+        if (typeof (db as any).withTransactionSync === 'function') {
+          (db as any).withTransactionSync(insertBatch);
+        } else {
+          insertBatch();
+        }
+      }
+
       // Notifica o usuário sobre movimentações novas (Pix ou transações)
       if (newTxsToNotify.length > 0) {
-        if (newTxsToNotify.length <= 5) {
-          for (const newTx of newTxsToNotify) {
+        const sortedNew = [...newTxsToNotify].sort((a, b) => b.timestamp - a.timestamp);
+        if (sortedNew.length <= 5) {
+          for (const newTx of sortedNew) {
             await notifyNewTransaction(newTx, targetCardName);
           }
         } else {
           // Notifica os 3 mais recentes individualmente
-          for (const newTx of newTxsToNotify.slice(0, 3)) {
+          for (const newTx of sortedNew.slice(0, 3)) {
             await notifyNewTransaction(newTx, targetCardName);
           }
           // Notificação de resumo para o restante do lote
           await notifyNewTransaction(
-            `${newTxsToNotify.length} movimentações recebidas`,
+            `${sortedNew.length} novas movimentações sincronizadas`,
             0,
             targetCardName
           );
@@ -700,9 +762,19 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
 }
 
 /**
- * Sincroniza todos os bancos conectados anteriormente
+ * Sincroniza todos os bancos conectados anteriormente (com lock de concorrência)
  */
 export async function syncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: number }> {
+  if (activeSyncAllPromise) {
+    return activeSyncAllPromise;
+  }
+  activeSyncAllPromise = doSyncAllPluggyItems().finally(() => {
+    activeSyncAllPromise = null;
+  });
+  return activeSyncAllPromise;
+}
+
+async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: number }> {
   const itemIds = getPluggyItemIds();
   let cardsTotal = 0;
   let txTotal = 0;
@@ -766,24 +838,62 @@ function getBankPresetTheme(name: string): {
 }
 
 /**
- * Mapeia categorias da Pluggy para as categorias locais do Finz
+ * Mapeia categorias da Pluggy para as categorias canônicas locais do Finz
  */
 function mapPluggyCategoryToFinz(pluggyCategory?: string): string {
-  if (!pluggyCategory) return 'cat_outros';
+  if (!pluggyCategory) return 'cat_food';
   const lower = pluggyCategory.toLowerCase();
 
-  if (lower.includes('aliment') || lower.includes('restauran') || lower.includes('refei') || lower.includes('supermercad')) {
-    return 'cat_alimentacao';
+  if (
+    lower.includes('aliment') ||
+    lower.includes('restauran') ||
+    lower.includes('refei') ||
+    lower.includes('supermercad') ||
+    lower.includes('mercado') ||
+    lower.includes('food') ||
+    lower.includes('padaria') ||
+    lower.includes('café') ||
+    lower.includes('cafe')
+  ) {
+    return 'cat_food';
   }
-  if (lower.includes('transporte') || lower.includes('uber') || lower.includes('combust') || lower.includes('viag')) {
-    return 'cat_transporte';
+  if (
+    lower.includes('transporte') ||
+    lower.includes('uber') ||
+    lower.includes('combust') ||
+    lower.includes('viag') ||
+    lower.includes('posto') ||
+    lower.includes('carro') ||
+    lower.includes('99') ||
+    lower.includes('estaciona')
+  ) {
+    return 'cat_transport';
   }
-  if (lower.includes('lazer') || lower.includes('jogos') || lower.includes('eletron') || lower.includes('setup') || lower.includes('entreten')) {
-    return 'cat_lazer';
+  if (
+    lower.includes('lazer') ||
+    lower.includes('jogos') ||
+    lower.includes('eletron') ||
+    lower.includes('setup') ||
+    lower.includes('entreten') ||
+    lower.includes('cinema') ||
+    lower.includes('stream') ||
+    lower.includes('game') ||
+    lower.includes('steam') ||
+    lower.includes('playstation')
+  ) {
+    return 'cat_leisure';
   }
-  if (lower.includes('invest') || lower.includes('aplica') || lower.includes('renda') || lower.includes('bolsa')) {
-    return 'cat_investimentos';
+  if (
+    lower.includes('invest') ||
+    lower.includes('aplica') ||
+    lower.includes('renda') ||
+    lower.includes('bolsa') ||
+    lower.includes('shopping') ||
+    lower.includes('compra') ||
+    lower.includes('loja')
+  ) {
+    return 'cat_shopping';
   }
 
-  return 'cat_outros';
+  return 'cat_food';
 }

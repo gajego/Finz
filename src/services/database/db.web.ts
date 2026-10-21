@@ -41,6 +41,10 @@ function saveTables() {
  * Driver simulado de SQLite para ambiente Web com persistência em localStorage
  */
 export const db = {
+  withTransactionSync(task: () => void) {
+    task();
+  },
+
   execSync(sql: string) {
     // No-op para comandos DDL em ambiente web
     return;
@@ -205,31 +209,18 @@ export const db = {
       return val !== undefined ? ({ value: val } as unknown as T) : null;
     }
 
-    // 2. SELECT bank_balance FROM cards WHERE id = ?
-    if (/SELECT\s+.*bank_balance.*FROM\s+cards\s+WHERE\s+id\s*=\s*\?/i.test(cleanSql)) {
+    // 2. SELECT ... FROM cards WHERE id = ?
+    if (/FROM\s+cards\s+WHERE\s+id\s*=\s*\?/i.test(cleanSql)) {
       const id = params[0];
       const card = tables.cards[id];
-      return card ? ({ bank_balance: card.bank_balance } as unknown as T) : null;
+      return card ? (card as unknown as T) : null;
     }
 
-    // 3. SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?
-    if (/SELECT\s+.*wallpaper_uri.*FROM\s+cards\s+WHERE\s+id\s*=\s*\?/i.test(cleanSql)) {
-      const id = params[0];
-      const card = tables.cards[id];
-      return card
-        ? ({
-            wallpaper_uri: card.wallpaper_uri,
-            gradient_0: card.gradient_0,
-            gradient_1: card.gradient_1,
-          } as unknown as T)
-        : null;
-    }
-
-    // 4. SELECT id FROM transactions WHERE id = ?
-    if (/SELECT\s+id\s+FROM\s+transactions\s+WHERE\s+id\s*=\s*\?/i.test(cleanSql)) {
+    // 3. SELECT ... FROM transactions WHERE id = ?
+    if (/FROM\s+transactions\s+WHERE\s+id\s*=\s*\?/i.test(cleanSql)) {
       const id = params[0];
       const tx = tables.transactions[id];
-      return tx ? ({ id: tx.id } as unknown as T) : null;
+      return tx ? (tx as unknown as T) : null;
     }
 
     // 5. SELECT count(*) as count FROM categories
@@ -270,6 +261,22 @@ export function initDatabase() {
   purgeMockDataIfPresent();
   checkAndExecuteMonthlyTurnover();
   seedDefaultCategories();
+
+  // Normalização de categorias para integridade referencial com schema canônico
+  try {
+    Object.values(tables.transactions).forEach((tx) => {
+      if (tx.category_id === 'cat_alimentacao' || tx.category_id === 'cat_outros') {
+        tx.category_id = 'cat_food';
+      } else if (tx.category_id === 'cat_transporte') {
+        tx.category_id = 'cat_transport';
+      } else if (tx.category_id === 'cat_lazer') {
+        tx.category_id = 'cat_leisure';
+      } else if (tx.category_id === 'cat_investimentos') {
+        tx.category_id = 'cat_shopping';
+      }
+    });
+    saveTables();
+  } catch {}
 }
 
 function purgeMockDataIfPresent() {
@@ -343,36 +350,36 @@ export function loadAllDataFromSQLite(): {
   const txRows = db.getAllSync<any>('SELECT * FROM transactions ORDER BY timestamp DESC');
 
   const cards: BankCard[] = cardRows.map((r) => ({
-    id: r.id,
-    bankName: r.bank_name,
-    packageName: r.package_name,
-    lastFourDigits: r.last_four,
-    gradient: [r.gradient_0, r.gradient_1],
+    id: String(r.id),
+    bankName: String(r.bank_name || 'BANCO'),
+    packageName: String(r.package_name || 'com.finz.openfinance'),
+    lastFourDigits: String(r.last_four || '0000'),
+    gradient: [String(r.gradient_0 || '#27272A'), String(r.gradient_1 || '#09090B')],
     wallpaperUri: r.wallpaper_uri || undefined,
-    accentColor: r.accent_color,
-    cardholderName: r.cardholder_name,
-    balance: r.balance,
-    limit: r.limit_cents,
-    bankBalance: r.bank_balance || 0,
+    accentColor: String(r.accent_color || '#84CC16'),
+    cardholderName: String(r.cardholder_name || 'MEU CARTAO'),
+    balance: Number(r.balance) || 0,
+    limit: Number(r.limit_cents) || 0,
+    bankBalance: Number(r.bank_balance) || 0,
   }));
 
   const categories: Category[] = catRows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    icon: r.icon,
-    color: r.color,
-    budgetLimit: r.budget_limit,
+    id: String(r.id),
+    name: String(r.name),
+    icon: String(r.icon),
+    color: String(r.color),
+    budgetLimit: Number(r.budget_limit) || 0,
   }));
 
   const transactions: Transaction[] = txRows.map((r) => ({
-    id: r.id,
-    cardId: r.card_id,
-    amount: r.amount,
+    id: String(r.id),
+    cardId: String(r.card_id),
+    amount: Number(r.amount) || 0,
     type: r.type,
-    merchant: r.merchant,
-    categoryId: r.category_id,
-    timestamp: r.timestamp,
-    rawText: r.raw_text,
+    merchant: String(r.merchant || 'Transação'),
+    categoryId: String(r.category_id || 'cat_food'),
+    timestamp: Number(r.timestamp) || 0,
+    rawText: r.raw_text || undefined,
   }));
 
   let profile: UserProfile | undefined = undefined;

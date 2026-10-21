@@ -25,6 +25,7 @@ interface WalletState {
   
   // Ações
   initStore: () => void;
+  reloadFromSQLite: () => void;
   setProfile: (profile: Partial<UserProfile>) => void;
   setActiveCardIndex: (index: number) => void;
   togglePrivacyMode: () => void;
@@ -75,6 +76,20 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     }
   },
 
+  reloadFromSQLite: () => {
+    try {
+      const data = loadAllDataFromSQLite();
+      set({
+        cards: data.cards,
+        categories: data.categories,
+        transactions: data.transactions,
+        ...(data.profile ? { profile: data.profile } : {}),
+      });
+    } catch (e) {
+      console.error('Falha ao recarregar SQLite:', e);
+    }
+  },
+
   setProfile: (data) =>
     set((state) => {
       const updatedProfile = { ...state.profile, ...data };
@@ -91,7 +106,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   addCard: (cardData) => {
     const newCard: BankCard = {
       ...cardData,
-      id: `card_${Date.now()}`,
+      id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     };
     persistCard(newCard);
     set((state) => ({
@@ -136,7 +151,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const state = get();
     const newTx: Transaction = {
       ...tx,
-      id: `tx_${Date.now()}`,
+      id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       timestamp: Date.now(),
     };
 
@@ -157,7 +172,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
               t.type === 'EXPENSE' &&
               t.timestamp >= startOfMonth
           )
-          .reduce((sum, t) => sum + t.amount, 0);
+          .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
         const percent = Math.round((totalSpent / category.budgetLimit) * 100);
 

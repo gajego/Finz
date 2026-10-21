@@ -131,14 +131,14 @@ export default function App() {
   }, [isInitialized, profile.onboardingCompleted]);
 
 
-  // Paginação dinâmica por rolagem para baixo do extrato
-  const [txVisibleCount, setTxVisibleCount] = useState(15);
+  // Paginação dinâmica por rolagem para baixo do extrato (lotes de 30)
+  const [txVisibleCount, setTxVisibleCount] = useState(30);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     // Dispara carregamento de mais itens quando o scroll estiver a 250px do final
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250) {
-      setTxVisibleCount((prev) => prev + 15);
+      setTxVisibleCount((prev) => prev + 30);
     }
   };
 
@@ -193,7 +193,8 @@ export default function App() {
           {/* Extrato com Estilo Editorial Suíço e Estornos */}
           <TransactionList
             visibleCount={txVisibleCount}
-            onEndReached={() => setTxVisibleCount((prev) => prev + 15)}
+            pageSize={30}
+            onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
           />
         </ScrollView>
 

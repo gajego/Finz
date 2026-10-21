@@ -76,51 +76,59 @@ let isSyncing = false;
  * Executa uma rodada de teste e sincronização com diagnóstico completo e logs locais a cada 10s
  */
 export async function pollPluggyNow(): Promise<{ cardsTotal: number; txTotal: number } | null> {
-  // Evita concorrência se já houver sincronização em andamento
+  // Evita concorrência se já houver sincronização em andamento (Lock Mutex)
   if (isSyncing) {
     return null;
   }
+  isSyncing = true;
 
-  const { creds, source } = getPluggyCredentialsWithSource();
-  const hasNotif = await hasNotificationPermissions();
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString('pt-BR', { hour12: false });
 
   console.log('────────────────────────────────────────────────────────');
-  console.log('[Pluggy 10s Test] 📡 Executando checagem periódica (10 segundos)...');
-  console.log(`[Pluggy 10s Test] 🔑 Credenciais: [Origem: ${source.toUpperCase()}]`);
-
-  if (!creds || !creds.clientId || !creds.clientSecret) {
-    const errorMsg = 'Nenhuma credencial configurada em process.env nem no SQLite.';
-    console.warn(`[Pluggy 10s Test] ⚠️ ${errorMsg}`);
-    console.warn('[Pluggy 10s Test] 💡 Dica: adicione EXPO_PUBLIC_PLUGGY_CLIENT_ID e EXPO_PUBLIC_PLUGGY_CLIENT_SECRET no .env ou abra o modal Open Finance.');
-    updateDiagnostic({
-      lastCheckTime: Date.now(),
-      status: 'error',
-      message: 'Credenciais ausentes (.env ou app)',
-      credentialsSource: 'none',
-      hasNotificationPermission: hasNotif,
-      rawError: errorMsg,
-    });
-    return null;
-  }
-
-  const maskedId = creds.clientId.length > 8 ? `${creds.clientId.slice(0, 8)}...` : creds.clientId;
-  console.log(`[Pluggy 10s Test] Client ID detectado: ${maskedId}`);
-  console.log(`[Pluggy 10s Test] 🔔 Permissões de Notificação (iOS/Android): ${hasNotif ? 'AUTORIZADO ✅' : 'PENDENTE / NEGADO ⚠️'}`);
-
-  updateDiagnostic({
-    status: 'checking',
-    credentialsSource: source,
-    hasNotificationPermission: hasNotif,
-    message: 'Consultando API Pluggy...',
-  });
+  console.log(`[Pluggy 10s Monitor] [${timeFormatted}] 📡 Executando checagem periódica (10 segundos)...`);
 
   try {
-    isSyncing = true;
+    const { creds, source } = getPluggyCredentialsWithSource();
+    const hasNotif = await hasNotificationPermissions();
+
+    console.log(`[Pluggy 10s Monitor] 🔑 Credenciais: [Origem: ${source.toUpperCase()}]`);
+
+    if (!creds || !creds.clientId || !creds.clientSecret) {
+      const errorMsg = 'Nenhuma credencial configurada em process.env nem no SQLite.';
+      console.warn(`[Pluggy 10s Monitor] ⚠️ ${errorMsg}`);
+      console.warn('[Pluggy 10s Monitor] 💡 Dica: adicione EXPO_PUBLIC_PLUGGY_CLIENT_ID e EXPO_PUBLIC_PLUGGY_CLIENT_SECRET no .env ou abra o modal Open Finance.');
+      updateDiagnostic({
+        lastCheckTime: Date.now(),
+        status: 'error',
+        message: 'Credenciais ausentes (.env ou app)',
+        credentialsSource: 'none',
+        hasNotificationPermission: hasNotif,
+        rawError: errorMsg,
+      });
+      return null;
+    }
+
+    const maskedId = creds.clientId.length > 8 ? `${creds.clientId.slice(0, 8)}...` : creds.clientId;
+    console.log(`[Pluggy 10s Monitor] Client ID detectado: ${maskedId}`);
+    console.log(`[Pluggy 10s Monitor] 🔔 Permissões de Notificação (iOS/Android): ${hasNotif ? 'AUTORIZADO ✅' : 'PENDENTE / NEGADO ⚠️'}`);
+
+    updateDiagnostic({
+      status: 'checking',
+      credentialsSource: source,
+      hasNotificationPermission: hasNotif,
+      message: 'Consultando API Pluggy...',
+    });
+
     const result = await syncAllPluggyItems();
     const items = getPluggyItemIds();
 
+    if (result.txTotal > 0) {
+      console.log(`[Pluggy 10s Monitor] 🔔 ${result.txTotal} novas transações detectadas e notificadas!`);
+    }
+
     console.log(
-      `[Pluggy 10s Test] ✅ Sucesso! ${items.length} banco(s) conectado(s), ${result.cardsTotal} cartão(ões), ${result.txTotal} novas transações.`
+      `[Pluggy 10s Monitor] ✅ Sucesso! ${items.length} banco(s) conectado(s), ${result.cardsTotal} cartão(ões), ${result.txTotal} novas transações.`
     );
     console.log('────────────────────────────────────────────────────────');
 
@@ -136,7 +144,7 @@ export async function pollPluggyNow(): Promise<{ cardsTotal: number; txTotal: nu
     return result;
   } catch (error: any) {
     const rawError = error?.message || 'Falha de conexão com a API Pluggy';
-    console.error('[Pluggy 10s Test] ❌ Erro durante o ciclo de 10s:', rawError);
+    console.error(`[Pluggy 10s Monitor] [${timeFormatted}] ❌ Erro durante o ciclo de 10s:`, rawError);
     console.log('────────────────────────────────────────────────────────');
 
     updateDiagnostic({
@@ -198,17 +206,21 @@ export function usePluggyMonitor(intervalMs: number = 10000, pauseInBackground: 
     startPluggyPolling(intervalMs);
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      const isComingToForeground =
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active';
+
       if (pauseInBackground) {
-        if (
-          appState.current.match(/inactive|background/) &&
-          nextAppState === 'active'
-        ) {
+        if (isComingToForeground) {
           // App retornou ao primeiro plano: retoma o polling com sync imediato
           startPluggyPolling(intervalMs);
         } else if (nextAppState.match(/inactive|background/)) {
           // App foi para segundo plano: encerra o timer para poupar bateria
           stopPluggyPolling();
         }
+      } else if (isComingToForeground) {
+        // App retornou ao primeiro plano: sincroniza imediatamente
+        pollPluggyNow().catch(() => {});
       }
       appState.current = nextAppState;
     });

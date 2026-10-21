@@ -35,13 +35,14 @@ try {
  * Formata um valor em centavos para a moeda brasileira (BRL)
  */
 export function formatCentsToBRL(cents: number): string {
+  const validCents = Number.isFinite(cents) ? cents : 0;
   try {
-    return (cents / 100).toLocaleString('pt-BR', {
+    return (validCents / 100).toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
   } catch {
-    const val = (cents / 100).toFixed(2).replace('.', ',');
+    const val = (validCents / 100).toFixed(2).replace('.', ',');
     return `R$ ${val}`;
   }
 }
@@ -64,6 +65,7 @@ export async function setupNotificationChannels(): Promise<void> {
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      sound: 'default',
     });
 
     // Canal para Transações e Pagamentos ('finz_transactions')
@@ -77,6 +79,7 @@ export async function setupNotificationChannels(): Promise<void> {
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      sound: 'default',
     });
   } catch (err) {
     console.warn('[NotificationService] Falha ao configurar canais:', err);
@@ -192,9 +195,9 @@ export async function sendLocalNotification({
         title,
         body,
         data,
-        sound: true,
+        sound: 'default',
         color: '#00D09E',
-        badge,
+        badge: typeof badge === 'number' ? badge : 1,
       },
       trigger,
     });
@@ -244,24 +247,40 @@ export async function notifyNewTransaction(
   let amountCents: number;
   let bankName: string;
   let isCredit = false;
+  let txType = '';
 
   if (typeof param1 === 'object' && param1 !== null) {
     // Recebeu objeto Transaction
-    merchant = param1.merchant;
-    amountCents = param1.amount;
-    bankName = (typeof param2 === 'string' ? param2 : '') || 'Finz';
+    merchant = (param1.merchant || 'Transação').trim();
+    const rawAmt = Number(param1.amount);
+    amountCents = Number.isFinite(rawAmt) ? rawAmt : 0;
+    bankName = (typeof param2 === 'string' ? param2.trim() : '') || 'Finz';
     isCredit = param1.type === 'REFUND' || param1.type === 'PIX_IN';
+    txType = param1.type || '';
   } else {
     // Recebeu (merchant, amountCents, bankName)
-    merchant = param1;
-    amountCents = typeof param2 === 'number' ? param2 : 0;
-    bankName = param3 || 'Finz';
+    merchant = (typeof param1 === 'string' ? param1.trim() : '') || 'Transação';
+    const rawAmt = typeof param2 === 'number' ? param2 : Number(param2);
+    amountCents = Number.isFinite(rawAmt) ? rawAmt : 0;
+    bankName = (typeof param3 === 'string' ? param3.trim() : '') || 'Finz';
     isCredit = amountCents < 0;
+  }
+
+  // Notificação de resumo em lote (quando amountCents é 0)
+  if (amountCents === 0) {
+    await sendLocalNotification({
+      title: `Novas Transações • ${bankName}`,
+      body: `${merchant}. Abra o app para conferir seus lançamentos.`,
+      channelId: NOTIFICATION_CHANNELS.TRANSACTIONS,
+      data: { type: 'BATCH_TRANSACTIONS', bankName, merchant },
+    });
+    return;
   }
 
   const isPix =
     /pix/i.test(merchant) ||
-    (typeof param1 === 'object' && param1 !== null && (param1.type === 'PIX_IN' || param1.type === 'PIX_OUT'));
+    txType === 'PIX_IN' ||
+    txType === 'PIX_OUT';
   const formattedAmount = formatCentsToBRL(Math.abs(amountCents));
 
   let title: string;
@@ -270,18 +289,18 @@ export async function notifyNewTransaction(
   if (isPix) {
     if (isCredit) {
       title = `Pix Recebido • ${bankName}`;
-      body = `Você recebeu ${formattedAmount} via Pix: ${merchant}`;
+      body = `Você recebeu ${formattedAmount} via Pix de ${merchant}.`;
     } else {
       title = `Pix Enviado • ${bankName}`;
-      body = `Envio de ${formattedAmount} via Pix: ${merchant}`;
+      body = `Transferência Pix de ${formattedAmount} enviada para ${merchant}.`;
     }
   } else {
     if (isCredit) {
-      title = `Crédito Recebido • ${bankName}`;
-      body = `${merchant}: ${formattedAmount} creditado`;
+      title = `Compra Estornada • ${bankName}`;
+      body = `Estorno de ${formattedAmount} confirmado em ${merchant}.`;
     } else {
-      title = `Nova Transação • ${bankName}`;
-      body = `${merchant}: ${formattedAmount} debitado`;
+      title = `Compra Aprovada • ${bankName}`;
+      body = `${merchant} no valor de ${formattedAmount}.`;
     }
   }
 
@@ -324,21 +343,23 @@ export async function notifyBalanceChange(
   let newBalanceCents: number;
 
   if (typeof arg3 === 'number') {
-    oldBalanceCents = arg2;
-    newBalanceCents = arg3;
+    oldBalanceCents = Number.isFinite(arg2) ? arg2 : 0;
+    newBalanceCents = Number.isFinite(arg3) ? arg3 : 0;
   } else {
-    newBalanceCents = arg2;
+    newBalanceCents = Number.isFinite(arg2) ? arg2 : 0;
   }
 
   const formattedNew = formatCentsToBRL(newBalanceCents);
-  const title = `Saldo Atualizado - ${bankName}`;
+  const title = `Saldo Atualizado • ${bankName}`;
 
   let body: string;
-  if (typeof oldBalanceCents === 'number') {
-    const formattedOld = formatCentsToBRL(oldBalanceCents);
-    body = `Saldo alterado de ${formattedOld} para ${formattedNew}.`;
+  if (typeof oldBalanceCents === 'number' && oldBalanceCents !== newBalanceCents) {
+    const diff = newBalanceCents - oldBalanceCents;
+    const formattedDiff = formatCentsToBRL(Math.abs(diff));
+    const direction = diff > 0 ? 'aumento' : 'redução';
+    body = `Seu novo saldo disponível é ${formattedNew} (${direction} de ${formattedDiff}).`;
   } else {
-    body = `Seu novo saldo em ${bankName} é ${formattedNew}.`;
+    body = `Seu novo saldo disponível em ${bankName} é ${formattedNew}.`;
   }
 
   await sendLocalNotification({

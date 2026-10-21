@@ -1,4 +1,4 @@
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { db, loadAllDataFromSQLite } from '@/services/database/db';
 import { BankCard, Transaction, TransactionType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -238,8 +238,13 @@ export async function getValidApiKey(): Promise<string> {
 export async function createConnectToken(itemId?: string): Promise<string> {
   const apiKey = await getValidApiKey();
 
+  const isWeb = Platform.OS === 'web' && typeof window !== 'undefined';
+  const oauthRedirectUri = isWeb
+    ? `${window.location.origin}/?pluggy-callback=true`
+    : 'finz://pluggy-callback';
+
   const options: Record<string, any> = {
-    oauthRedirectUri: 'finz://pluggy-callback',
+    oauthRedirectUri,
     includeSandbox: true,
   };
 
@@ -698,25 +703,6 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
  * Sincroniza todos os bancos conectados anteriormente
  */
 export async function syncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: number }> {
-  // 1. Busca todos os itens remotos cadastrados na Pluggy
-  try {
-    const apiKey = await getValidApiKey();
-    const itemsRes = await fetch(`${PLUGGY_API_BASE}/items`, {
-      headers: { 'X-API-KEY': apiKey },
-    });
-    if (itemsRes.ok) {
-      const data = await itemsRes.json();
-      const remoteItems: any[] = data.results || [];
-      for (const it of remoteItems) {
-        if (it?.id) {
-          savePluggyItemId(it.id);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('[Pluggy] Erro ao sincronizar lista de itens remotos:', e);
-  }
-
   const itemIds = getPluggyItemIds();
   let cardsTotal = 0;
   let txTotal = 0;

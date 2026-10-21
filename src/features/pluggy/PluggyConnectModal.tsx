@@ -35,6 +35,7 @@ import {
   clearPluggyCredentials,
   openPluggyConnectWidget,
   syncAllPluggyItems,
+  syncPluggyItem,
   getPluggyItemIds,
 } from '@/services/pluggy/pluggyService';
 import { sendTestNotification } from '@/services/notifications/notificationService';
@@ -57,6 +58,8 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [credsSource, setCredsSource] = useState<'env' | 'sqlite' | 'none'>('none');
+  const [manualItemId, setManualItemId] = useState('');
+  const [showManualItem, setShowManualItem] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -146,6 +149,30 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
     } catch (err: any) {
       setLoading(false);
       Alert.alert('Erro na Sincronização', err?.message || 'Não foi possível sincronizar os dados bancários.');
+    }
+  };
+
+  const handleSyncManualItem = async () => {
+    if (!manualItemId.trim()) {
+      Alert.alert('Item ID obrigatório', 'Cole o UUID do Item da sua instituição.');
+      return;
+    }
+    setLoading(true);
+    setLoadingMessage('Importando contas e cartões do Item...');
+
+    try {
+      const res = await syncPluggyItem(manualItemId.trim());
+      setLoading(false);
+      Alert.alert(
+        'Item Vinculado!',
+        `Sucesso! ${res.cardsCount} cartão(ões) e ${res.txCount} transação(ões) importados para o Finz.`
+      );
+      setManualItemId('');
+      setShowManualItem(false);
+      loadState();
+    } catch (err: any) {
+      setLoading(false);
+      Alert.alert('Erro ao vincular', err?.message || 'Não foi possível importar dados deste Item.');
     }
   };
 
@@ -326,6 +353,51 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
                       TESTAR NOTIFICAÇÃO NO CELULAR
                     </Text>
                   </Pressable>
+
+                  {/* Opção para vincular diretamente por Item ID */}
+                  {showManualItem ? (
+                    <View style={[styles.manualItemCard, { backgroundColor: colors.surfaceElevated, borderColor: colors.borderSubtle }]}>
+                      <Text style={[styles.manualItemTitle, { color: colors.text }]}>
+                        Vincular por Item ID (UUID)
+                      </Text>
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
+                        value={manualItemId}
+                        onChangeText={setManualItemId}
+                        placeholder="Ex: 12b49d15-19bb-496b-a692-..."
+                        placeholderTextColor={colors.textMuted}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                        <Pressable
+                          onPress={handleSyncManualItem}
+                          style={[styles.actionBtn, { flex: 1, backgroundColor: colors.primary, height: 42 }]}
+                        >
+                          <Text style={[styles.actionBtnText, { color: mode === 'dark' ? '#000' : '#fff', fontSize: 11 }]}>
+                            IMPORTAR CONTAS
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => setShowManualItem(false)}
+                          style={[styles.actionBtnSecondary, { flex: 0.5, backgroundColor: colors.surface, height: 42 }]}
+                        >
+                          <Text style={[styles.actionBtnSecondaryText, { color: colors.textSecondary, fontSize: 11 }]}>
+                            CANCELAR
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  ) : (
+                    <Pressable
+                      onPress={() => setShowManualItem(true)}
+                      style={[styles.actionBtnSecondary, { backgroundColor: colors.surfaceElevated, borderColor: colors.borderSubtle }]}
+                    >
+                      <Text style={[styles.actionBtnSecondaryText, { color: colors.textSecondary, fontSize: 11 }]}>
+                        + VINCULAR POR ITEM ID MANUALMENTE
+                      </Text>
+                    </Pressable>
+                  )}
 
                   {/* Links de Gerenciamento */}
                   <View style={styles.footerLinksRow}>
@@ -672,5 +744,16 @@ const styles = StyleSheet.create({
   cancelEditText: {
     fontFamily: Typography.medium,
     fontSize: 12,
+  },
+  manualItemCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 14,
+    gap: 8,
+  },
+  manualItemTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
 });

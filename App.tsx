@@ -90,12 +90,12 @@ export default function App() {
     }
   };
 
-  // Escuta retornos da autorização do Open Finance (Pluggy redirect finz://pluggy-callback?itemId=...)
+  // Escuta retornos da autorização do Open Finance (Mobile deep link e Web redirect)
   useEffect(() => {
     const handleUrl = async (event: { url: string }) => {
-      const url = event.url;
-      if (url && url.includes('pluggy-callback')) {
-        const match = url.match(/itemId=([a-zA-Z0-9_-]+)/);
+      const url = event.url || (typeof window !== 'undefined' ? window.location.href : '');
+      if (url && (url.includes('pluggy-callback') || /item_?id=/i.test(url))) {
+        const match = url.match(/item_?id=([a-zA-Z0-9_-]+)/i);
         if (match && match[1]) {
           try {
             const { cardsCount, txCount } = await syncPluggyItem(match[1]);
@@ -103,6 +103,9 @@ export default function App() {
               'Banco Conectado!',
               `Sucesso! ${cardsCount} cartão(ões) e ${txCount} transação(ões) foram importados para o Finz.`
             );
+            if (typeof window !== 'undefined' && window.history) {
+              window.history.replaceState({}, '', window.location.pathname);
+            }
           } catch (e: any) {
             Alert.alert('Erro ao sincronizar', e?.message || 'Falha ao importar dados do banco conectado.');
           }
@@ -112,7 +115,8 @@ export default function App() {
 
     const sub = Linking.addEventListener('url', handleUrl);
     Linking.getInitialURL().then((url) => {
-      if (url) handleUrl({ url });
+      const currentUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+      if (currentUrl) handleUrl({ url: currentUrl });
     });
 
     return () => {

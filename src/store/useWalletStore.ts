@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserProfile, BankCard, Transaction, Category, SmartAlert } from '@/types';
+import { UserProfile, BankCard, Transaction, Category, SmartAlert, NotificationPreference } from '@/types';
 import {
   db,
   initDatabase,
@@ -13,6 +13,9 @@ import {
   persistTransaction,
   persistTransactionCategory,
   persistProfile,
+  persistNotificationPreference,
+  loadNotificationPreference,
+  clearAllLocalData as dbClearAllLocalData,
 } from '@/services/database/db';
 import { notifyBalanceChange } from '@/services/notifications/notificationService';
 
@@ -25,11 +28,14 @@ interface WalletState {
   privacyMode: boolean;
   activeAlert: SmartAlert | null;
   isInitialized: boolean;
+  notificationPreference: NotificationPreference;
   
   // Ações
   initStore: () => void;
   reloadFromSQLite: () => void;
   setProfile: (profile: Partial<UserProfile>) => void;
+  setNotificationPreference: (pref: NotificationPreference) => void;
+  clearAllLocalData: () => void;
   setActiveCardIndex: (index: number) => void;
   togglePrivacyMode: () => void;
   addCard: (card: Omit<BankCard, 'id'>) => void;
@@ -59,6 +65,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   privacyMode: false,
   activeAlert: null,
   isInitialized: false,
+  notificationPreference: 'all',
 
   initStore: () => {
     if (get().isInitialized) return;
@@ -71,11 +78,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         // Coluna já existe
       }
       const data = loadAllDataFromSQLite();
+      const notifPref = loadNotificationPreference();
       set({
         cards: data.cards,
         categories: data.categories,
         transactions: data.transactions,
         ...(data.profile ? { profile: data.profile } : {}),
+        notificationPreference: notifPref,
         isInitialized: true,
       });
     } catch (e) {
@@ -86,11 +95,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   reloadFromSQLite: () => {
     try {
       const data = loadAllDataFromSQLite();
+      const notifPref = loadNotificationPreference();
       set({
         cards: data.cards,
         categories: data.categories,
         transactions: data.transactions,
         ...(data.profile ? { profile: data.profile } : {}),
+        notificationPreference: notifPref,
       });
     } catch (e) {
       console.error('Falha ao recarregar SQLite:', e);
@@ -103,6 +114,31 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       persistProfile(updatedProfile);
       return { profile: updatedProfile };
     }),
+
+  setNotificationPreference: (pref) => {
+    persistNotificationPreference(pref);
+    set({ notificationPreference: pref });
+  },
+
+  clearAllLocalData: () => {
+    dbClearAllLocalData();
+    const data = loadAllDataFromSQLite();
+    set({
+      cards: data.cards,
+      categories: data.categories,
+      transactions: data.transactions,
+      activeAlert: null,
+      activeCardIndex: 0,
+      profile: {
+        id: 'usr_default',
+        nickname: '',
+        fullName: '',
+        birthDate: '',
+        onboardingCompleted: false,
+      },
+      notificationPreference: 'all',
+    });
+  },
 
   setActiveCardIndex: (index) => set({ activeCardIndex: index }),
 

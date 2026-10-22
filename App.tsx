@@ -31,6 +31,7 @@ import { TransactionList } from './src/features/transactions/TransactionList';
 import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
+import { ProfileModal } from './src/features/profile/ProfileModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
@@ -68,6 +69,7 @@ export default function App() {
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
   const [pluggyModalVisible, setPluggyModalVisible] = useState(false);
+  const [profileVisible, setProfileVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(false);
@@ -204,6 +206,7 @@ export default function App() {
         <Header
           onOpenNotifications={() => setNotificationsVisible(true)}
           onOpenPluggy={() => setPluggyModalVisible(true)}
+          onOpenProfile={() => setProfileVisible(true)}
         />
 
         {activeMainTab === 'home' ? (
@@ -259,6 +262,12 @@ export default function App() {
         <FloatingBottomNav
           activeTab={activeMainTab}
           onTabChange={setActiveMainTab}
+        />
+
+        {/* Menu de Perfil e Ajustes */}
+        <ProfileModal
+          visible={profileVisible}
+          onClose={() => setProfileVisible(false)}
         />
 
         {/* Modal Open Finance Pluggy */}

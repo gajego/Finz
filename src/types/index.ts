@@ -3,8 +3,13 @@ export interface UserProfile {
   nickname: string;
   fullName: string;
   birthDate: string;
+  document?: string;
+  email?: string;
+  phone?: string;
   onboardingCompleted: boolean;
 }
+
+export type NotificationPreference = 'all' | 'alerts_only' | 'transactions_only' | 'none';
 
 export interface BankCard {
   id: string;

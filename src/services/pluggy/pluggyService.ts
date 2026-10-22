@@ -1035,3 +1035,64 @@ export function classifyTransactionCategory(
   // Caso não reconheça, retorna estritamente 'Não categorizado'
   return 'cat_others';
 }
+
+export interface PluggyIdentityData {
+  fullName?: string;
+  document?: string;
+  birthDate?: string;
+  email?: string;
+  phone?: string;
+}
+
+/**
+ * Busca dados pessoais de identidade cadastral do Open Finance via Pluggy
+ * Traz exclusivamente dados de perfil, sem alterar transações ou cartões.
+ */
+export async function fetchPluggyIdentity(itemId?: string): Promise<PluggyIdentityData> {
+  const apiKey = await getValidApiKey();
+  const items = getPluggyItemIds();
+  const targetItemId = itemId || items[0];
+
+  if (!targetItemId) {
+    throw new Error('Nenhuma conta bancária conectada via Open Finance encontrada.');
+  }
+
+  const res = await fetch(`${PLUGGY_API_BASE}/identity?itemId=${targetItemId}`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-KEY': apiKey,
+    },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.warn('[Pluggy] Erro ao buscar identidade:', res.status, errorText);
+    throw new Error(`Falha ao obter dados cadastrais da instituição (${res.status}).`);
+  }
+
+  const data = await res.json();
+
+  let formattedBirthDate: string | undefined = undefined;
+  if (data.birthDate) {
+    try {
+      const d = new Date(data.birthDate);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const year = d.getUTCFullYear();
+        formattedBirthDate = `${day}/${month}/${year}`;
+      }
+    } catch {
+      formattedBirthDate = data.birthDate;
+    }
+  }
+
+  return {
+    fullName: data.fullName || data.companyName,
+    document: data.document || data.taxNumber,
+    birthDate: formattedBirthDate,
+    email: data.emails?.[0]?.value,
+    phone: data.phoneNumbers?.[0]?.value,
+  };
+}

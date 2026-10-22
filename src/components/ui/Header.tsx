@@ -8,9 +8,10 @@ import { Typography, LetterSpacing } from '@/theme/typography';
 interface HeaderProps {
   onOpenNotifications?: () => void;
   onOpenPluggy?: () => void;
+  onOpenProfile?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPluggy }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPluggy, onOpenProfile }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const profile = useWalletStore((s) => s.profile);
   const categories = useWalletStore((s) => s.categories);
@@ -49,8 +50,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
 
   return (
     <View style={styles.container}>
-      {/* Bloco de Identidade do Usuário com Avatar Squircle */}
-      <View style={styles.userRow}>
+      {/* Bloco de Identidade do Usuário com Avatar Squircle (Abre Menu de Perfil) */}
+      <Pressable
+        onPress={onOpenProfile}
+        style={({ pressed }) => [
+          styles.userRow,
+          { opacity: pressed ? 0.75 : 1 },
+        ]}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Abrir menu de perfil do usuário"
+      >
         <View
           style={[
             styles.userAvatar,
@@ -70,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
             {displayName}
           </Text>
         </View>
-      </View>
+      </Pressable>
 
       {/* Ações: Open Finance Pluggy, Alternar Tema e Notificações (Pills de Precisão) */}
       <View style={styles.actionButtons}>

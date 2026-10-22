@@ -384,3 +384,47 @@ export function loadThemeMode(): 'dark' | 'light' | null {
   }
 }
 
+export function persistNotificationPreference(pref: string): void {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['notification_preference', pref]
+    );
+  } catch (e) {
+    console.warn('[db] Falha ao persistir preferência de notificação:', e);
+  }
+}
+
+export function loadNotificationPreference(): 'all' | 'alerts_only' | 'transactions_only' | 'none' {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    const row = db.getFirstSync<{ value: string }>(
+      'SELECT value FROM system_meta WHERE key = ?',
+      ['notification_preference']
+    );
+    if (row?.value === 'all' || row?.value === 'alerts_only' || row?.value === 'transactions_only' || row?.value === 'none') {
+      return row.value;
+    }
+    return 'all';
+  } catch {
+    return 'all';
+  }
+}
+
+export function clearAllLocalData(): void {
+  try {
+    db.execSync(`
+      DELETE FROM transactions;
+      DELETE FROM cards;
+      DELETE FROM transaction_category_overrides;
+      DELETE FROM system_meta WHERE key NOT IN ('pluggy_client_id', 'pluggy_client_secret');
+    `);
+    // Reinsere categorias canônicas
+    initDatabase();
+  } catch (e) {
+    console.warn('[db] Erro ao limpar dados locais:', e);
+  }
+}
+
+

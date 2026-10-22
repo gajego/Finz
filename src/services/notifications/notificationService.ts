@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import type * as ExpoNotifications from 'expo-notifications';
 import { Transaction } from '@/types';
+import { loadNotificationPreference } from '@/services/database/db';
 
 /**
  * Identificadores padronizados dos canais de notificação no Android
@@ -175,6 +176,21 @@ export async function sendLocalNotification({
     return undefined;
   }
   try {
+    // Respeita a preferência de notificação configurada pelo usuário no menu de perfil
+    const preference = loadNotificationPreference();
+    if (preference === 'none') {
+      console.log('[NotificationService] 🔕 Notificação silenciada por preferência (nenhuma)');
+      return undefined;
+    }
+    if (preference === 'alerts_only' && channelId === NOTIFICATION_CHANNELS.TRANSACTIONS) {
+      console.log('[NotificationService] 🔕 Transação silenciada por preferência (somente avisos)');
+      return undefined;
+    }
+    if (preference === 'transactions_only' && channelId === NOTIFICATION_CHANNELS.ALERTS) {
+      console.log('[NotificationService] 🔕 Alerta silenciado por preferência (somente transações)');
+      return undefined;
+    }
+
     const hasPerm = await hasNotificationPermissions();
     if (!hasPerm) {
       const granted = await requestNotificationPermissions();

@@ -393,6 +393,29 @@ export async function notifyBalanceChange(
 }
 
 /**
+ * Dispara notificação nativa para transações não categorizadas
+ */
+export async function notifyUncategorizedTransactions(
+  count: number,
+  totalCents: number
+): Promise<void> {
+  const formattedTotal = formatCentsToBRL(totalCents);
+  const title = `${count} ${count === 1 ? 'Transação Não Categorizada' : 'Transações Não Categorizadas'}`;
+  const body = `Você possui ${formattedTotal} pendentes de categoria. Toque para categorizá-las agora.`;
+
+  await sendLocalNotification({
+    title,
+    body,
+    channelId: NOTIFICATION_CHANNELS.ALERTS,
+    data: {
+      type: 'UNCATEGORIZED_TRANSACTIONS',
+      count,
+      totalCents,
+    },
+  });
+}
+
+/**
  * Objeto consolidado do serviço de notificações
  */
 export const notificationService = {
@@ -404,6 +427,7 @@ export const notificationService = {
   sendTestNotification,
   notifyNewTransaction,
   notifyBalanceChange,
+  notifyUncategorizedTransactions,
   formatCentsToBRL,
   CHANNELS: NOTIFICATION_CHANNELS,
 };

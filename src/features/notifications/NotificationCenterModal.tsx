@@ -21,6 +21,7 @@ interface NotificationCenterModalProps {
   onClose: () => void;
   onNavigateToBudgets?: (categoryId?: string) => void;
   onNavigateToAddCard?: () => void;
+  onNavigateToUncategorized?: () => void;
 }
 
 type NotificationSeverity = 'critical' | 'warning' | 'info' | 'success';
@@ -41,6 +42,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   onClose,
   onNavigateToBudgets,
   onNavigateToAddCard,
+  onNavigateToUncategorized,
 }) => {
   const { colors, mode } = useTheme();
   const categories = useWalletStore((s) => s.categories);
@@ -130,6 +132,29 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
         }
       }
     });
+
+    // 3. Alerta de Transações Não Categorizadas
+    const uncategorizedList = transactions.filter(
+      (t) =>
+        t.type === 'EXPENSE' &&
+        (t.categoryId === 'cat_others' || !t.categoryId || t.categoryId === '')
+    );
+    if (uncategorizedList.length > 0) {
+      const sumUncat = uncategorizedList.reduce((acc, t) => acc + t.amount, 0);
+      list.push({
+        id: 'tx_uncategorized_alert',
+        severity: 'warning',
+        title: `${uncategorizedList.length} ${uncategorizedList.length === 1 ? 'Transação Não Categorizada' : 'Transações Não Categorizadas'}`,
+        description: `Você possui ${formatBRL(sumUncat)} em gastos sem categoria definida. Categorize para manter seus tetos e relatórios de desempenho precisos.`,
+        tag: 'CATEGORIZAÇÃO',
+        timestamp: 'Pendente',
+        actionLabel: 'Categorizar Agora',
+        onAction: () => {
+          onClose();
+          onNavigateToUncategorized?.();
+        },
+      });
+    }
 
     // 3. Notificações Reais do Status da Carteira
     if (cards.length === 0) {

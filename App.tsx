@@ -28,6 +28,7 @@ import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
+import { UncategorizedTransactionsModal } from './src/features/transactions/UncategorizedTransactionsModal';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { ProfileModal } from './src/features/profile/ProfileModal';
@@ -37,7 +38,7 @@ import { GoalsScreen } from './src/features/categories/GoalsScreen';
 import { PerformanceScreen } from './src/features/performance/PerformanceScreen';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
-import { initNotifications } from './src/services/notifications/notificationService';
+import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
 import { BankCard, Transaction } from './src/types';
 import * as Notifications from 'expo-notifications';
 
@@ -74,18 +75,39 @@ export default function App() {
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const [uncategorizedModalVisible, setUncategorizedModalVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
+  const [hasNotifiedUncategorized, setHasNotifiedUncategorized] = useState(false);
 
   const activeTransaction = selectedTransactionForDetails
     ? transactions.find((t) => t.id === selectedTransactionForDetails.id) || selectedTransactionForDetails
     : null;
 
-  // Escuta cliques em notificações nativas para redirecionar diretamente aos detalhes da transação
+  // Notificação inteligente quando houver gastos pendentes de classificação
+  useEffect(() => {
+    if (!isInitialized || hasNotifiedUncategorized) return;
+    const uncatList = transactions.filter(
+      (t) =>
+        t.type === 'EXPENSE' &&
+        (t.categoryId === 'cat_others' || !t.categoryId || t.categoryId === '')
+    );
+    if (uncatList.length > 0) {
+      setHasNotifiedUncategorized(true);
+      const total = uncatList.reduce((acc, t) => acc + t.amount, 0);
+      notifyUncategorizedTransactions(uncatList.length, total);
+    }
+  }, [isInitialized, transactions, hasNotifiedUncategorized]);
+
+  // Escuta cliques em notificações nativas para redirecionar diretamente
   useEffect(() => {
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response?.notification?.request?.content?.data;
+      if (data?.type === 'UNCATEGORIZED_TRANSACTIONS') {
+        setUncategorizedModalVisible(true);
+        return;
+      }
       const txId = (data?.transactionId || data?.txId) as string | undefined;
       if (txId) {
         const currentTxs = useWalletStore.getState().transactions;
@@ -100,6 +122,10 @@ export default function App() {
     Notifications.getLastNotificationResponseAsync().then((response) => {
       if (response) {
         const data = response?.notification?.request?.content?.data;
+        if (data?.type === 'UNCATEGORIZED_TRANSACTIONS') {
+          setUncategorizedModalVisible(true);
+          return;
+        }
         const txId = (data?.transactionId || data?.txId) as string | undefined;
         if (txId) {
           const currentTxs = useWalletStore.getState().transactions;
@@ -225,8 +251,11 @@ export default function App() {
               />
             }
           >
-            {/* Alerta Inteligente Vermelho quando limite é atingido */}
-            <AlertBanner onOpenBudgetManager={() => setActiveMainTab('goals')} />
+            {/* Alerta Inteligente Vermelho quando limite é atingido ou Âmbar para Não Categorizadas */}
+            <AlertBanner
+              onOpenBudgetManager={() => setActiveMainTab('goals')}
+              onOpenUncategorized={() => setUncategorizedModalVisible(true)}
+            />
 
             {/* Cartões Físicos Interativos com Física 3D por Gesto */}
             <CardCarousel
@@ -301,6 +330,13 @@ export default function App() {
           onClose={() => setNotificationsVisible(false)}
           onNavigateToBudgets={handleOpenBudgetModal}
           onNavigateToAddCard={() => setPluggyModalVisible(true)}
+          onNavigateToUncategorized={() => setUncategorizedModalVisible(true)}
+        />
+
+        {/* Modal de Transações Não Categorizadas */}
+        <UncategorizedTransactionsModal
+          visible={uncategorizedModalVisible}
+          onClose={() => setUncategorizedModalVisible(false)}
         />
 
         {/* Detalhes da Movimentação e Alteração de Categoria */}

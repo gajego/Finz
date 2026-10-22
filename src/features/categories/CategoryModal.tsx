@@ -211,6 +211,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
           )}
 
           <ScrollView
+            style={styles.scrollFlex}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
@@ -281,7 +282,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               )}
             </View>
 
-            {/* Campo 2: Seletor de Cores */}
+            {/* Campo 2: Cor da Categoria */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Palette size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
@@ -318,59 +319,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </ScrollView>
             </View>
 
-            {/* Campo 3: Seletor de Ícones (40 Ícones Lucide) */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Layers size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
-                  ÍCONE VETORIAL ({CATEGORY_ICON_LIST.length} OPÇÕES)
-                </Text>
-              </View>
-
-              <View style={styles.iconGrid}>
-                {CATEGORY_ICON_LIST.map((item) => {
-                  const isSelected = selectedIcon.toLowerCase() === item.id.toLowerCase();
-                  const IconComp = item.Icon;
-                  return (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => !isProtected && setSelectedIcon(item.id)}
-                      disabled={isProtected}
-                      style={[
-                        styles.iconGridItem,
-                        {
-                          backgroundColor: isSelected
-                            ? `${selectedColor}22`
-                            : isDark
-                            ? colors.surface
-                            : colors.surfaceElevated,
-                          borderColor: isSelected ? selectedColor : colors.borderSubtle,
-                        },
-                      ]}
-                    >
-                      <IconComp
-                        size={18}
-                        color={isSelected ? selectedColor : colors.textSecondary}
-                      />
-                      <Text
-                        style={[
-                          styles.iconGridItemLabel,
-                          {
-                            color: isSelected ? selectedColor : colors.textMuted,
-                            fontFamily: isSelected ? Typography.bold : Typography.regular,
-                          },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.name}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Campo 4: Teto Orçamentário Mensal (Opcional) */}
+            {/* Campo 3: Teto Orçamentário Mensal (Opcional) */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Sliders size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
@@ -437,9 +386,71 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </View>
             </View>
 
-            {/* Ações: Salvar e Excluir */}
-            <View style={styles.actionsContainer}>
-              {!isProtected && (
+            {/* Campo 4: Seletor de Ícones (40 Ícones Lucide) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Layers size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  ÍCONE VETORIAL ({CATEGORY_ICON_LIST.length} OPÇÕES)
+                </Text>
+              </View>
+
+              <View style={styles.iconGrid}>
+                {CATEGORY_ICON_LIST.map((item) => {
+                  const isSelected = selectedIcon.toLowerCase() === item.id.toLowerCase();
+                  const IconComp = item.Icon;
+                  return (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => !isProtected && setSelectedIcon(item.id)}
+                      disabled={isProtected}
+                      style={[
+                        styles.iconGridItem,
+                        {
+                          backgroundColor: isSelected
+                            ? `${selectedColor}22`
+                            : isDark
+                            ? colors.surface
+                            : colors.surfaceElevated,
+                          borderColor: isSelected ? selectedColor : colors.borderSubtle,
+                        },
+                      ]}
+                    >
+                      <IconComp
+                        size={18}
+                        color={isSelected ? selectedColor : colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.iconGridItemLabel,
+                          {
+                            color: isSelected ? selectedColor : colors.textMuted,
+                            fontFamily: isSelected ? Typography.bold : Typography.regular,
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+
+          {/* Dock de Ações Fixada na Base */}
+          <View
+            style={[
+              styles.pinnedFooter,
+              {
+                backgroundColor: isDark ? colors.surfaceElevated : colors.surface,
+                borderTopColor: colors.borderSubtle,
+              },
+            ]}
+          >
+            {!isProtected ? (
+              <>
                 <Pressable
                   onPress={handleSave}
                   style={({ pressed }) => [
@@ -456,28 +467,44 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                     {isEditing ? 'SALVAR ALTERAÇÕES' : 'CRIAR CATEGORIA'}
                   </Text>
                 </Pressable>
-              )}
 
-              {isEditing && !isProtected && (
-                <Pressable
-                  onPress={handleDelete}
-                  style={({ pressed }) => [
-                    styles.deleteButton,
-                    {
-                      backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
-                      borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}
-                >
-                  <Trash2 size={15} color={colors.danger} style={{ marginRight: 6 }} />
-                  <Text style={[styles.deleteButtonText, { color: colors.danger }]}>
-                    EXCLUIR CATEGORIA
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </ScrollView>
+                {isEditing && (
+                  <Pressable
+                    onPress={handleDelete}
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      {
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.08)',
+                        borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)',
+                        opacity: pressed ? 0.75 : 1,
+                      },
+                    ]}
+                  >
+                    <Trash2 size={15} color={colors.danger} style={{ marginRight: 6 }} />
+                    <Text style={[styles.deleteButtonText, { color: colors.danger }]}>
+                      EXCLUIR CATEGORIA
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            ) : (
+              <Pressable
+                onPress={onClose}
+                style={({ pressed }) => [
+                  styles.closeProtectedButton,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                    borderColor: colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.closeProtectedButtonText, { color: colors.textSecondary }]}>
+                  FECHAR
+                </Text>
+              </Pressable>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -557,9 +584,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15,
   },
+  scrollFlex: {
+    flex: 1,
+  },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingTop: 4,
+    paddingBottom: 28,
   },
   previewCard: {
     flexDirection: 'row',
@@ -641,16 +672,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    maxHeight: 180,
   },
   iconGridItem: {
-    width: '23%',
-    height: 54,
-    borderRadius: 12,
+    width: '22.8%',
+    height: 56,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 4,
   },
   iconGridItemLabel: {
     fontSize: 9,
@@ -690,12 +721,15 @@ const styles = StyleSheet.create({
     fontFamily: Typography.medium,
     fontSize: 10,
   },
-  actionsContainer: {
-    marginTop: 8,
-    gap: 10,
+  pinnedFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    borderTopWidth: 1,
+    gap: 8,
   },
   saveButton: {
-    height: 50,
+    height: 48,
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -707,7 +741,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   deleteButton: {
-    height: 46,
+    height: 44,
     borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
@@ -718,5 +752,17 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bold,
     fontSize: 11,
     letterSpacing: 0.5,
+  },
+  closeProtectedButton: {
+    height: 46,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeProtectedButtonText: {
+    fontFamily: Typography.bold,
+    fontSize: 12,
+    letterSpacing: 0.6,
   },
 });

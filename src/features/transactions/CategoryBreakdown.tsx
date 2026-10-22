@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import {
-  Sliders,
   AlertTriangle,
   Utensils,
   Car,
@@ -80,26 +79,9 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
         <View style={styles.headerTitleGroup}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & TETOS MENSAIS</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Gastos de {currentMonthName} • Toque para ajustar
+            Gastos de {currentMonthName}
           </Text>
         </View>
-
-        <Pressable
-          onPress={() => onOpenBudgetManager()}
-          style={({ pressed }) => [
-            styles.configButton,
-            {
-              backgroundColor: mode === 'dark' ? colors.surfaceElevated : colors.surface,
-              borderColor: colors.borderStrong,
-              transform: [{ scale: pressed ? 0.95 : 1 }],
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-          hitSlop={8}
-        >
-          <Sliders size={12} color={colors.primary} />
-          <Text style={[styles.configButtonText, { color: colors.text }]}>AJUSTAR</Text>
-        </Pressable>
       </View>
 
       {/* Grid Bento Neo-Fintech com Cards Refinados */}
@@ -376,20 +358,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 11,
     marginTop: 2,
-  },
-  configButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  configButtonText: {
-    fontFamily: Typography.bold,
-    fontSize: 10,
-    letterSpacing: 0.8,
   },
   grid: {
     flexDirection: 'row',

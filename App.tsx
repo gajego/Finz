@@ -21,7 +21,6 @@ import {
 import { useTheme } from './src/theme/useTheme';
 import { useWalletStore } from './src/store/useWalletStore';
 import { Header } from './src/components/ui/Header';
-import { BalanceHero } from './src/components/ui/BalanceHero';
 import { AlertBanner } from './src/components/ui/AlertBanner';
 import { CardCarousel } from './src/features/cards/CardCarousel';
 import { CardSkinModal } from './src/features/cards/CardSkinModal';
@@ -225,9 +224,6 @@ export default function App() {
               />
             }
           >
-            {/* Saldo Brutalista com Tabular Nums */}
-            <BalanceHero />
-
             {/* Alerta Inteligente Vermelho quando limite é atingido */}
             <AlertBanner onOpenBudgetManager={() => setActiveMainTab('goals')} />
 

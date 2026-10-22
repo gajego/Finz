@@ -9,10 +9,11 @@ import {
   NativeScrollEvent,
   Pressable,
 } from 'react-native';
-import { Landmark, ArrowRight } from 'lucide-react-native';
+import { Landmark, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { BankCard } from '@/types';
 import { CardItem } from './CardItem';
 import { useTheme } from '@/theme/useTheme';
+import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, LetterSpacing } from '@/theme/typography';
 
 const { width } = Dimensions.get('window');
@@ -35,6 +36,8 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   onOpenPluggy,
 }) => {
   const { colors } = useTheme();
+  const privacyMode = useWalletStore((s) => s.privacyMode);
+  const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -102,7 +105,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         )}
       />
 
-      {/* Indicadores de Cartão Ativo (Centralizados, sem botão Novo Cartão) */}
+      {/* Indicadores de Cartão Ativo e Toggle de Privacidade */}
       <View style={styles.footerRow}>
         <View style={styles.pagination}>
           {cards.map((_, i) => {
@@ -123,6 +126,26 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
             );
           })}
         </View>
+
+        <Pressable
+          onPress={togglePrivacyMode}
+          hitSlop={10}
+          style={({ pressed }) => [
+            styles.eyeBtn,
+            {
+              backgroundColor: colors.surfaceElevated,
+              borderColor: colors.borderSubtle,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          accessibilityLabel="Ocultar ou exibir valores"
+        >
+          {privacyMode ? (
+            <EyeOff size={13} color={colors.textSecondary} />
+          ) : (
+            <Eye size={13} color={colors.textSecondary} />
+          )}
+        </Pressable>
       </View>
     </View>
   );
@@ -179,9 +202,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    marginTop: 8,
     paddingHorizontal: 20,
-    height: 18,
+    height: 24,
+    position: 'relative',
   },
   pagination: {
     flexDirection: 'row',
@@ -192,5 +216,15 @@ const styles = StyleSheet.create({
   bar: {
     borderRadius: 2,
     borderWidth: 0.5,
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: 24,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -454,12 +454,16 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
                               <Text style={styles.balanceValueText}>
                                 {formatBRL(card.bankBalance)}
                               </Text>
+                              <Text style={[styles.balanceLabelText, { marginTop: 2 }]}>FATURA ATUAL</Text>
+                              <Text style={[styles.balanceValueText, { color: 'rgba(255, 255, 255, 0.9)' }]}>
+                                {formatBRL(card.balance)}
+                              </Text>
                             </>
                           ) : (
                             <>
-                              <Text style={styles.balanceLabelText}>DISPONÍVEL</Text>
+                              <Text style={styles.balanceLabelText}>FATURA ATUAL</Text>
                               <Text style={styles.balanceValueText}>
-                                {formatBRL(card.limit - card.balance)}
+                                {formatBRL(card.balance)}
                               </Text>
                             </>
                           )}

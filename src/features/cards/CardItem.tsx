@@ -437,17 +437,17 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
                       {formatBRL(card.bankBalance)}
                     </Text>
                     <View style={styles.limitSubRow}>
-                      <Text style={styles.limitSubLabel}>DISPONÍVEL</Text>
+                      <Text style={styles.limitSubLabel}>FATURA ATUAL</Text>
                       <Text style={styles.limitSubValue}>
-                        {formatBRL(card.limit - card.balance)}
+                        {formatBRL(card.balance)}
                       </Text>
                     </View>
                   </>
                 ) : (
                   <>
-                    <Text style={styles.limitLabel}>DISPONÍVEL</Text>
-                    <Text style={styles.limitValue}>
-                      {formatBRL(card.limit - card.balance)}
+                    <Text style={styles.limitLabel}>FATURA ATUAL</Text>
+                    <Text style={styles.balanceValue}>
+                      {formatBRL(card.balance)}
                     </Text>
                   </>
                 )}

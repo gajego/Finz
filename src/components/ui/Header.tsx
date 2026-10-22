@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
   }, []);
 
   const initials = useMemo(() => {
-    const name = profile.fullName?.trim() || 'Wesley Silva';
+    const name = profile.fullName?.trim() || 'Wesley Souza';
     const parts = name.split(/\s+/).filter(Boolean);
     if (parts.length === 0) return 'FZ';
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
   }, [profile.fullName]);
 
   const displayName = useMemo(() => {
-    return (profile.fullName?.trim() || 'WESLEY SILVA').toUpperCase();
+    return (profile.fullName?.trim() || 'WESLEY SOUZA').toUpperCase();
   }, [profile.fullName]);
 
   const hasActiveSync = cards.length > 0;

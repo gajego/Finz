@@ -81,7 +81,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
   }, [visible, profile]);
 
   const initials = useMemo(() => {
-    const name = fullName.trim() || profile.fullName?.trim() || 'Wesley Silva';
+    const name = fullName.trim() || profile.fullName?.trim() || 'Wesley Souza';
     const parts = name.split(/\s+/).filter(Boolean);
     if (parts.length === 0) return 'FZ';
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
@@ -691,7 +691,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                 </View>
                 <View style={[styles.aboutRow, styles.aboutDivider, { borderTopColor: colors.borderSubtle }]}>
                   <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>Autor & Desenvolvimento</Text>
-                  <Text style={[styles.aboutValue, { color: colors.text }]}>Wesley Silva & Finz Team</Text>
+                  <Text style={[styles.aboutValue, { color: colors.text }]}>Wesley Souza & Finz Team</Text>
                 </View>
                 <View style={[styles.aboutRow, styles.aboutDivider, { borderTopColor: colors.borderSubtle }]}>
                   <Text style={[styles.aboutLabel, { color: colors.textMuted }]}>Motor</Text>

@@ -14,6 +14,7 @@ import {
   HelpCircle,
   Plus,
   ArrowRight,
+  Layers,
   LucideIcon,
 } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -67,6 +68,11 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
     });
   };
 
+  // Exibe exatamente 3 categorias para reservar o 4º card como "Ver mais"
+  const displayedCategories = useMemo(() => {
+    return categories.slice(0, 3);
+  }, [categories]);
+
   return (
     <View style={styles.container}>
       {/* Cabeçalho da Seção */}
@@ -98,7 +104,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
 
       {/* Grid Bento Neo-Fintech com Cards Refinados */}
       <View style={styles.grid}>
-        {categories.map((cat) => {
+        {displayedCategories.map((cat) => {
           const spent = getCategorySpent(cat.id);
           const hasLimit = cat.budgetLimit > 0;
           const percent = hasLimit ? Math.round((spent / cat.budgetLimit) * 100) : 0;
@@ -262,6 +268,85 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
             </Pressable>
           );
         })}
+
+        {/* 4º Card: Ação "Ver Mais" que redireciona diretamente para a tela de Metas */}
+        <Pressable
+          onPress={() => onOpenBudgetManager()}
+          accessibilityRole="button"
+          accessibilityLabel="Ver mais metas e categorias"
+          style={({ pressed }) => [
+            styles.bentoCard,
+            styles.seeMoreCard,
+            {
+              backgroundColor:
+                mode === 'dark' ? colors.surfaceElevated : colors.surface,
+              borderColor:
+                mode === 'dark'
+                  ? 'rgba(217, 249, 32, 0.28)'
+                  : 'rgba(0, 0, 0, 0.1)',
+              transform: [{ scale: pressed ? 0.975 : 1 }],
+              opacity: pressed ? 0.88 : 1,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View
+              style={[
+                styles.iconSquircle,
+                {
+                  backgroundColor: `${colors.primary}18`,
+                  borderColor: `${colors.primary}36`,
+                },
+              ]}
+            >
+              <Layers size={16} color={colors.primary} />
+            </View>
+
+            <View
+              style={[
+                styles.statusPill,
+                {
+                  backgroundColor:
+                    mode === 'dark'
+                      ? 'rgba(255, 255, 255, 0.06)'
+                      : 'rgba(0, 0, 0, 0.05)',
+                },
+              ]}
+            >
+              <Text style={[styles.statusPillText, { color: colors.textSecondary }]}>
+                {categories.length > 3 ? `+${categories.length - 3}` : 'METAS'}
+              </Text>
+            </View>
+          </View>
+
+          <Text
+            style={[styles.categoryName, { color: colors.textSecondary }]}
+            numberOfLines={1}
+          >
+            TODAS AS METAS
+          </Text>
+
+          <View style={styles.seeMoreContent}>
+            <Text style={[styles.seeMoreTitle, { color: colors.text }]}>
+              Ver mais
+            </Text>
+            <Text
+              style={[styles.seeMoreSubtitle, { color: colors.textMuted }]}
+              numberOfLines={1}
+            >
+              {categories.length} categorias cadastradas
+            </Text>
+          </View>
+
+          <View style={styles.cardFooter}>
+            <View style={styles.setCeilingRow}>
+              <Text style={[styles.setCeilingText, { color: colors.primary }]}>
+                Acessar metas
+              </Text>
+              <ArrowRight size={10} color={colors.primary} />
+            </View>
+          </View>
+        </Pressable>
       </View>
     </View>
   );
@@ -398,5 +483,21 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bold,
     fontSize: 10,
     letterSpacing: 0.2,
+  },
+  seeMoreCard: {
+    justifyContent: 'space-between',
+  },
+  seeMoreContent: {
+    marginVertical: 4,
+  },
+  seeMoreTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 16,
+    letterSpacing: -0.3,
+  },
+  seeMoreSubtitle: {
+    fontFamily: Typography.regular,
+    fontSize: 10,
+    marginTop: 2,
   },
 });

@@ -114,21 +114,13 @@ export default function App() {
     };
   }, []);
 
-  // Sincronização manual acionada pelo usuário na barra Open Finance
+  // Sincronização acionada pelo pull-to-refresh do usuário
   const handleSyncPluggy = async () => {
     setIsSyncingPluggy(true);
     try {
-      const res = await syncAllPluggyItems();
-      if (res.cardsTotal > 0 || res.txTotal > 0) {
-        Alert.alert(
-          'Open Finance Atualizado',
-          `Sucesso! ${res.cardsTotal} cartão(ões) e ${res.txTotal} movimentação(ões) sincronizados.`
-        );
-      } else {
-        Alert.alert('Open Finance', 'Tudo atualizado! Nenhuma nova movimentação pendente.');
-      }
+      await syncAllPluggyItems();
     } catch (e: any) {
-      Alert.alert('Erro ao sincronizar', e?.message || 'Falha ao sincronizar dados com o Open Finance.');
+      console.warn('[Pluggy] Falha ao sincronizar dados Open Finance:', e?.message);
     } finally {
       setIsSyncingPluggy(false);
     }

@@ -83,7 +83,7 @@ export async function pollPluggyNow(): Promise<{ cardsTotal: number; txTotal: nu
   isSyncing = true;
 
   const now = new Date();
-  const timeFormatted = now.toLocaleTimeString('pt-BR', { hour12: false });
+  const timeFormatted = now.toLocaleTimeString('pt-BR', { hour12: false, timeZone: 'America/Sao_Paulo' });
 
   console.log('────────────────────────────────────────────────────────');
   console.log(`[Pluggy 10s Monitor] [${timeFormatted}] 📡 Executando checagem periódica (10 segundos)...`);

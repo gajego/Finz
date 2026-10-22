@@ -95,32 +95,64 @@ const MONTHS_PT = [
   'dez',
 ];
 
+/** Fuso horário oficial bancário brasileiro (Horário de Brasília) */
+export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+
 /**
- * Formata data de agrupamento visual para extrato editorial Neo-Fintech.
+ * Retorna as partes da data (dia, mês 0-11, ano) ajustadas para o Horário de Brasília
+ */
+export function getBrazilDateParts(timestamp: number): { day: number; month: number; year: number } {
+  const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
+  try {
+    const formatter = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: BRAZIL_TIMEZONE,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    });
+    const parts = formatter.formatToParts(new Date(validTimestamp));
+    const day = parseInt(parts.find((p) => p.type === 'day')?.value || '1', 10);
+    const month = parseInt(parts.find((p) => p.type === 'month')?.value || '1', 10) - 1;
+    const year = parseInt(parts.find((p) => p.type === 'year')?.value || '2026', 10);
+    return { day, month, year };
+  } catch {
+    const d = new Date(validTimestamp);
+    return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
+  }
+}
+
+/**
+ * Formata data de agrupamento visual para extrato editorial Neo-Fintech no Horário de Brasília.
  * Ex: "Hoje • 21 de out", "Ontem • 20 de out", "18 de out"
  */
 export function formatSectionDate(timestamp: number): string {
   const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
-  const date = new Date(validTimestamp);
-  const now = new Date();
+  const dateParts = getBrazilDateParts(validTimestamp);
+  const nowParts = getBrazilDateParts(Date.now());
 
-  const isSameDay = (d1: Date, d2: Date) =>
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
+  const dayStr = String(dateParts.day).padStart(2, '0');
+  const monthStr = MONTHS_PT[dateParts.month] || 'jan';
+  const isCurrentYear = dateParts.year === nowParts.year;
+  const dateStr = isCurrentYear
+    ? `${dayStr} de ${monthStr}`
+    : `${dayStr} de ${monthStr} de ${dateParts.year}`;
 
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
+  const isToday =
+    dateParts.year === nowParts.year &&
+    dateParts.month === nowParts.month &&
+    dateParts.day === nowParts.day;
 
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = MONTHS_PT[date.getMonth()] || 'jan';
-  const isCurrentYear = date.getFullYear() === now.getFullYear();
-  const dateStr = isCurrentYear ? `${day} de ${month}` : `${day} de ${month} de ${date.getFullYear()}`;
+  // Calcula se é ontem no Horário de Brasília (24h atrás)
+  const yesterdayParts = getBrazilDateParts(Date.now() - 24 * 60 * 60 * 1000);
+  const isYesterday =
+    dateParts.year === yesterdayParts.year &&
+    dateParts.month === yesterdayParts.month &&
+    dateParts.day === yesterdayParts.day;
 
-  if (isSameDay(date, now)) {
+  if (isToday) {
     return `Hoje • ${dateStr}`;
   }
-  if (isSameDay(date, yesterday)) {
+  if (isYesterday) {
     return `Ontem • ${dateStr}`;
   }
 
@@ -145,7 +177,7 @@ export function formatBRL(cents: number, privacyMode = false): string {
 }
 
 /**
- * Formata horário de 24h
+ * Formata horário de 24h rigorosamente no Horário de Brasília (America/Sao_Paulo / UTC-3)
  */
 export function formatTime(timestamp: number): string {
   const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
@@ -153,8 +185,16 @@ export function formatTime(timestamp: number): string {
     return new Date(validTimestamp).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: BRAZIL_TIMEZONE,
     });
   } catch {
-    return '--:--';
+    try {
+      return new Date(validTimestamp).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return '--:--';
+    }
   }
 }

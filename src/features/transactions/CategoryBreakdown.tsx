@@ -19,42 +19,7 @@ import {
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
-
-const getCategoryIcon = (iconName: string): LucideIcon => {
-  switch (iconName?.toLowerCase()) {
-    case 'utensils':
-    case 'food':
-    case 'alimentação':
-      return Utensils;
-    case 'car':
-    case 'transport':
-    case 'transporte':
-      return Car;
-    case 'gamepad-2':
-    case 'gamepad':
-    case 'leisure':
-    case 'lazer & setup':
-      return Gamepad2;
-    case 'trending-up':
-    case 'investimentos':
-    case 'investing':
-      return TrendingUp;
-    case 'shopping-bag':
-    case 'shopping':
-    case 'compras':
-      return ShoppingBag;
-    case 'help-circle':
-    case 'não categorizado':
-    case 'outros':
-      return HelpCircle;
-    case 'coffee':
-      return Coffee;
-    case 'sparkles':
-      return Sparkles;
-    default:
-      return Tag;
-  }
-};
+import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
 
 interface CategoryBreakdownProps {
   onOpenBudgetManager: (categoryId?: string) => void;
@@ -182,7 +147,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
             ? colors.surface
             : colors.surfaceElevated;
 
-          const IconComponent = getCategoryIcon(cat.icon);
+          const IconComponent = getCategoryIconComponent(cat.icon);
           const categoryThemeColor = cat.color || colors.primary;
 
           return (

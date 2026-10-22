@@ -32,6 +32,8 @@ import { TransactionDetailsModal } from './src/features/transactions/Transaction
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
+import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
+import { GoalsScreen } from './src/features/categories/GoalsScreen';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications } from './src/services/notifications/notificationService';
@@ -73,6 +75,7 @@ export default function App() {
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
 
   const activeTransaction = selectedTransactionForDetails
     ? transactions.find((t) => t.id === selectedTransactionForDetails.id) || selectedTransactionForDetails
@@ -206,51 +209,61 @@ export default function App() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          scrollEventThrottle={32}
-          onScroll={handleScroll}
-        >
-          {/* Header Neo-Fintech com identidade de marca industrial */}
-          <Header
-            onOpenNotifications={() => setNotificationsVisible(true)}
-            onOpenPluggy={() => setPluggyModalVisible(true)}
-          />
+        {/* Header Neo-Fintech unificado com identidade de marca */}
+        <Header
+          onOpenNotifications={() => setNotificationsVisible(true)}
+          onOpenPluggy={() => setPluggyModalVisible(true)}
+        />
 
-          {/* Saldo Brutalista, Limites e Barra de Ação Open Finance */}
-          <BalanceHero
-            onOpenPluggy={() => setPluggyModalVisible(true)}
-            onSyncNow={handleSyncPluggy}
-            isSyncing={isSyncingPluggy}
-          />
+        {activeMainTab === 'home' ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            scrollEventThrottle={32}
+            onScroll={handleScroll}
+          >
+            {/* Saldo Brutalista, Limites e Barra de Ação Open Finance */}
+            <BalanceHero
+              onOpenPluggy={() => setPluggyModalVisible(true)}
+              onSyncNow={handleSyncPluggy}
+              isSyncing={isSyncingPluggy}
+            />
 
-          {/* Alerta Inteligente Vermelho quando limite é atingido */}
-          <AlertBanner onOpenBudgetManager={() => handleOpenBudgetModal()} />
+            {/* Alerta Inteligente Vermelho quando limite é atingido */}
+            <AlertBanner onOpenBudgetManager={() => setActiveMainTab('goals')} />
 
-          {/* Cartões Físicos Interativos com Física 3D por Gesto */}
-          <CardCarousel
-            cards={cards}
-            activeIndex={activeCardIndex}
-            onIndexChange={setActiveCardIndex}
-            onEditSkin={(card) => setSelectedCardForSkin(card)}
-            onAddCard={() => setAddCardVisible(true)}
-          />
+            {/* Cartões Físicos Interativos com Física 3D por Gesto */}
+            <CardCarousel
+              cards={cards}
+              activeIndex={activeCardIndex}
+              onIndexChange={setActiveCardIndex}
+              onEditSkin={(card) => setSelectedCardForSkin(card)}
+              onAddCard={() => setAddCardVisible(true)}
+            />
 
-          {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
-          <CategoryBreakdown onOpenBudgetManager={handleOpenBudgetModal} />
+            {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
+            <CategoryBreakdown onOpenBudgetManager={() => setActiveMainTab('goals')} />
 
-          {/* Extrato com Estilo Editorial Suíço e Estornos */}
-          <TransactionList
-            visibleCount={txVisibleCount}
-            pageSize={30}
-            onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
-            onPressTransaction={(tx) => {
-              console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
-              setSelectedTransactionForDetails(tx);
-            }}
-          />
-        </ScrollView>
+            {/* Extrato com Estilo Editorial Suíço e Estornos */}
+            <TransactionList
+              visibleCount={txVisibleCount}
+              pageSize={30}
+              onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
+              onPressTransaction={(tx) => {
+                console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
+                setSelectedTransactionForDetails(tx);
+              }}
+            />
+          </ScrollView>
+        ) : (
+          <GoalsScreen />
+        )}
+
+        {/* Menu Flutuante ao Fundo da Tela (Início / Metas) */}
+        <FloatingBottomNav
+          activeTab={activeMainTab}
+          onTabChange={setActiveMainTab}
+        />
 
         {/* Modal de Adição de Cartão */}
         <AddCardModal
@@ -314,6 +327,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 110,
   },
 });

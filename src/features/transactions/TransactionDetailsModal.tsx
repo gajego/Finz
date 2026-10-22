@@ -45,39 +45,13 @@ import {
   getBrazilDateParts,
   getPaymentModality,
 } from './transactionUtils';
+import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
 
 interface TransactionDetailsModalProps {
   visible: boolean;
   transaction: Transaction | null;
   onClose: () => void;
 }
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  cat_food: Utensils,
-  cat_transport: Car,
-  cat_leisure: Gamepad2,
-  cat_shopping: ShoppingBag,
-  cat_investments: TrendingUp,
-  cat_others: HelpCircle,
-};
-
-const CATEGORY_NAMES: Record<string, string> = {
-  cat_food: 'Alimentação',
-  cat_transport: 'Transporte',
-  cat_leisure: 'Lazer',
-  cat_shopping: 'Compras',
-  cat_investments: 'Investimentos',
-  cat_others: 'Não categorizado',
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  cat_food: '#F59E0B',
-  cat_transport: '#3B82F6',
-  cat_leisure: '#EC4899',
-  cat_shopping: '#8B5CF6',
-  cat_investments: '#10B981',
-  cat_others: '#64748B',
-};
 
 export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
   visible,
@@ -185,10 +159,10 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
   // Handler de alteração da categoria
   const handleSelectCategory = (newCatId: string) => {
-    console.log('[TransactionDetailsModal] 🏷️ handleSelectCategory chamado com:', newCatId, 'atual:', transaction.categoryId);
     if (newCatId === transaction.categoryId) return;
     updateTransactionCategory(transaction.id, newCatId);
-    setSuccessNotice(`Categoria alterada para ${CATEGORY_NAMES[newCatId] || 'Nova Categoria'}`);
+    const targetCat = categories.find((c) => c.id === newCatId);
+    setSuccessNotice(`Categoria alterada para ${targetCat?.name || 'Nova Categoria'}`);
     setTimeout(() => {
       setSuccessNotice(null);
     }, 2800);
@@ -199,10 +173,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     setTimeout(() => setCopiedId(false), 2000);
   };
 
-  const ActiveCategoryIcon =
-    CATEGORY_ICONS[transaction.categoryId] ||
-    CATEGORY_ICONS[currentCategory?.id || ''] ||
-    MoreHorizontal;
+  const ActiveCategoryIcon = getCategoryIconComponent(currentCategory?.icon);
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -308,7 +279,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
               >
                 <ActiveCategoryIcon
                   size={32}
-                  color={CATEGORY_COLORS[transaction.categoryId] || colors.primary}
+                  color={currentCategory?.color || colors.primary}
                 />
               </View>
 
@@ -358,18 +329,18 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                 ]}
               >
                 <View style={styles.categoryChipsGrid}>
-                  {Object.entries(CATEGORY_NAMES).map(([catId, catName]) => {
-                    const isSelected = transaction.categoryId === catId;
-                    const CatIcon = CATEGORY_ICONS[catId] || MoreHorizontal;
-                    const catColor = CATEGORY_COLORS[catId] || colors.primary;
+                  {categories.map((cat) => {
+                    const isSelected = transaction.categoryId === cat.id;
+                    const CatIcon = getCategoryIconComponent(cat.icon);
+                    const catColor = cat.color || colors.primary;
 
                     return (
                       <Pressable
-                        key={catId}
-                        onPress={() => handleSelectCategory(catId)}
+                        key={cat.id}
+                        onPress={() => handleSelectCategory(cat.id)}
                         accessible={true}
                         accessibilityRole="button"
-                        accessibilityLabel={`Categoria ${catName}${isSelected ? ', selecionada' : ''}`}
+                        accessibilityLabel={`Categoria ${cat.name}${isSelected ? ', selecionada' : ''}`}
                         accessibilityHint="Toque para classificar esta transação nesta categoria"
                         style={({ pressed }) => [
                           styles.categoryChip,
@@ -416,7 +387,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                             },
                           ]}
                         >
-                          {catName}
+                          {cat.name}
                         </Text>
                         {isSelected && (
                           <Check size={14} color={colors.primary} style={{ marginLeft: 4 }} />

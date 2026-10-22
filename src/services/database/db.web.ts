@@ -460,6 +460,31 @@ export function persistCategoryBudget(categoryId: string, budgetLimitCents: numb
   );
 }
 
+export function persistCategory(cat: Category) {
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit]
+    );
+  } catch (e) {
+    console.warn('[db.web] Falha ao persistir categoria:', e);
+  }
+}
+
+export function deleteCategory(categoryId: string) {
+  if (categoryId === 'cat_others') {
+    console.warn('[db.web] A categoria Não categorizado é protegida e não pode ser excluída.');
+    return;
+  }
+  try {
+    db.runSync("UPDATE transactions SET category_id = 'cat_others' WHERE category_id = ?", [categoryId]);
+    db.runSync("UPDATE transaction_category_overrides SET category_id = 'cat_others' WHERE category_id = ?", [categoryId]);
+    db.runSync('DELETE FROM categories WHERE id = ?', [categoryId]);
+  } catch (e) {
+    console.warn('[db.web] Falha ao excluir categoria:', e);
+  }
+}
+
 export function persistTransaction(tx: Transaction) {
   db.runSync(
     'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',

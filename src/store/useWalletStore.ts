@@ -8,6 +8,8 @@ import {
   persistCardSkin,
   persistCardBankBalance,
   persistCategoryBudget,
+  persistCategory,
+  deleteCategory,
   persistTransaction,
   persistTransactionCategory,
   persistProfile,
@@ -34,6 +36,9 @@ interface WalletState {
   updateCardSkin: (cardId: string, wallpaperUri: string | undefined, gradient: [string, string]) => void;
   updateCardBankBalance: (cardId: string, bankBalance: number) => void;
   updateCategoryBudget: (categoryId: string, newLimitInCents: number) => void;
+  createCategory: (cat: Omit<Category, 'id'>) => Category;
+  updateCategory: (id: string, updates: Partial<Omit<Category, 'id'>>) => void;
+  deleteCategory: (id: string) => void;
   updateTransactionCategory: (transactionId: string, newCategoryId: string) => void;
   dismissAlert: () => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
@@ -145,6 +150,48 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set((state) => ({
       categories: state.categories.map((c) =>
         c.id === categoryId ? { ...c, budgetLimit: newLimitInCents } : c
+      ),
+    }));
+  },
+
+  createCategory: (catData) => {
+    const newCat: Category = {
+      ...catData,
+      id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      budgetLimit: catData.budgetLimit ?? 0,
+    };
+    persistCategory(newCat);
+    set((state) => ({
+      categories: [...state.categories, newCat],
+    }));
+    return newCat;
+  },
+
+  updateCategory: (id, updates) => {
+    if (id === 'cat_others') {
+      console.warn('[store] A categoria Não categorizado é protegida contra edições.');
+      return;
+    }
+    const state = get();
+    const existing = state.categories.find((c) => c.id === id);
+    if (!existing) return;
+    const updated: Category = { ...existing, ...updates };
+    persistCategory(updated);
+    set((s) => ({
+      categories: s.categories.map((c) => (c.id === id ? updated : c)),
+    }));
+  },
+
+  deleteCategory: (id) => {
+    if (id === 'cat_others') {
+      console.warn('[store] A categoria Não categorizado não pode ser excluída.');
+      return;
+    }
+    deleteCategory(id);
+    set((state) => ({
+      categories: state.categories.filter((c) => c.id !== id),
+      transactions: state.transactions.map((tx) =>
+        tx.categoryId === id ? { ...tx, categoryId: 'cat_others' } : tx
       ),
     }));
   },

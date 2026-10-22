@@ -8,16 +8,10 @@ import {
   ArrowUpRight,
   ShieldCheck,
   AlertTriangle,
-  AlertCircle,
-  CreditCard,
-  Bell,
-  CheckCircle2,
 } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
-import { usePluggyDiagnostic } from '@/services/pluggy/pluggyMonitor';
-import { sendTestNotification } from '@/services/notifications/notificationService';
 
 interface BalanceHeroProps {
   onOpenPluggy?: () => void;
@@ -35,11 +29,6 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
   const cards = useWalletStore((s) => s.cards);
   const activeCardIndex = useWalletStore((s) => s.activeCardIndex);
-  const diagnostic = usePluggyDiagnostic();
-
-  const handleTestNotification = async () => {
-    await sendTestNotification();
-  };
 
   const currentCard = cards[activeCardIndex] || cards[0];
 
@@ -220,75 +209,6 @@ export const BalanceHero: React.FC<BalanceHeroProps> = ({
           </Text>
         </Pressable>
       </View>
-
-      {/* Barra de Diagnóstico da Requisição Teste de 10s e Teste de Notificação */}
-      <View style={styles.diagnosticBar}>
-        <Pressable
-          onPress={onOpenPluggy}
-          style={[
-            styles.diagPill,
-            {
-              backgroundColor:
-                diagnostic.status === 'error'
-                  ? colors.dangerSubtle
-                  : diagnostic.status === 'success'
-                  ? colors.successSubtle
-                  : colors.surfaceElevated,
-              borderColor:
-                diagnostic.status === 'error'
-                  ? mode === 'dark' ? 'rgba(255, 59, 48, 0.4)' : 'rgba(225, 29, 72, 0.3)'
-                  : diagnostic.status === 'success'
-                  ? mode === 'dark' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(5, 150, 105, 0.3)'
-                  : colors.borderSubtle,
-            },
-          ]}
-        >
-          {diagnostic.status === 'error' ? (
-            <AlertCircle size={12} color={colors.danger} />
-          ) : diagnostic.status === 'success' ? (
-            <CheckCircle2 size={12} color={colors.success} />
-          ) : (
-            <RefreshCw size={12} color={colors.textSecondary} />
-          )}
-          <Text
-            style={[
-              styles.diagText,
-              {
-                color:
-                  diagnostic.status === 'error'
-                    ? colors.danger
-                    : diagnostic.status === 'success'
-                    ? colors.success
-                    : colors.textSecondary,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {diagnostic.status === 'error'
-              ? `Teste 10s: ${diagnostic.message}`
-              : diagnostic.status === 'success'
-              ? `Sync 10s Ativo • ${diagnostic.message}`
-              : 'Verificação 10s em andamento...'}
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleTestNotification}
-          style={({ pressed }) => [
-            styles.testNotifBtn,
-            {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.borderSubtle,
-              opacity: pressed ? 0.75 : 1,
-            },
-          ]}
-        >
-          <Bell size={11} color={colors.primary} />
-          <Text style={[styles.testNotifText, { color: colors.primary }]}>
-            TESTAR NOTIF
-          </Text>
-        </Pressable>
-      </View>
     </View>
   );
 };
@@ -389,41 +309,5 @@ const styles = StyleSheet.create({
     fontFamily: Typography.bold,
     fontSize: 11,
     letterSpacing: 0.8,
-  },
-  diagnosticBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  diagPill: {
-    flex: 1,
-    height: 32,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    gap: 6,
-  },
-  diagText: {
-    flex: 1,
-    fontFamily: Typography.medium,
-    fontSize: 10,
-    letterSpacing: 0.2,
-  },
-  testNotifBtn: {
-    height: 32,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  testNotifText: {
-    fontFamily: Typography.bold,
-    fontSize: 9,
-    letterSpacing: 0.5,
   },
 });

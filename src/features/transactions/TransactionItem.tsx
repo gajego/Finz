@@ -28,6 +28,7 @@ import {
   formatTime,
   getPaymentModality,
 } from './transactionUtils';
+import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
 
 interface TransactionItemProps {
   transaction: Transaction;
@@ -43,6 +44,7 @@ interface IconConfig {
 
 const getTransactionIcon = (
   tx: Transaction,
+  categoryIcon?: string,
   categoryName?: string,
   categoryColor?: string,
   isDark = true
@@ -74,32 +76,34 @@ const getTransactionIcon = (
     };
   }
 
-  const name = `${tx.merchant} ${categoryName || ''}`.toLowerCase();
+  let Icon: LucideIcon = categoryIcon ? getCategoryIconComponent(categoryIcon) : CreditCard;
 
-  let Icon: LucideIcon = CreditCard;
+  if (!categoryIcon) {
+    const name = `${tx.merchant} ${categoryName || ''}`.toLowerCase();
 
-  if (name.includes('coffee') || name.includes('starbucks') || name.includes('café') || name.includes('padaria')) {
-    Icon = Coffee;
-  } else if (name.includes('uber') || name.includes('posto') || name.includes('shell') || name.includes('combustivel') || name.includes('transporte') || name.includes('99')) {
-    Icon = Car;
-  } else if (name.includes('alimentação') || name.includes('fogo de chão') || name.includes('restaurante') || name.includes('ifood') || name.includes('burger')) {
-    Icon = Utensils;
-  } else if (name.includes('lazer') || name.includes('steam') || name.includes('setup') || name.includes('game') || name.includes('playstation')) {
-    Icon = Gamepad2;
-  } else if (name.includes('shopping') || name.includes('amazon') || name.includes('apple') || name.includes('mercado') || name.includes('loja')) {
-    Icon = ShoppingBag;
-  } else if (name.includes('farmacia') || name.includes('drogaria') || name.includes('saude') || name.includes('hospital')) {
-    Icon = HeartPulse;
-  } else if (name.includes('faculdade') || name.includes('curso') || name.includes('escola') || name.includes('educação')) {
-    Icon = GraduationCap;
-  } else if (name.includes('luz') || name.includes('energia') || name.includes('enel') || name.includes('eletric')) {
-    Icon = Zap;
-  } else if (name.includes('internet') || name.includes('wifi') || name.includes('claro') || name.includes('vivo') || name.includes('tim')) {
-    Icon = Wifi;
-  } else if (name.includes('aluguel') || name.includes('condomínio') || name.includes('casa')) {
-    Icon = Home;
-  } else if (name.includes('investimento') || name.includes('rendimento')) {
-    Icon = TrendingUp;
+    if (name.includes('coffee') || name.includes('starbucks') || name.includes('café') || name.includes('padaria')) {
+      Icon = Coffee;
+    } else if (name.includes('uber') || name.includes('posto') || name.includes('shell') || name.includes('combustivel') || name.includes('transporte') || name.includes('99')) {
+      Icon = Car;
+    } else if (name.includes('alimentação') || name.includes('fogo de chão') || name.includes('restaurante') || name.includes('ifood') || name.includes('burger')) {
+      Icon = Utensils;
+    } else if (name.includes('lazer') || name.includes('steam') || name.includes('setup') || name.includes('game') || name.includes('playstation')) {
+      Icon = Gamepad2;
+    } else if (name.includes('shopping') || name.includes('amazon') || name.includes('apple') || name.includes('mercado') || name.includes('loja')) {
+      Icon = ShoppingBag;
+    } else if (name.includes('farmacia') || name.includes('drogaria') || name.includes('saude') || name.includes('hospital')) {
+      Icon = HeartPulse;
+    } else if (name.includes('faculdade') || name.includes('curso') || name.includes('escola') || name.includes('educação')) {
+      Icon = GraduationCap;
+    } else if (name.includes('luz') || name.includes('energia') || name.includes('enel') || name.includes('eletric')) {
+      Icon = Zap;
+    } else if (name.includes('internet') || name.includes('wifi') || name.includes('claro') || name.includes('vivo') || name.includes('tim')) {
+      Icon = Wifi;
+    } else if (name.includes('aluguel') || name.includes('condomínio') || name.includes('casa')) {
+      Icon = Home;
+    } else if (name.includes('investimento') || name.includes('rendimento')) {
+      Icon = TrendingUp;
+    }
   }
 
   if (categoryColor) {
@@ -143,6 +147,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
 
     const { Icon, bgColor, borderColor, iconColor } = getTransactionIcon(
       transaction,
+      category?.icon,
       category?.name,
       category?.color,
       isDark

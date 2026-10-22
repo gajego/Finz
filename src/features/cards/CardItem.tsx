@@ -198,50 +198,85 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
   // Física 3D e expansão com Reanimated
-  const rotateX = useSharedValue(0);
-  const rotateY = useSharedValue(0);
+  // Ângulos base para o visual "meio inclinado em 3D"
+  const BASE_ROTATE_X = 9;
+  const BASE_ROTATE_Y = -13;
+  const BASE_ROTATE_Z = 2.5;
+
+  const rotateX = useSharedValue(BASE_ROTATE_X);
+  const rotateY = useSharedValue(BASE_ROTATE_Y);
+  const rotateZ = useSharedValue(BASE_ROTATE_Z);
   const scale = useSharedValue(1);
 
-  // Efeito suave de flutuação 3D contínua (Idle Tilt & Float)
-  useEffect(() => {
-    rotateY.value = withRepeat(
-      withSequence(
-        withTiming(3.5, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
-        withTiming(-3.5, { duration: 2800, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
+  // Inicia o movimento contínuo bem sutil em torno do ângulo inclinado 3D
+  const startSubtleFloatAnimation = () => {
+    'worklet';
     rotateX.value = withRepeat(
       withSequence(
-        withTiming(-2.5, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
-        withTiming(2.5, { duration: 3200, easing: Easing.inOut(Easing.sin) })
+        withTiming(BASE_ROTATE_X + 1.8, { duration: 3400, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_X - 1.8, { duration: 3400, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true
     );
+    rotateY.value = withRepeat(
+      withSequence(
+        withTiming(BASE_ROTATE_Y - 2.0, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_Y + 2.0, { duration: 4000, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+    rotateZ.value = withRepeat(
+      withSequence(
+        withTiming(BASE_ROTATE_Z + 0.8, { duration: 4600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_Z - 0.8, { duration: 4600, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+  };
+
+  useEffect(() => {
+    startSubtleFloatAnimation();
   }, []);
 
-  // Gesto de Clique: Aciona feedback de expansão 3D e abre o Ateliê de Skins
+  // Gesto de Clique: Animação rápida e suave do cartão desfazendo o 3D e tomando toda a tela
   const tapGesture = Gesture.Tap()
-    .maxDuration(280)
+    .maxDuration(300)
     .onBegin(() => {
       'worklet';
-      scale.value = withSpring(0.96, { damping: 14, stiffness: 260 });
+      // Pequeno recuo físico tátil
+      scale.value = withSpring(0.97, { damping: 14, stiffness: 300 });
     })
     .onEnd(() => {
       'worklet';
-      scale.value = withSequence(
-        withSpring(1.05, { damping: 12, stiffness: 220 }),
-        withSpring(1, { damping: 15, stiffness: 180 })
-      );
+      // Desfaz a inclinação 3D para o plano frontal de forma ultra suave
+      rotateX.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
+      rotateY.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
+      rotateZ.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
+
+      // Expande rapidamente tomando a tela
+      scale.value = withTiming(1.3, { duration: 260, easing: Easing.out(Easing.cubic) });
+
+      // Abre o modal de customização de skins em transição suave
       runOnJS(onEditSkin)(card);
+
+      // Restaura suavemente os ângulos de repouso para quando o modal fechar
+      scale.value = withSequence(
+        withTiming(1.3, { duration: 300 }),
+        withTiming(1, { duration: 350, easing: Easing.inOut(Easing.quad) }, (finished) => {
+          if (finished) {
+            startSubtleFloatAnimation();
+          }
+        })
+      );
     });
 
-  // Gesto de Arrasto 3D Dinâmico: Ativado em resposta à inclinação tátil do usuário
+  // Gesto de Arrasto 3D: Permite inclinar o cartão manualmente com o dedo
   const panGesture = Gesture.Pan()
     .activeOffsetY([-8, 8])
-    .failOffsetX([-22, 22]) // Permite que o carrossel horizontal de cartões role com fluidez
+    .failOffsetX([-22, 22]) // Deixa o carrossel horizontal de cartões livre
     .onBegin(() => {
       'worklet';
       scale.value = withSpring(0.98, { damping: 16, stiffness: 200 });
@@ -251,21 +286,26 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
       rotateY.value = interpolate(
         e.translationX,
         [-CARD_WIDTH / 2, CARD_WIDTH / 2],
-        [-16, 16],
+        [BASE_ROTATE_Y - 14, BASE_ROTATE_Y + 14],
         'clamp'
       );
       rotateX.value = interpolate(
         e.translationY,
         [-CARD_HEIGHT / 2, CARD_HEIGHT / 2],
-        [14, -14],
+        [BASE_ROTATE_X + 12, BASE_ROTATE_X - 12],
         'clamp'
       );
     })
     .onFinalize(() => {
       'worklet';
-      rotateX.value = withSpring(0, { damping: 15, stiffness: 140 });
-      rotateY.value = withSpring(0, { damping: 15, stiffness: 140 });
       scale.value = withSpring(1, { damping: 15, stiffness: 140 });
+      rotateX.value = withSpring(BASE_ROTATE_X, { damping: 15, stiffness: 140 });
+      rotateY.value = withSpring(BASE_ROTATE_Y, { damping: 15, stiffness: 140 });
+      rotateZ.value = withSpring(BASE_ROTATE_Z, { damping: 15, stiffness: 140 }, (finished) => {
+        if (finished) {
+          startSubtleFloatAnimation();
+        }
+      });
     });
 
   const cardGesture = Gesture.Exclusive(panGesture, tapGesture);
@@ -273,11 +313,13 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const animatedCardStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { perspective: 1200 },
+        { perspective: 1000 },
         { scale: scale.value },
         { rotateX: `${rotateX.value}deg` },
         { rotateY: `${rotateY.value}deg` },
+        { rotateZ: `${rotateZ.value}deg` },
       ],
+      zIndex: scale.value > 1.05 ? 99 : 1,
     };
   });
 
@@ -285,12 +327,12 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const animatedGlareStyle = useAnimatedStyle(() => {
     const translateX = interpolate(
       rotateY.value,
-      [-16, 16],
+      [BASE_ROTATE_Y - 16, BASE_ROTATE_Y + 16],
       [-CARD_WIDTH * 0.45, CARD_WIDTH * 0.45]
     );
     const translateY = interpolate(
       rotateX.value,
-      [-14, 14],
+      [BASE_ROTATE_X - 14, BASE_ROTATE_X + 14],
       [-CARD_HEIGHT * 0.35, CARD_HEIGHT * 0.35]
     );
     return {

@@ -189,12 +189,18 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
   const [selectedWallpaper, setSelectedWallpaper] = useState<string | undefined>(undefined);
   const [customUrl, setCustomUrl] = useState('');
 
-  // Sincroniza estado com o cartão aberto
+  // Sincroniza estado com o cartão aberto e dispara expansão suave
   useEffect(() => {
-    if (card) {
+    if (card && visible) {
       setSelectedGradient(card.gradient || ['#111215', '#08090C']);
       setSelectedWallpaper(card.wallpaperUri);
       setCustomUrl('');
+
+      // Transição hero suave: o cartão surge expandido e se acomoda elegantemente na tela
+      scale.value = 1.12;
+      scale.value = withSpring(1, { damping: 14, stiffness: 220 });
+      rotateX.value = withSpring(0, { damping: 14, stiffness: 200 });
+      rotateY.value = withSpring(0, { damping: 14, stiffness: 200 });
     }
   }, [card, visible]);
 
@@ -313,7 +319,7 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardAvoid}

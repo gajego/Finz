@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, {
@@ -13,8 +13,12 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
   interpolate,
   runOnJS,
+  Easing,
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { BankCard } from '@/types';
@@ -193,47 +197,75 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const { colors } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
-  // Física 3D com Reanimated
+  // Física 3D e expansão com Reanimated
   const rotateX = useSharedValue(0);
   const rotateY = useSharedValue(0);
   const scale = useSharedValue(1);
 
-  // Gesto de Clique: Abre o modal de customização ao tocar rapidamente no cartão
+  // Efeito suave de flutuação 3D contínua (Idle Tilt & Float)
+  useEffect(() => {
+    rotateY.value = withRepeat(
+      withSequence(
+        withTiming(3.5, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-3.5, { duration: 2800, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+    rotateX.value = withRepeat(
+      withSequence(
+        withTiming(-2.5, { duration: 3200, easing: Easing.inOut(Easing.sin) }),
+        withTiming(2.5, { duration: 3200, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  // Gesto de Clique: Aciona feedback de expansão 3D e abre o Ateliê de Skins
   const tapGesture = Gesture.Tap()
-    .maxDuration(250)
+    .maxDuration(280)
+    .onBegin(() => {
+      'worklet';
+      scale.value = withSpring(0.96, { damping: 14, stiffness: 260 });
+    })
     .onEnd(() => {
       'worklet';
+      scale.value = withSequence(
+        withSpring(1.05, { damping: 12, stiffness: 220 }),
+        withSpring(1, { damping: 15, stiffness: 180 })
+      );
       runOnJS(onEditSkin)(card);
     });
 
-  // Gesto de Arrasto 3D: Ativado ao manter pressionado (long press de 200ms)
+  // Gesto de Arrasto 3D Dinâmico: Ativado em resposta à inclinação tátil do usuário
   const panGesture = Gesture.Pan()
-    .activateAfterLongPress(200)
-    .failOffsetX([-15, 15])
+    .activeOffsetY([-8, 8])
+    .failOffsetX([-22, 22]) // Permite que o carrossel horizontal de cartões role com fluidez
     .onBegin(() => {
       'worklet';
-      scale.value = withSpring(0.96, { damping: 18, stiffness: 200, mass: 0.6 });
+      scale.value = withSpring(0.98, { damping: 16, stiffness: 200 });
     })
     .onUpdate((e) => {
       'worklet';
       rotateY.value = interpolate(
         e.translationX,
         [-CARD_WIDTH / 2, CARD_WIDTH / 2],
-        [-14, 14],
+        [-16, 16],
         'clamp'
       );
       rotateX.value = interpolate(
         e.translationY,
         [-CARD_HEIGHT / 2, CARD_HEIGHT / 2],
-        [12, -12],
+        [14, -14],
         'clamp'
       );
     })
     .onFinalize(() => {
       'worklet';
-      rotateX.value = withSpring(0, { damping: 16, stiffness: 160 });
-      rotateY.value = withSpring(0, { damping: 16, stiffness: 160 });
-      scale.value = withSpring(1, { damping: 16, stiffness: 160 });
+      rotateX.value = withSpring(0, { damping: 15, stiffness: 140 });
+      rotateY.value = withSpring(0, { damping: 15, stiffness: 140 });
+      scale.value = withSpring(1, { damping: 15, stiffness: 140 });
     });
 
   const cardGesture = Gesture.Exclusive(panGesture, tapGesture);
@@ -241,7 +273,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const animatedCardStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { perspective: 950 },
+        { perspective: 1200 },
         { scale: scale.value },
         { rotateX: `${rotateX.value}deg` },
         { rotateY: `${rotateY.value}deg` },
@@ -249,17 +281,17 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
     };
   });
 
-  // Reflexo de Luz Especular Dinâmico que responde à física 3D
+  // Reflexo de Luz Especular Dinâmico que acompanha os ângulos 3D
   const animatedGlareStyle = useAnimatedStyle(() => {
     const translateX = interpolate(
       rotateY.value,
-      [-14, 14],
-      [-CARD_WIDTH * 0.4, CARD_WIDTH * 0.4]
+      [-16, 16],
+      [-CARD_WIDTH * 0.45, CARD_WIDTH * 0.45]
     );
     const translateY = interpolate(
       rotateX.value,
-      [-12, 12],
-      [-CARD_HEIGHT * 0.3, CARD_HEIGHT * 0.3]
+      [-14, 14],
+      [-CARD_HEIGHT * 0.35, CARD_HEIGHT * 0.35]
     );
     return {
       transform: [{ translateX }, { translateY }],
@@ -273,6 +305,19 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
       currency: 'BRL',
     });
   };
+
+  // Nomenclatura e Categoria Real da Instituição Bancária (Zero Mocks, Zero "Finz")
+  const cardVariantBadge = useMemo(() => {
+    const b = (card.bankName || '').toUpperCase();
+    if (b.includes('NUBANK')) return 'MASTERCARD GOLD';
+    if (b.includes('ITAU') || b.includes('ITAÚ')) return 'VISA PLATINUM';
+    if (b.includes('INTER')) return 'MASTERCARD BLACK';
+    if (b.includes('C6')) return 'CARBON BLACK';
+    if (b.includes('BRADESCO')) return 'ELO NANQUIM';
+    if (b.includes('SANTANDER')) return 'UNLIMITED';
+    if (b.includes('BRASIL')) return 'OUROCARD VISA';
+    return 'CRÉDITO & DÉBITO';
+  }, [card.bankName]);
 
   return (
     <View style={styles.outerWrapper}>
@@ -334,7 +379,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
                 <View style={styles.subBadgeRow}>
                   <Text style={styles.debitCreditLabel}>DEBIT & CREDIT</Text>
                   <View style={styles.microDot} />
-                  <Text style={styles.finzCoreLabel}>FINZ PLATINUM</Text>
+                  <Text style={styles.cardVariantLabel}>{cardVariantBadge}</Text>
                 </View>
               </View>
 
@@ -462,11 +507,12 @@ const styles = StyleSheet.create({
     borderRadius: 1.5,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
   },
-  finzCoreLabel: {
-    color: 'rgba(217, 249, 32, 0.85)',
+  cardVariantLabel: {
+    color: 'rgba(217, 249, 32, 0.95)',
     fontFamily: Typography.bold,
     fontSize: 8,
     letterSpacing: LetterSpacing.wider,
+    textTransform: 'uppercase',
   },
   topRightActions: {
     justifyContent: 'center',

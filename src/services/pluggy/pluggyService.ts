@@ -424,35 +424,33 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
         ? Math.round(rawLimit * 100)
         : Math.max(balanceCents, 200000);
 
-      // Nome do cartão em si retornado pela Pluggy (evita nome genérico 'PLUGGY')
-      let cardDisplayName = cAcc.name?.trim() || '';
-      if (!cardDisplayName || /pluggy/i.test(cardDisplayName)) {
-        if (connectorName && !/pluggy/i.test(connectorName)) {
-          cardDisplayName = connectorName;
-        } else if (cAcc.creditData?.brand) {
-          cardDisplayName = `${cAcc.creditData.brand}${cAcc.creditData?.level ? ` ${cAcc.creditData.level}` : ''}`;
-        } else {
-          cardDisplayName = 'CARTÃO DE CRÉDITO';
-        }
-      }
-      cardDisplayName = cardDisplayName.toUpperCase();
+      // Determina o nome do banco e o nome da variante do cartão
+      const isGenericConnector = !connectorName || /pluggy|banco conectado/i.test(connectorName);
+      let bankName = isGenericConnector ? (cAcc.name || 'BANCO') : connectorName;
+      bankName = bankName.trim().toUpperCase();
 
-      const theme = getBankPresetTheme(cardDisplayName || connectorName);
+      // Identifica o tema baseado tanto no conector quanto no nome da conta
+      const theme = getBankPresetTheme(`${connectorName} ${cAcc.name || ''} ${cAcc.creditData?.brand || ''}`);
 
-      // Preserva skin personalizada caso o usuário já tenha customizado
+      // Preserva skin personalizada caso o usuário já tenha customizado (se não for o cinza genérico antigo)
       const existingCardRow = db.getFirstSync<{ wallpaper_uri?: string; gradient_0?: string; gradient_1?: string }>(
         'SELECT wallpaper_uri, gradient_0, gradient_1 FROM cards WHERE id = ?',
         [cardId]
       );
 
-      const gradient: [string, string] =
-        existingCardRow?.gradient_0 && existingCardRow?.gradient_1
-          ? [existingCardRow.gradient_0, existingCardRow.gradient_1]
-          : theme.gradient;
+      const hasCustomSkin =
+        existingCardRow?.wallpaper_uri ||
+        (existingCardRow?.gradient_0 &&
+          existingCardRow?.gradient_0 !== '#27272A' &&
+          existingCardRow?.gradient_0 !== '#111215');
+
+      const gradient: [string, string] = hasCustomSkin && existingCardRow?.gradient_0 && existingCardRow?.gradient_1
+        ? [existingCardRow.gradient_0, existingCardRow.gradient_1]
+        : theme.gradient;
 
       cardsToProcess.push({
         id: cardId,
-        bankName: cardDisplayName,
+        bankName,
         packageName: theme.packageName,
         lastFourDigits: lastFour,
         gradient,
@@ -813,14 +811,14 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
 }
 
 /**
- * Retorna cores e gradientes adequados com base no nome do banco
+ * Retorna cores e gradientes oficiais adequados com base no nome do banco ou conector
  */
-function getBankPresetTheme(name: string): {
+export function getBankPresetTheme(name: string): {
   packageName: string;
   gradient: [string, string];
   color: string;
 } {
-  const lower = name.toLowerCase();
+  const lower = (name || '').toLowerCase();
   if (lower.includes('nu') || lower.includes('nubank')) {
     return { packageName: 'com.nu.production', gradient: ['#820AD1', '#4C0677'], color: '#820AD1' };
   }
@@ -828,22 +826,37 @@ function getBankPresetTheme(name: string): {
     return { packageName: 'com.itau', gradient: ['#EC7000', '#1C1917'], color: '#EC7000' };
   }
   if (lower.includes('inter')) {
-    return { packageName: 'br.com.intermedium', gradient: ['#FF7A00', '#D95A00'], color: '#FF7A00' };
+    return { packageName: 'br.com.intermedium', gradient: ['#FF7A00', '#7A3200'], color: '#FF7A00' };
   }
   if (lower.includes('bradesco')) {
-    return { packageName: 'com.bancobradesco', gradient: ['#CC092F', '#7A041A'], color: '#CC092F' };
+    return { packageName: 'com.bancobradesco', gradient: ['#CC092F', '#4A020F'], color: '#CC092F' };
   }
   if (lower.includes('c6')) {
-    return { packageName: 'com.c6bank.app', gradient: ['#1C1C1E', '#000000'], color: '#242424' };
+    return { packageName: 'com.c6bank.app', gradient: ['#18181B', '#09090B'], color: '#242424' };
   }
   if (lower.includes('santander')) {
-    return { packageName: 'com.santander.app', gradient: ['#EA1D2C', '#7F0A11'], color: '#EA1D2C' };
+    return { packageName: 'com.santander.app', gradient: ['#EA1D2C', '#5A060C'], color: '#EA1D2C' };
   }
   if (lower.includes('mercado')) {
-    return { packageName: 'com.mercadopago.wallet', gradient: ['#009EE3', '#005E8A'], color: '#009EE3' };
+    return { packageName: 'com.mercadopago.wallet', gradient: ['#009EE3', '#003E60'], color: '#009EE3' };
   }
   if (lower.includes('btg')) {
     return { packageName: 'com.btg', gradient: ['#001E62', '#000D2B'], color: '#001E62' };
+  }
+  if (lower.includes('brasil') || lower.includes('bb') || lower.includes('banco do brasil')) {
+    return { packageName: 'br.com.bb.android', gradient: ['#003882', '#001A40'], color: '#FCDB00' };
+  }
+  if (lower.includes('caixa')) {
+    return { packageName: 'br.gov.caixa.tem', gradient: ['#005CA9', '#002850'], color: '#005CA9' };
+  }
+  if (lower.includes('picpay')) {
+    return { packageName: 'com.picpay', gradient: ['#11C76F', '#074825'], color: '#11C76F' };
+  }
+  if (lower.includes('neon')) {
+    return { packageName: 'br.com.neon', gradient: ['#00D2FF', '#005080'], color: '#00D2FF' };
+  }
+  if (lower.includes('xp')) {
+    return { packageName: 'br.com.xp.investimentos', gradient: ['#1C1C1E', '#09090B'], color: '#FFFFFF' };
   }
 
   // Padrão Neo-Fintech Titânio

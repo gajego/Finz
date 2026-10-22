@@ -59,14 +59,19 @@ export function initDatabase() {
     // Coluna já existe
   }
 
-  // Higienização de cartões legados com nome genérico 'PLUGGY'
+  // Higienização de cartões com nome genérico ou incorreto (ex: 'GOLD' ou 'PLUGGY') para NUBANK e cores oficiais
   try {
     db.runSync(`
       UPDATE cards 
-      SET bank_name = 'NUBANK' 
+      SET bank_name = 'NUBANK',
+          package_name = 'com.nu.production',
+          gradient_0 = '#820AD1',
+          gradient_1 = '#4C0677',
+          accent_color = '#820AD1'
       WHERE UPPER(bank_name) = 'PLUGGY' 
          OR UPPER(bank_name) = 'PLUGGY BANK' 
-         OR UPPER(bank_name) = 'BANCO CONECTADO';
+         OR UPPER(bank_name) = 'BANCO CONECTADO'
+         OR UPPER(bank_name) = 'GOLD';
     `);
   } catch {
     // Tabela ainda vazia ou migrada
@@ -192,19 +197,30 @@ export function loadAllDataFromSQLite(): {
     ORDER BY t.timestamp DESC
   `);
 
-  const cards: BankCard[] = cardRows.map((r) => ({
-    id: String(r.id),
-    bankName: String(r.bank_name || 'BANCO'),
-    packageName: String(r.package_name || 'com.finz.openfinance'),
-    lastFourDigits: String(r.last_four || '0000'),
-    gradient: [String(r.gradient_0 || '#27272A'), String(r.gradient_1 || '#09090B')],
-    wallpaperUri: r.wallpaper_uri || undefined,
-    accentColor: String(r.accent_color || '#84CC16'),
-    cardholderName: String(r.cardholder_name || 'MEU CARTAO'),
-    balance: Number(r.balance) || 0,
-    limit: Number(r.limit_cents) || 0,
-    bankBalance: Number(r.bank_balance) || 0,
-  }));
+  const cards: BankCard[] = cardRows.map((r) => {
+    let bankName = String(r.bank_name || 'NUBANK');
+    if (
+      bankName.toUpperCase() === 'GOLD' ||
+      bankName.toUpperCase() === 'PLUGGY' ||
+      bankName.toUpperCase() === 'BANCO CONECTADO'
+    ) {
+      bankName = 'NUBANK';
+    }
+
+    return {
+      id: String(r.id),
+      bankName,
+      packageName: String(r.package_name || 'com.nu.production'),
+      lastFourDigits: String(r.last_four || '0000'),
+      gradient: [String(r.gradient_0 || '#820AD1'), String(r.gradient_1 || '#4C0677')],
+      wallpaperUri: r.wallpaper_uri || undefined,
+      accentColor: String(r.accent_color || '#820AD1'),
+      cardholderName: String(r.cardholder_name || 'MEU CARTAO'),
+      balance: Number(r.balance) || 0,
+      limit: Number(r.limit_cents) || 0,
+      bankBalance: Number(r.bank_balance) || 0,
+    };
+  });
 
   const categories: Category[] = catRows.map((r) => ({
     id: String(r.id),

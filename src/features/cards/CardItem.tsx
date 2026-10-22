@@ -241,36 +241,19 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
     startSubtleFloatAnimation();
   }, []);
 
-  // Gesto de Clique: Animação rápida e suave do cartão desfazendo o 3D e tomando toda a tela
+  // Gesto de Clique: Quando clicar, o cartão apenas dá uma afundada suave bem rápido
   const tapGesture = Gesture.Tap()
     .maxDuration(300)
     .onBegin(() => {
       'worklet';
-      // Pequeno recuo físico tátil
-      scale.value = withSpring(0.97, { damping: 14, stiffness: 300 });
+      // Afundada suave bem rápido
+      scale.value = withTiming(0.95, { duration: 110, easing: Easing.out(Easing.quad) });
     })
     .onEnd(() => {
       'worklet';
-      // Desfaz a inclinação 3D para o plano frontal de forma ultra suave
-      rotateX.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
-      rotateY.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
-      rotateZ.value = withTiming(0, { duration: 240, easing: Easing.out(Easing.cubic) });
-
-      // Expande rapidamente tomando a tela
-      scale.value = withTiming(1.3, { duration: 260, easing: Easing.out(Easing.cubic) });
-
-      // Abre o modal de customização de skins em transição suave
+      // Retorno suave bem rápido
+      scale.value = withTiming(1, { duration: 130, easing: Easing.out(Easing.quad) });
       runOnJS(onEditSkin)(card);
-
-      // Restaura suavemente os ângulos de repouso para quando o modal fechar
-      scale.value = withSequence(
-        withTiming(1.3, { duration: 300 }),
-        withTiming(1, { duration: 350, easing: Easing.inOut(Easing.quad) }, (finished) => {
-          if (finished) {
-            startSubtleFloatAnimation();
-          }
-        })
-      );
     });
 
   // Gesto de Arrasto 3D: Permite inclinar o cartão manualmente com o dedo
@@ -319,7 +302,6 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
         { rotateY: `${rotateY.value}deg` },
         { rotateZ: `${rotateZ.value}deg` },
       ],
-      zIndex: scale.value > 1.05 ? 99 : 1,
     };
   });
 

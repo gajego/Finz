@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Moon, Sun, Bell, Landmark } from 'lucide-react-native';
+import { Moon, Sun, Bell, Landmark, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, LetterSpacing } from '@/theme/typography';
@@ -14,6 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPluggy, onOpenProfile }) => {
   const { colors, mode, toggleTheme } = useTheme();
   const profile = useWalletStore((s) => s.profile);
+  const cards = useWalletStore((s) => s.cards);
   const categories = useWalletStore((s) => s.categories);
   const transactions = useWalletStore((s) => s.transactions);
   const activeAlert = useWalletStore((s) => s.activeAlert);
@@ -48,38 +49,69 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
     return (profile.fullName?.trim() || 'WESLEY SILVA').toUpperCase();
   }, [profile.fullName]);
 
+  const hasActiveSync = cards.length > 0;
+
   return (
     <View style={styles.container}>
-      {/* Bloco de Identidade do Usuário com Avatar Squircle (Abre Menu de Perfil) */}
+      {/* Bloco Tátil de Identidade do Usuário (Design Neo-Fintech Pill) */}
       <Pressable
         onPress={onOpenProfile}
         style={({ pressed }) => [
-          styles.userRow,
-          { opacity: pressed ? 0.75 : 1 },
+          styles.profileButtonPill,
+          {
+            backgroundColor: pressed ? colors.surfaceSubtle : colors.surfaceElevated,
+            borderColor: colors.borderSubtle,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+            opacity: pressed ? 0.88 : 1,
+          },
         ]}
-        hitSlop={8}
+        hitSlop={{ top: 6, bottom: 6, left: 8, right: 4 }}
         accessibilityRole="button"
-        accessibilityLabel="Abrir menu de perfil do usuário"
+        accessibilityLabel={`Perfil de ${profile.fullName?.trim() || 'Usuário'}, toque para abrir configurações`}
+        accessibilityHint="Abre o menu de configurações da conta e preferências"
       >
-        <View
-          style={[
-            styles.userAvatar,
-            {
-              backgroundColor: colors.surfaceSubtle,
-              borderColor: colors.borderSubtle,
-            },
-          ]}
-        >
-          <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
+        {/* Avatar Squircle de Alta Precisão com Status Dot */}
+        <View style={styles.avatarWrapper}>
+          <View
+            style={[
+              styles.userAvatar,
+              {
+                backgroundColor: `${colors.primary}15`,
+                borderColor: `${colors.primary}35`,
+              },
+            ]}
+          >
+            <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
+          </View>
+          {hasActiveSync && (
+            <View style={[styles.statusDotRing, { backgroundColor: colors.surfaceElevated }]}>
+              <View style={[styles.statusDot, { backgroundColor: '#00D09E' }]} />
+            </View>
+          )}
         </View>
+
+        {/* Hierarquia Tipográfica de Prestígio */}
         <View style={styles.userTextCol}>
-          <Text style={[styles.greetingLabel, { color: colors.textMuted }]}>
-            {greeting} • PORTFÓLIO
-          </Text>
-          <Text style={[styles.userName, { color: colors.textSecondary }]} numberOfLines={1}>
+          <View style={styles.microLabelRow}>
+            <Text style={[styles.greetingLabel, { color: colors.textMuted }]}>
+              {greeting}
+            </Text>
+            <View style={[styles.microStatusDot, { backgroundColor: colors.textMuted }]} />
+            <Text style={[styles.statusLabel, { color: colors.primary }]}>
+              PORTFÓLIO
+            </Text>
+          </View>
+          <Text
+            style={[styles.userName, { color: colors.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {displayName}
           </Text>
         </View>
+
+        {/* Indicador de Affordance Direcional */}
+        <ChevronRight size={13} color={colors.textMuted} strokeWidth={2.4} style={styles.chevron} />
       </Pressable>
 
       {/* Ações: Open Finance Pluggy, Alternar Tema e Notificações (Pills de Precisão) */}
@@ -163,45 +195,100 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 14,
     paddingBottom: 10,
+    gap: 10,
   },
-  userRow: {
+  profileButtonPill: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingRight: 12,
+    minHeight: 46,
+    paddingLeft: 6,
+    paddingRight: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 9,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  avatarWrapper: {
+    position: 'relative',
+    width: 36,
+    height: 36,
   },
   userAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
-    borderWidth: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
     fontFamily: Typography.bold,
-    fontSize: 9,
+    fontSize: 12.5,
     letterSpacing: LetterSpacing.tight,
+    fontVariant: ['tabular-nums'],
+  },
+  statusDotRing: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   userTextCol: {
     flex: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+  },
+  microLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
   },
   greetingLabel: {
     fontFamily: Typography.bold,
-    fontSize: 8,
+    fontSize: 8.5,
     letterSpacing: LetterSpacing.wider,
-    marginBottom: 1,
+    textTransform: 'uppercase',
+  },
+  microStatusDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.6,
+  },
+  statusLabel: {
+    fontFamily: Typography.bold,
+    fontSize: 8,
+    letterSpacing: LetterSpacing.wide,
+    textTransform: 'uppercase',
   },
   userName: {
-    fontFamily: Typography.medium,
-    fontSize: 11,
-    letterSpacing: LetterSpacing.wide,
+    fontFamily: Typography.bold,
+    fontSize: 13,
+    letterSpacing: LetterSpacing.normal,
+  },
+  chevron: {
+    opacity: 0.7,
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   actionPill: {
     width: 42,

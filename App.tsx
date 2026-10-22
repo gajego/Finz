@@ -34,6 +34,7 @@ import { ProfileModal } from './src/features/profile/ProfileModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
+import { PerformanceScreen } from './src/features/performance/PerformanceScreen';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications } from './src/services/notifications/notificationService';
@@ -250,11 +251,13 @@ export default function App() {
               }}
             />
           </ScrollView>
+        ) : activeMainTab === 'performance' ? (
+          <PerformanceScreen />
         ) : (
           <GoalsScreen />
         )}
 
-        {/* Menu Flutuante ao Fundo da Tela (Início / Metas) */}
+        {/* Menu Flutuante ao Fundo da Tela (Início / Desempenho / Metas) */}
         <FloatingBottomNav
           activeTab={activeMainTab}
           onTabChange={setActiveMainTab}

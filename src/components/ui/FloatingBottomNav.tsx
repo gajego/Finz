@@ -6,11 +6,11 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
-import { Home, Target } from 'lucide-react-native';
+import { Home, TrendingUp, Target } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 
-export type MainTab = 'home' | 'goals';
+export type MainTab = 'home' | 'performance' | 'goals';
 
 interface FloatingBottomNavProps {
   activeTab: MainTab;
@@ -52,7 +52,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           hitSlop={8}
         >
           <Home
-            size={17}
+            size={16}
             color={
               activeTab === 'home'
                 ? colors.primaryForeground
@@ -75,7 +75,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           </Text>
         </Pressable>
 
-        {/* Separador Sutil */}
+        {/* Separador Sutil 1 */}
         <View
           style={[
             styles.divider,
@@ -83,7 +83,52 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           ]}
         />
 
-        {/* Aba 2: Metas */}
+        {/* Aba 2: Desempenho */}
+        <Pressable
+          onPress={() => onTabChange('performance')}
+          style={({ pressed }) => [
+            styles.tabItem,
+            activeTab === 'performance' && [
+              styles.activeTabItem,
+              { backgroundColor: colors.primary },
+            ],
+            { transform: [{ scale: pressed ? 0.96 : 1 }] },
+          ]}
+          hitSlop={8}
+        >
+          <TrendingUp
+            size={16}
+            color={
+              activeTab === 'performance'
+                ? colors.primaryForeground
+                : colors.textSecondary
+            }
+          />
+          <Text
+            style={[
+              styles.tabLabel,
+              {
+                color:
+                  activeTab === 'performance'
+                    ? colors.primaryForeground
+                    : colors.textSecondary,
+                fontFamily: activeTab === 'performance' ? Typography.bold : Typography.medium,
+              },
+            ]}
+          >
+            Desempenho
+          </Text>
+        </Pressable>
+
+        {/* Separador Sutil 2 */}
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' },
+          ]}
+        />
+
+        {/* Aba 3: Metas */}
         <Pressable
           onPress={() => onTabChange('goals')}
           style={({ pressed }) => [
@@ -97,7 +142,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           hitSlop={8}
         >
           <Target
-            size={17}
+            size={16}
             color={
               activeTab === 'goals'
                 ? colors.primaryForeground
@@ -136,23 +181,23 @@ const styles = StyleSheet.create({
   dockPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
     borderRadius: 36,
     borderWidth: 1.5,
     elevation: 16,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 18,
-    gap: 4,
+    gap: 2,
   },
   tabItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 28,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 24,
+    gap: 6,
   },
   activeTabItem: {
     elevation: 4,
@@ -161,11 +206,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   tabLabel: {
-    fontSize: 13,
-    letterSpacing: 0.3,
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
   divider: {
     width: 1,
-    height: 18,
+    height: 16,
   },
 });

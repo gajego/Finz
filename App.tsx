@@ -3,6 +3,7 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  RefreshControl,
   Linking,
   Alert,
   NativeSyntheticEvent,
@@ -24,7 +25,6 @@ import { BalanceHero } from './src/components/ui/BalanceHero';
 import { AlertBanner } from './src/components/ui/AlertBanner';
 import { CardCarousel } from './src/features/cards/CardCarousel';
 import { CardSkinModal } from './src/features/cards/CardSkinModal';
-import { AddCardModal } from './src/features/cards/AddCardModal';
 import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown';
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
@@ -67,7 +67,6 @@ export default function App() {
 
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
-  const [addCardVisible, setAddCardVisible] = useState(false);
   const [pluggyModalVisible, setPluggyModalVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
@@ -221,13 +220,18 @@ export default function App() {
             contentContainerStyle={styles.scrollContent}
             scrollEventThrottle={32}
             onScroll={handleScroll}
+            refreshControl={
+              <RefreshControl
+                refreshing={isSyncingPluggy}
+                onRefresh={handleSyncPluggy}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+                progressBackgroundColor={mode === 'dark' ? colors.surfaceElevated : colors.surface}
+              />
+            }
           >
-            {/* Saldo Brutalista, Limites e Barra de Ação Open Finance */}
-            <BalanceHero
-              onOpenPluggy={() => setPluggyModalVisible(true)}
-              onSyncNow={handleSyncPluggy}
-              isSyncing={isSyncingPluggy}
-            />
+            {/* Saldo Brutalista com Tabular Nums */}
+            <BalanceHero />
 
             {/* Alerta Inteligente Vermelho quando limite é atingido */}
             <AlertBanner onOpenBudgetManager={() => setActiveMainTab('goals')} />
@@ -238,7 +242,7 @@ export default function App() {
               activeIndex={activeCardIndex}
               onIndexChange={setActiveCardIndex}
               onEditSkin={(card) => setSelectedCardForSkin(card)}
-              onAddCard={() => setAddCardVisible(true)}
+              onOpenPluggy={() => setPluggyModalVisible(true)}
             />
 
             {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
@@ -263,16 +267,6 @@ export default function App() {
         <FloatingBottomNav
           activeTab={activeMainTab}
           onTabChange={setActiveMainTab}
-        />
-
-        {/* Modal de Adição de Cartão */}
-        <AddCardModal
-          visible={addCardVisible}
-          onClose={() => setAddCardVisible(false)}
-          onOpenPluggy={() => {
-            setAddCardVisible(false);
-            setPluggyModalVisible(true);
-          }}
         />
 
         {/* Modal Open Finance Pluggy */}
@@ -306,7 +300,7 @@ export default function App() {
           visible={notificationsVisible}
           onClose={() => setNotificationsVisible(false)}
           onNavigateToBudgets={handleOpenBudgetModal}
-          onNavigateToAddCard={() => setAddCardVisible(true)}
+          onNavigateToAddCard={() => setPluggyModalVisible(true)}
         />
 
         {/* Detalhes da Movimentação e Alteração de Categoria */}

@@ -9,7 +9,7 @@ import {
   NativeScrollEvent,
   Pressable,
 } from 'react-native';
-import { Plus, CreditCard } from 'lucide-react-native';
+import { Landmark, ArrowRight } from 'lucide-react-native';
 import { BankCard } from '@/types';
 import { CardItem } from './CardItem';
 import { useTheme } from '@/theme/useTheme';
@@ -24,7 +24,7 @@ interface CardCarouselProps {
   activeIndex: number;
   onIndexChange: (index: number) => void;
   onEditSkin: (card: BankCard) => void;
-  onAddCard?: () => void;
+  onOpenPluggy?: () => void;
 }
 
 export const CardCarousel: React.FC<CardCarouselProps> = ({
@@ -32,7 +32,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   activeIndex,
   onIndexChange,
   onEditSkin,
-  onAddCard,
+  onOpenPluggy,
 }) => {
   const { colors } = useTheme();
 
@@ -49,7 +49,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
       <View style={styles.container}>
         <View style={styles.emptyWrapper}>
           <Pressable
-            onPress={onAddCard}
+            onPress={onOpenPluggy}
             style={({ pressed }) => [
               styles.emptyCard,
               {
@@ -63,21 +63,18 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
               style={[
                 styles.emptyIconCircle,
                 {
-                  backgroundColor: colors.surfaceSubtle,
-                  borderColor: colors.borderSubtle,
+                  backgroundColor: `${colors.primary}18`,
+                  borderColor: `${colors.primary}36`,
                 },
               ]}
             >
-              <CreditCard size={22} color={colors.primary} strokeWidth={2} />
-              <View style={[styles.emptyPlusBadge, { backgroundColor: colors.primary }]}>
-                <Plus size={10} color={colors.primaryForeground} strokeWidth={3} />
-              </View>
+              <Landmark size={22} color={colors.primary} strokeWidth={2} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              VINCULAR PRIMEIRO CARTÃO
+              CONECTAR CONTA BANCÁRIA
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              Cadastre Nubank, Itaú, Inter ou outro banco para gerenciar faturas e conciliar comprovantes Pix em um só lugar.
+              Vincule Nubank, Itaú, Inter ou outro banco via Open Finance para sincronizar seus cartões automaticamente.
             </Text>
           </Pressable>
         </View>
@@ -105,7 +102,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         )}
       />
 
-      {/* Indicadores de Cartão Ativo e Botão Pill Minimalista */}
+      {/* Indicadores de Cartão Ativo (Centralizados, sem botão Novo Cartão) */}
       <View style={styles.footerRow}>
         <View style={styles.pagination}>
           {cards.map((_, i) => {
@@ -126,26 +123,6 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
             );
           })}
         </View>
-
-        {onAddCard && (
-          <Pressable
-            onPress={onAddCard}
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.addCardPill,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: colors.borderSubtle,
-                opacity: pressed ? 0.75 : 1,
-              },
-            ]}
-          >
-            <View style={[styles.plusIconWrap, { backgroundColor: colors.badgeBackground }]}>
-              <Plus size={11} color={colors.primary} strokeWidth={2.6} />
-            </View>
-            <Text style={[styles.addCardText, { color: colors.text }]}>NOVO CARTÃO</Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );
@@ -184,17 +161,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-    position: 'relative',
-  },
-  emptyPlusBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   emptyTitle: {
     fontFamily: Typography.bold,
@@ -215,8 +181,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 10,
     paddingHorizontal: 20,
-    position: 'relative',
-    height: 32,
+    height: 18,
   },
   pagination: {
     flexDirection: 'row',
@@ -227,33 +192,5 @@ const styles = StyleSheet.create({
   bar: {
     borderRadius: 2,
     borderWidth: 0.5,
-  },
-  addCardPill: {
-    position: 'absolute',
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 9999,
-    borderWidth: 1,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  plusIconWrap: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addCardText: {
-    fontFamily: Typography.bold,
-    fontSize: 9.5,
-    letterSpacing: LetterSpacing.wide,
   },
 });

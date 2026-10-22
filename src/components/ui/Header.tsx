@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Svg, { Path, Rect, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Moon, Sun, Bell, Landmark } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -50,75 +49,26 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
 
   return (
     <View style={styles.container}>
-      {/* Bloco de Identidade da Marca & Usuário */}
-      <View style={styles.identityBlock}>
-        {/* Linha do Logotipo e Badge */}
-        <View style={styles.logoRow}>
-          {/* Emblema Vetorial Prisma Finz */}
-          <View style={styles.logoEmblemContainer}>
-            <Svg width={24} height={24} viewBox="0 0 28 28" fill="none">
-              <Defs>
-                <LinearGradient id="finzEmblemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <Stop offset="0%" stopColor={colors.primary} stopOpacity="1" />
-                  <Stop offset="100%" stopColor={colors.primary} stopOpacity="0.65" />
-                </LinearGradient>
-              </Defs>
-              <Rect
-                x="2"
-                y="2"
-                width="24"
-                height="24"
-                rx="7"
-                fill={colors.surfaceElevated}
-                stroke={colors.borderStrong}
-                strokeWidth="1.2"
-              />
-              {/* Geometria do Raio / F estilizado da marca Finz */}
-              <Path
-                d="M17 7L9.5 15H14.5L11 21L18.5 13H13.5L17 7Z"
-                fill="url(#finzEmblemGrad)"
-              />
-            </Svg>
-          </View>
-
-          <Text style={[styles.brandLogo, { color: colors.text }]}>FINZ</Text>
-
-          {/* Badge de Versão com Status Ativo */}
-          <View
-            style={[
-              styles.versionBadge,
-              {
-                backgroundColor: colors.badgeBackground,
-                borderColor: colors.borderStrong,
-              },
-            ]}
-          >
-            <View style={[styles.statusDot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.versionText, { color: colors.primary }]}>CORE v1.0</Text>
-          </View>
+      {/* Bloco de Identidade do Usuário com Avatar Squircle */}
+      <View style={styles.userRow}>
+        <View
+          style={[
+            styles.userAvatar,
+            {
+              backgroundColor: colors.surfaceSubtle,
+              borderColor: colors.borderSubtle,
+            },
+          ]}
+        >
+          <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
         </View>
-
-        {/* Linha do Portfólio do Usuário com Avatar Squircle */}
-        <View style={styles.userRow}>
-          <View
-            style={[
-              styles.userAvatar,
-              {
-                backgroundColor: colors.surfaceSubtle,
-                borderColor: colors.borderSubtle,
-              },
-            ]}
-          >
-            <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
-          </View>
-          <View style={styles.userTextCol}>
-            <Text style={[styles.greetingLabel, { color: colors.textMuted }]}>
-              {greeting} • PORTFÓLIO
-            </Text>
-            <Text style={[styles.userName, { color: colors.textSecondary }]} numberOfLines={1}>
-              {displayName}
-            </Text>
-          </View>
+        <View style={styles.userTextCol}>
+          <Text style={[styles.greetingLabel, { color: colors.textMuted }]}>
+            {greeting} • PORTFÓLIO
+          </Text>
+          <Text style={[styles.userName, { color: colors.textSecondary }]} numberOfLines={1}>
+            {displayName}
+          </Text>
         </View>
       </View>
 
@@ -204,49 +154,12 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 10,
   },
-  identityBlock: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  logoEmblemContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandLogo: {
-    fontFamily: Typography.bold,
-    fontSize: 21,
-    letterSpacing: LetterSpacing.brand,
-    textTransform: 'uppercase',
-  },
-  versionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 9999,
-  },
-  statusDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  versionText: {
-    fontFamily: Typography.bold,
-    fontSize: 8.5,
-    letterSpacing: LetterSpacing.wider,
-  },
   userRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingRight: 12,
   },
   userAvatar: {
     width: 24,

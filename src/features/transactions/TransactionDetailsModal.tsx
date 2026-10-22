@@ -30,6 +30,7 @@ import {
   ShoppingBag,
   TrendingUp,
   MoreHorizontal,
+  HelpCircle,
   LucideIcon,
 } from 'lucide-react-native';
 import { Transaction, Category, BankCard } from '@/types';
@@ -42,6 +43,7 @@ import {
   parseMerchantAndInstallments,
   BRAZIL_TIMEZONE,
   getBrazilDateParts,
+  getPaymentModality,
 } from './transactionUtils';
 
 interface TransactionDetailsModalProps {
@@ -56,7 +58,7 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   cat_leisure: Gamepad2,
   cat_shopping: ShoppingBag,
   cat_investments: TrendingUp,
-  cat_others: MoreHorizontal,
+  cat_others: HelpCircle,
 };
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -65,7 +67,7 @@ const CATEGORY_NAMES: Record<string, string> = {
   cat_leisure: 'Lazer',
   cat_shopping: 'Compras',
   cat_investments: 'Investimentos',
-  cat_others: 'Outros',
+  cat_others: 'Não categorizado',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -110,6 +112,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   const { cleanName, installment } = parseMerchantAndInstallments(
     transaction.merchant,
     transaction.rawText
+  );
+
+  const paymentModality = getPaymentModality(
+    transaction.type,
+    transaction.rawText,
+    transaction.merchant,
+    !!installment
   );
 
   // Paleta de status no padrão Neo-Fintech
@@ -467,15 +476,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                 <View style={styles.detailRow}>
                   <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Modalidade</Text>
                   <Text style={[styles.detailValue, { color: electricBlue }]}>
-                    {isIncome
-                      ? 'Pix Recebido (Conta Corrente)'
-                      : isPixOut
-                      ? 'Pix Enviado (Conta Corrente)'
-                      : isRefund
-                      ? 'Estorno (Crédito / Débito)'
-                      : transaction.cardId.startsWith('pluggy_card_') && card?.balance !== undefined && card.balance > 0
-                      ? 'Cartão de Crédito'
-                      : 'Cartão de Débito'}
+                    {paymentModality.label}
                   </Text>
                 </View>
 

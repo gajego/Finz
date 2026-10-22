@@ -1,5 +1,5 @@
 import { Linking, Platform } from 'react-native';
-import { db, loadAllDataFromSQLite } from '@/services/database/db';
+import { db, loadAllDataFromSQLite, getTransactionCategoryOverrides } from '@/services/database/db';
 import { BankCard, Transaction, TransactionType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { notifyNewTransaction, notifyBalanceChange } from '@/services/notifications/notificationService';
@@ -608,6 +608,9 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
   const existingTxRows = db.getAllSync<{ id: string }>('SELECT id FROM transactions');
   const existingTxIds = new Set<string>(existingTxRows.map((r) => r.id));
 
+  // Carrega overrides manuais de categoria definidos pelo usuário para preservação perpétua
+  const overridesMap = getTransactionCategoryOverrides();
+
   // 3. Sincroniza todas as transações de todas as contas do conector
   for (const acc of accounts) {
     try {
@@ -641,12 +644,19 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
         const safeAmount = Number.isFinite(rawAmount) ? rawAmount : 0;
         const amountCents = Math.round(Math.abs(safeAmount) * 100);
 
-        // Captura de data precisa e resiliente a datas inválidas
+        // Captura de data precisa e resiliente a fusos horários
         const dateStr =
           (t.creditCardMetadata?.purchaseDate && String(t.creditCardMetadata.purchaseDate).trim()) ||
           (t.creditCardMetadata?.transactionDateTime && String(t.creditCardMetadata.transactionDateTime).trim()) ||
           (t.date && String(t.date).trim());
-        const parsedTime = dateStr ? new Date(dateStr).getTime() : NaN;
+        let parsedTime = NaN;
+        if (dateStr) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            parsedTime = new Date(`${dateStr}T12:00:00-03:00`).getTime();
+          } else {
+            parsedTime = new Date(dateStr).getTime();
+          }
+        }
         const timestamp = Number.isFinite(parsedTime) && parsedTime > 0 ? parsedTime : Date.now();
 
         // Nome/Merchant limpo com fallback robusto
@@ -662,7 +672,10 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
           cleanDescription = rawMerchantName || 'Transação Open Finance';
         }
 
-        const categoryId = mapPluggyCategoryToFinz(t.category || t.merchant?.category);
+        // Categoria: prioridade máxima para override manual do usuário; senão, classificação inteligente
+        const categoryId = overridesMap.has(txId)
+          ? overridesMap.get(txId)!
+          : classifyTransactionCategory(cleanDescription, t.description, t.category || t.merchant?.category);
 
         // Classificação inteligente de Pix e Crédito/Débito
         const isCredit = t.type === 'CREDIT' || safeAmount > 0;
@@ -838,62 +851,187 @@ function getBankPresetTheme(name: string): {
 }
 
 /**
- * Mapeia categorias da Pluggy para as categorias canônicas locais do Finz
+ * Classificador inteligente de categorias baseado no estabelecimento, texto bruto e dados da Pluggy.
+ * Se não houver correspondência clara, retorna 'cat_others' (Não categorizado), nunca forçando alimentação.
  */
-function mapPluggyCategoryToFinz(pluggyCategory?: string): string {
-  if (!pluggyCategory) return 'cat_food';
-  const lower = pluggyCategory.toLowerCase();
+export function classifyTransactionCategory(
+  merchant?: string,
+  rawText?: string,
+  pluggyCategory?: string
+): string {
+  const text = `${merchant || ''} ${rawText || ''} ${pluggyCategory || ''}`.toLowerCase();
 
+  // 1. Lazer & Jogos & Streaming
   if (
-    lower.includes('aliment') ||
-    lower.includes('restauran') ||
-    lower.includes('refei') ||
-    lower.includes('supermercad') ||
-    lower.includes('mercado') ||
-    lower.includes('food') ||
-    lower.includes('padaria') ||
-    lower.includes('café') ||
-    lower.includes('cafe')
-  ) {
-    return 'cat_food';
-  }
-  if (
-    lower.includes('transporte') ||
-    lower.includes('uber') ||
-    lower.includes('combust') ||
-    lower.includes('viag') ||
-    lower.includes('posto') ||
-    lower.includes('carro') ||
-    lower.includes('99') ||
-    lower.includes('estaciona')
-  ) {
-    return 'cat_transport';
-  }
-  if (
-    lower.includes('lazer') ||
-    lower.includes('jogos') ||
-    lower.includes('eletron') ||
-    lower.includes('setup') ||
-    lower.includes('entreten') ||
-    lower.includes('cinema') ||
-    lower.includes('stream') ||
-    lower.includes('game') ||
-    lower.includes('steam') ||
-    lower.includes('playstation')
+    text.includes('steam') ||
+    text.includes('valve') ||
+    text.includes('playstation') ||
+    text.includes('sony interactive') ||
+    text.includes('xbox') ||
+    text.includes('microsoft*xbox') ||
+    text.includes('blizzard') ||
+    text.includes('riot games') ||
+    text.includes('epic games') ||
+    text.includes('nintendo') ||
+    text.includes('twitch') ||
+    text.includes('pay2all') || // Gateway nacional de pagamentos de jogos (Steam)
+    text.includes('boacompra') ||
+    text.includes('netflix') ||
+    text.includes('spotify') ||
+    text.includes('disney') ||
+    text.includes('prime video') ||
+    text.includes('hbo') ||
+    text.includes('cinema') ||
+    text.includes('cinemark') ||
+    text.includes('ingresso') ||
+    text.includes('sympla') ||
+    text.includes('lazer') ||
+    text.includes('jogos') ||
+    /\b(game|games|gamer|gaming|jogos)\b/.test(text)
   ) {
     return 'cat_leisure';
   }
+
+  // 2. Alimentação
   if (
-    lower.includes('invest') ||
-    lower.includes('aplica') ||
-    lower.includes('renda') ||
-    lower.includes('bolsa') ||
-    lower.includes('shopping') ||
-    lower.includes('compra') ||
-    lower.includes('loja')
+    text.includes('ifood') ||
+    text.includes('rappi') ||
+    text.includes('ze delivery') ||
+    text.includes('restaurante') ||
+    text.includes('restauran') ||
+    text.includes('burger') ||
+    text.includes('mcdonald') ||
+    text.includes('mc donald') ||
+    text.includes('subway') ||
+    text.includes('habibs') ||
+    text.includes('pizzaria') ||
+    text.includes('pizza') ||
+    text.includes('padaria') ||
+    text.includes('panificadora') ||
+    text.includes('café') ||
+    text.includes('cafe') ||
+    text.includes('starbucks') ||
+    text.includes('supermercado') ||
+    text.includes('supermercad') ||
+    text.includes('mercado') ||
+    text.includes('mercadinho') ||
+    text.includes('hortifruti') ||
+    text.includes('atacadao') ||
+    text.includes('atacadão') ||
+    text.includes('assai') ||
+    text.includes('assaí') ||
+    text.includes('carrefour') ||
+    text.includes('pao de acucar') ||
+    text.includes('pão de açúcar') ||
+    text.includes('diniz') ||
+    text.includes('deufome') ||
+    text.includes('espeto') ||
+    text.includes('churrascaria') ||
+    text.includes('frigorifico') ||
+    text.includes('tempero') ||
+    text.includes('alimento') ||
+    text.includes('refeicao') ||
+    text.includes('refeição') ||
+    text.includes('food')
+  ) {
+    return 'cat_food';
+  }
+
+  // 3. Transporte
+  if (
+    text.includes('uber') ||
+    text.includes('99app') ||
+    text.includes('99 app') ||
+    text.includes('99 tecnologia') ||
+    text.includes('taxi') ||
+    text.includes('táxi') ||
+    text.includes('posto') ||
+    text.includes('ipiranga') ||
+    text.includes('shell') ||
+    text.includes('petrobras') ||
+    text.includes('combustivel') ||
+    text.includes('combustível') ||
+    text.includes('gasolina') ||
+    text.includes('etanol') ||
+    text.includes('pedagio') ||
+    text.includes('pedágio') ||
+    text.includes('sem parar') ||
+    text.includes('conectcar') ||
+    text.includes('veloe') ||
+    text.includes('estacionamento') ||
+    text.includes('estac') ||
+    text.includes('auto posto') ||
+    text.includes('viacao') ||
+    text.includes('viação') ||
+    text.includes('passagem') ||
+    text.includes('azul linhas') ||
+    text.includes('gol linhas') ||
+    text.includes('latam') ||
+    text.includes('transporte')
+  ) {
+    return 'cat_transport';
+  }
+
+  // 4. Compras & Varejo
+  if (
+    text.includes('amazon') ||
+    text.includes('mercadolivre') ||
+    text.includes('mercado livre') ||
+    text.includes('shopee') ||
+    text.includes('shein') ||
+    text.includes('aliexpress') ||
+    text.includes('magalu') ||
+    text.includes('magazine luiza') ||
+    text.includes('americanas') ||
+    text.includes('submarino') ||
+    text.includes('zara') ||
+    text.includes('renner') ||
+    text.includes('riachuelo') ||
+    text.includes('c&a') ||
+    text.includes('centauro') ||
+    text.includes('netshoes') ||
+    text.includes('decathlon') ||
+    text.includes('leroy') ||
+    text.includes('kalunga') ||
+    text.includes('farmacia') ||
+    text.includes('farmácia') ||
+    text.includes('drogasil') ||
+    text.includes('droga raia') ||
+    text.includes('pacheco') ||
+    text.includes('drogaria') ||
+    text.includes('loja') ||
+    text.includes('shopping') ||
+    text.includes('varejo')
   ) {
     return 'cat_shopping';
   }
 
-  return 'cat_food';
+  // 5. Investimentos
+  if (
+    text.includes('tesouro') ||
+    text.includes('cdb') ||
+    text.includes('lci') ||
+    text.includes('lca') ||
+    text.includes('renda fixa') ||
+    text.includes('b3') ||
+    text.includes('clear corretora') ||
+    text.includes('rico') ||
+    text.includes('xp investimentos') ||
+    text.includes('nu invest') ||
+    text.includes('nuinvest') ||
+    text.includes('btg') ||
+    text.includes('orama') ||
+    text.includes('binance') ||
+    text.includes('coinbase') ||
+    text.includes('mercado bitcoin') ||
+    text.includes('cripto') ||
+    text.includes('investimento') ||
+    text.includes('aplicacao') ||
+    text.includes('aplicação')
+  ) {
+    return 'cat_investments';
+  }
+
+  // Caso não reconheça, retorna estritamente 'Não categorizado'
+  return 'cat_others';
 }

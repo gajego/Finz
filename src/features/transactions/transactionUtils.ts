@@ -95,30 +95,22 @@ const MONTHS_PT = [
   'dez',
 ];
 
-/** Fuso horário oficial bancário brasileiro (Horário de Brasília) */
+/** Fuso horário oficial bancário brasileiro (Horário de Brasília: UTC-3 permanente) */
 export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
+export const BRAZIL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 /**
- * Retorna as partes da data (dia, mês 0-11, ano) ajustadas para o Horário de Brasília
+ * Retorna as partes da data (dia, mês 0-11, ano) rigorosamente no Horário de Brasília (UTC-3).
+ * Utiliza cálculo aritmético determinístico UTC-3 imune a variações de fuso local do dispositivo.
  */
 export function getBrazilDateParts(timestamp: number): { day: number; month: number; year: number } {
   const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
-  try {
-    const formatter = new Intl.DateTimeFormat('pt-BR', {
-      timeZone: BRAZIL_TIMEZONE,
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    });
-    const parts = formatter.formatToParts(new Date(validTimestamp));
-    const day = parseInt(parts.find((p) => p.type === 'day')?.value || '1', 10);
-    const month = parseInt(parts.find((p) => p.type === 'month')?.value || '1', 10) - 1;
-    const year = parseInt(parts.find((p) => p.type === 'year')?.value || '2026', 10);
-    return { day, month, year };
-  } catch {
-    const d = new Date(validTimestamp);
-    return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
-  }
+  const brt = new Date(validTimestamp - BRAZIL_UTC_OFFSET_MS);
+  return {
+    day: brt.getUTCDate(),
+    month: brt.getUTCMonth(),
+    year: brt.getUTCFullYear(),
+  };
 }
 
 /**
@@ -181,20 +173,73 @@ export function formatBRL(cents: number, privacyMode = false): string {
  */
 export function formatTime(timestamp: number): string {
   const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
-  try {
-    return new Date(validTimestamp).toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: BRAZIL_TIMEZONE,
-    });
-  } catch {
-    try {
-      return new Date(validTimestamp).toLocaleTimeString('pt-BR', {
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return '--:--';
-    }
+  const brt = new Date(validTimestamp - BRAZIL_UTC_OFFSET_MS);
+  const hours = String(brt.getUTCHours()).padStart(2, '0');
+  const minutes = String(brt.getUTCMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+export type PaymentModality = 'PIX_IN' | 'PIX_OUT' | 'REFUND' | 'DEBIT' | 'CREDIT';
+
+/**
+ * Detecta com precisão a modalidade real de pagamento da transação
+ */
+export function getPaymentModality(
+  type: string,
+  rawText?: string,
+  merchant?: string,
+  hasInstallments = false
+): {
+  modality: PaymentModality;
+  label: string;
+  shortLabel: string;
+} {
+  const combined = `${rawText || ''} ${merchant || ''}`.toLowerCase();
+
+  if (type === 'PIX_IN') {
+    return {
+      modality: 'PIX_IN',
+      label: 'Pix Recebido (Conta Corrente)',
+      shortLabel: 'Pix Recebido',
+    };
   }
+  if (type === 'PIX_OUT') {
+    return {
+      modality: 'PIX_OUT',
+      label: 'Pix Enviado (Conta Corrente)',
+      shortLabel: 'Pix Enviado',
+    };
+  }
+  if (type === 'REFUND') {
+    return {
+      modality: 'REFUND',
+      label: 'Estorno (Crédito / Débito)',
+      shortLabel: 'Estorno',
+    };
+  }
+
+  // Se o texto original bancário identificar débito
+  if (combined.includes('débito') || combined.includes('debito')) {
+    return {
+      modality: 'DEBIT',
+      label: 'Cartão de Débito',
+      shortLabel: 'Débito',
+    };
+  }
+
+  // Se o texto identificar crédito ou tiver parcelas
+  if (combined.includes('crédito') || combined.includes('credito') || hasInstallments) {
+    return {
+      modality: 'CREDIT',
+      label: 'Cartão de Crédito',
+      shortLabel: 'Crédito',
+    };
+  }
+
+  // Fallback padrão para compras sem indicação de parcelamento
+  return {
+    modality: 'DEBIT',
+    label: 'Cartão de Débito',
+    shortLabel: 'Débito',
+  };
 }

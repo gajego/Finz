@@ -6,7 +6,7 @@ import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { Transaction } from '@/types';
 import { TransactionItem } from './TransactionItem';
-import { formatSectionDate } from './transactionUtils';
+import { formatSectionDate, getBrazilDateParts } from './transactionUtils';
 
 interface TransactionListProps {
   visibleCount?: number;
@@ -42,17 +42,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     setInternalCount((prev) => prev + pageSize);
   }, [onEndReached, pageSize]);
 
-  // Agrupamento temporal elegante por dia com labels humanos
+  // Agrupamento temporal elegante por dia com labels humanos (baseado no Horário de Brasília)
   const groupedSections = useMemo(() => {
     const groups: { [key: string]: { dateLabel: string; items: Transaction[] } } = {};
     const order: string[] = [];
 
     for (const tx of visibleTransactions) {
       const validTimestamp = Number.isFinite(tx.timestamp) && tx.timestamp > 0 ? tx.timestamp : Date.now();
-      const d = new Date(validTimestamp);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-        d.getDate()
-      ).padStart(2, '0')}`;
+      const parts = getBrazilDateParts(validTimestamp);
+      const key = `${parts.year}-${String(parts.month + 1).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}`;
 
       if (!groups[key]) {
         groups[key] = {

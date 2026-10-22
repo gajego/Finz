@@ -322,18 +322,20 @@ function checkAndExecuteMonthlyTurnover() {
 
 function seedDefaultCategories() {
   const catCount = db.getFirstSync<{ count: number }>('SELECT count(*) as count FROM categories');
-  if (catCount && catCount.count > 0) return;
+  if (catCount && catCount.count >= 6) return;
 
   const initialCategories = [
-    { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#FF7A00', budget_limit: 0 },
-    { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#00F0FF', budget_limit: 0 },
-    { id: 'cat_leisure', name: 'Lazer & Setup', icon: 'gamepad-2', color: '#A855F7', budget_limit: 0 },
-    { id: 'cat_shopping', name: 'Investimentos', icon: 'trending-up', color: '#D9F920', budget_limit: 0 },
+    { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budget_limit: 0 },
+    { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budget_limit: 0 },
+    { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budget_limit: 0 },
+    { id: 'cat_shopping', name: 'Compras', icon: 'shopping-bag', color: '#8B5CF6', budget_limit: 0 },
+    { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budget_limit: 0 },
+    { id: 'cat_others', name: 'Não categorizado', icon: 'help-circle', color: '#64748B', budget_limit: 0 },
   ];
 
   for (const cat of initialCategories) {
     db.runSync(
-      'INSERT INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
       [cat.id, cat.name, cat.icon, cat.color, cat.budget_limit]
     );
   }
@@ -347,7 +349,20 @@ export function loadAllDataFromSQLite(): {
 } {
   const cardRows = db.getAllSync<any>('SELECT * FROM cards');
   const catRows = db.getAllSync<any>('SELECT * FROM categories');
-  const txRows = db.getAllSync<any>('SELECT * FROM transactions ORDER BY timestamp DESC');
+  const txRows = db.getAllSync<any>(`
+    SELECT 
+      t.id, 
+      t.card_id, 
+      t.amount, 
+      t.type, 
+      t.merchant, 
+      COALESCE(o.category_id, t.category_id, 'cat_others') AS category_id, 
+      t.timestamp, 
+      t.raw_text 
+    FROM transactions t
+    LEFT JOIN transaction_category_overrides o ON t.id = o.transaction_id
+    ORDER BY t.timestamp DESC
+  `);
 
   const cards: BankCard[] = cardRows.map((r) => ({
     id: String(r.id),
@@ -454,10 +469,29 @@ export function persistTransaction(tx: Transaction) {
 
 export function persistTransactionCategory(transactionId: string, categoryId: string) {
   try {
+    db.runSync(
+      'INSERT OR REPLACE INTO transaction_category_overrides (transaction_id, category_id, updated_at) VALUES (?, ?, ?)',
+      [transactionId, categoryId, Date.now()]
+    );
     db.runSync('UPDATE transactions SET category_id = ? WHERE id = ?', [categoryId, transactionId]);
   } catch (e) {
     console.warn('[db.web] Falha ao atualizar categoria da transação:', e);
   }
+}
+
+export function getTransactionCategoryOverrides(): Map<string, string> {
+  const map = new Map<string, string>();
+  try {
+    const rows = db.getAllSync<{ transaction_id: string; category_id: string }>(
+      'SELECT transaction_id, category_id FROM transaction_category_overrides'
+    );
+    for (const r of rows) {
+      map.set(r.transaction_id, r.category_id);
+    }
+  } catch (e) {
+    console.warn('[db.web] Falha ao obter overrides de categorias:', e);
+  }
+  return map;
 }
 
 export function persistThemeMode(mode: 'dark' | 'light') {

@@ -26,6 +26,7 @@ import {
   parseMerchantAndInstallments,
   formatBRL,
   formatTime,
+  getPaymentModality,
 } from './transactionUtils';
 
 interface TransactionItemProps {
@@ -133,6 +134,13 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
       transaction.rawText
     );
 
+    const paymentModality = getPaymentModality(
+      transaction.type,
+      transaction.rawText,
+      transaction.merchant,
+      !!installment
+    );
+
     const { Icon, bgColor, borderColor, iconColor } = getTransactionIcon(
       transaction,
       category?.name,
@@ -213,6 +221,15 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
               <>
                 <Text style={[styles.bankTag, { color: colors.textMuted }]}>
                   {card.bankName}
+                </Text>
+                <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
+              </>
+            )}
+
+            {!isIncome && !isPixOut && paymentModality.shortLabel && (
+              <>
+                <Text style={[styles.bankTag, { color: colors.textMuted }]}>
+                  {paymentModality.shortLabel}
                 </Text>
                 <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
               </>

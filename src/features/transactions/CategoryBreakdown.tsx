@@ -11,6 +11,7 @@ import {
   Sparkles,
   Tag,
   Coffee,
+  HelpCircle,
   Plus,
   ArrowRight,
   LucideIcon,
@@ -42,6 +43,10 @@ const getCategoryIcon = (iconName: string): LucideIcon => {
     case 'shopping':
     case 'compras':
       return ShoppingBag;
+    case 'help-circle':
+    case 'não categorizado':
+    case 'outros':
+      return HelpCircle;
     case 'coffee':
       return Coffee;
     case 'sparkles':

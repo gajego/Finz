@@ -65,7 +65,6 @@ export async function setupNotificationChannels(): Promise<void> {
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      sound: 'default',
     });
 
     // Canal para Transações e Pagamentos ('finz_transactions')
@@ -79,7 +78,6 @@ export async function setupNotificationChannels(): Promise<void> {
       showBadge: true,
       bypassDnd: false,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      sound: 'default',
     });
   } catch (err) {
     console.warn('[NotificationService] Falha ao configurar canais:', err);
@@ -195,7 +193,7 @@ export async function sendLocalNotification({
         title,
         body,
         data,
-        sound: 'default',
+        sound: Platform.OS === 'ios' ? 'default' : true,
         color: '#00D09E',
         badge: typeof badge === 'number' ? badge : 1,
       },
@@ -248,9 +246,11 @@ export async function notifyNewTransaction(
   let bankName: string;
   let isCredit = false;
   let txType = '';
+  let transactionId = '';
 
   if (typeof param1 === 'object' && param1 !== null) {
     // Recebeu objeto Transaction
+    transactionId = param1.id || '';
     merchant = (param1.merchant || 'Transação').trim();
     const rawAmt = Number(param1.amount);
     amountCents = Number.isFinite(rawAmt) ? rawAmt : 0;
@@ -310,6 +310,7 @@ export async function notifyNewTransaction(
     channelId: NOTIFICATION_CHANNELS.TRANSACTIONS,
     data: {
       type: 'TRANSACTION',
+      transactionId: transactionId || undefined,
       merchant,
       amountCents,
       bankName,

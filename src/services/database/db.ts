@@ -269,6 +269,14 @@ export function persistTransaction(tx: Transaction) {
   );
 }
 
+export function persistTransactionCategory(transactionId: string, categoryId: string) {
+  try {
+    db.runSync('UPDATE transactions SET category_id = ? WHERE id = ?', [categoryId, transactionId]);
+  } catch (e) {
+    console.warn('[db] Falha ao atualizar categoria da transação:', e);
+  }
+}
+
 export function persistThemeMode(mode: 'dark' | 'light') {
   try {
     db.runSync(

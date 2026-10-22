@@ -447,9 +447,17 @@ export function persistCategoryBudget(categoryId: string, budgetLimitCents: numb
 
 export function persistTransaction(tx: Transaction) {
   db.runSync(
-    'INSERT INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
   );
+}
+
+export function persistTransactionCategory(transactionId: string, categoryId: string) {
+  try {
+    db.runSync('UPDATE transactions SET category_id = ? WHERE id = ?', [categoryId, transactionId]);
+  } catch (e) {
+    console.warn('[db.web] Falha ao atualizar categoria da transação:', e);
+  }
 }
 
 export function persistThemeMode(mode: 'dark' | 'light') {

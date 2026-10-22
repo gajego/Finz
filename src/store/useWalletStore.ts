@@ -9,6 +9,7 @@ import {
   persistCardBankBalance,
   persistCategoryBudget,
   persistTransaction,
+  persistTransactionCategory,
   persistProfile,
 } from '@/services/database/db';
 import { notifyBalanceChange } from '@/services/notifications/notificationService';
@@ -33,6 +34,7 @@ interface WalletState {
   updateCardSkin: (cardId: string, wallpaperUri: string | undefined, gradient: [string, string]) => void;
   updateCardBankBalance: (cardId: string, bankBalance: number) => void;
   updateCategoryBudget: (categoryId: string, newLimitInCents: number) => void;
+  updateTransactionCategory: (transactionId: string, newCategoryId: string) => void;
   dismissAlert: () => void;
   addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
 }
@@ -143,6 +145,15 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     set((state) => ({
       categories: state.categories.map((c) =>
         c.id === categoryId ? { ...c, budgetLimit: newLimitInCents } : c
+      ),
+    }));
+  },
+
+  updateTransactionCategory: (transactionId, newCategoryId) => {
+    persistTransactionCategory(transactionId, newCategoryId);
+    set((state) => ({
+      transactions: state.transactions.map((tx) =>
+        tx.id === transactionId ? { ...tx, categoryId: newCategoryId } : tx
       ),
     }));
   },

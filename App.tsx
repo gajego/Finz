@@ -28,13 +28,15 @@ import { AddCardModal } from './src/features/cards/AddCardModal';
 import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown';
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
+import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications } from './src/services/notifications/notificationService';
-import { BankCard } from './src/types';
+import { BankCard, Transaction } from './src/types';
+import * as Notifications from 'expo-notifications';
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -48,6 +50,7 @@ export default function App() {
   const initStore = useWalletStore((s) => s.initStore);
   const isInitialized = useWalletStore((s) => s.isInitialized);
   const cards = useWalletStore((s) => s.cards);
+  const transactions = useWalletStore((s) => s.transactions);
   const activeCardIndex = useWalletStore((s) => s.activeCardIndex);
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
   const profile = useWalletStore((s) => s.profile);
@@ -69,6 +72,45 @@ export default function App() {
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
+  const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
+
+  const activeTransaction = selectedTransactionForDetails
+    ? transactions.find((t) => t.id === selectedTransactionForDetails.id) || selectedTransactionForDetails
+    : null;
+
+  // Escuta cliques em notificações nativas para redirecionar diretamente aos detalhes da transação
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response?.notification?.request?.content?.data;
+      const txId = (data?.transactionId || data?.txId) as string | undefined;
+      if (txId) {
+        const currentTxs = useWalletStore.getState().transactions;
+        const found = currentTxs.find((t) => t.id === txId);
+        if (found) {
+          setSelectedTransactionForDetails(found);
+        }
+      }
+    });
+
+    // Trata clique na notificação quando o aplicativo é iniciado do zero (cold start)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        const data = response?.notification?.request?.content?.data;
+        const txId = (data?.transactionId || data?.txId) as string | undefined;
+        if (txId) {
+          const currentTxs = useWalletStore.getState().transactions;
+          const found = currentTxs.find((t) => t.id === txId);
+          if (found) {
+            setSelectedTransactionForDetails(found);
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   // Sincronização manual acionada pelo usuário na barra Open Finance
   const handleSyncPluggy = async () => {
@@ -92,8 +134,16 @@ export default function App() {
 
   // Escuta retornos da autorização do Open Finance (Mobile deep link e Web redirect)
   useEffect(() => {
+    const getWebUrl = () => {
+      try {
+        return typeof window !== 'undefined' && window.location ? window.location.href : '';
+      } catch {
+        return '';
+      }
+    };
+
     const handleUrl = async (event: { url: string }) => {
-      const url = event.url || (typeof window !== 'undefined' ? window.location.href : '');
+      const url = event.url || getWebUrl();
       if (url && (url.includes('pluggy-callback') || /item_?id=/i.test(url))) {
         const match = url.match(/item_?id=([a-zA-Z0-9_-]+)/i);
         if (match && match[1]) {
@@ -103,7 +153,7 @@ export default function App() {
               'Banco Conectado!',
               `Sucesso! ${cardsCount} cartão(ões) e ${txCount} transação(ões) foram importados para o Finz.`
             );
-            if (typeof window !== 'undefined' && window.history) {
+            if (typeof window !== 'undefined' && window.history && window.location) {
               window.history.replaceState({}, '', window.location.pathname);
             }
           } catch (e: any) {
@@ -115,7 +165,7 @@ export default function App() {
 
     const sub = Linking.addEventListener('url', handleUrl);
     Linking.getInitialURL().then((url) => {
-      const currentUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+      const currentUrl = url || getWebUrl();
       if (currentUrl) handleUrl({ url: currentUrl });
     });
 
@@ -195,6 +245,10 @@ export default function App() {
             visibleCount={txVisibleCount}
             pageSize={30}
             onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
+            onPressTransaction={(tx) => {
+              console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
+              setSelectedTransactionForDetails(tx);
+            }}
           />
         </ScrollView>
 
@@ -240,6 +294,13 @@ export default function App() {
           onClose={() => setNotificationsVisible(false)}
           onNavigateToBudgets={handleOpenBudgetModal}
           onNavigateToAddCard={() => setAddCardVisible(true)}
+        />
+
+        {/* Detalhes da Movimentação e Alteração de Categoria */}
+        <TransactionDetailsModal
+          visible={!!selectedTransactionForDetails}
+          transaction={activeTransaction}
+          onClose={() => setSelectedTransactionForDetails(null)}
         />
       </SafeAreaView>
     </GestureHandlerRootView>

@@ -16,7 +16,6 @@ import Animated, {
   withSpring,
   withTiming,
   withRepeat,
-  withSequence,
   interpolate,
   runOnJS,
   Easing,
@@ -215,44 +214,32 @@ export const CardItem: React.FC<CardItemProps> = ({
   const BASE_ROTATE_Y = -13;
   const BASE_ROTATE_Z = 2.5;
 
-  const floatY = useSharedValue(0);
-  const rotateX = useSharedValue(BASE_ROTATE_X);
-  const rotateY = useSharedValue(BASE_ROTATE_Y);
-  const rotateZ = useSharedValue(BASE_ROTATE_Z);
+  const floatY = useSharedValue(-7);
+  const rotateX = useSharedValue(BASE_ROTATE_X - 4.2);
+  const rotateY = useSharedValue(BASE_ROTATE_Y - 5.0);
+  const rotateZ = useSharedValue(BASE_ROTATE_Z - 1.8);
   const scale = useSharedValue(1);
 
-  // Inicia o movimento contínuo de levitação 3D (mais visível, elástico e amplo)
+  // Inicia o movimento contínuo de levitação 3D (suave, contínuo em vai-e-volta sem saltos ou piscadas)
   const startSubtleFloatAnimation = () => {
     'worklet';
     floatY.value = withRepeat(
-      withSequence(
-        withTiming(-7, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
-        withTiming(7, { duration: 2800, easing: Easing.inOut(Easing.sin) })
-      ),
+      withTiming(7, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
     rotateX.value = withRepeat(
-      withSequence(
-        withTiming(BASE_ROTATE_X + 4.2, { duration: 3400, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_X - 4.2, { duration: 3400, easing: Easing.inOut(Easing.sin) })
-      ),
+      withTiming(BASE_ROTATE_X + 4.2, { duration: 3400, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
     rotateY.value = withRepeat(
-      withSequence(
-        withTiming(BASE_ROTATE_Y - 5.0, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_Y + 5.0, { duration: 4000, easing: Easing.inOut(Easing.sin) })
-      ),
+      withTiming(BASE_ROTATE_Y + 5.0, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
     rotateZ.value = withRepeat(
-      withSequence(
-        withTiming(BASE_ROTATE_Z + 1.8, { duration: 4600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_Z - 1.8, { duration: 4600, easing: Easing.inOut(Easing.sin) })
-      ),
+      withTiming(BASE_ROTATE_Z + 1.8, { duration: 4600, easing: Easing.inOut(Easing.sin) }),
       -1,
       true
     );
@@ -301,14 +288,14 @@ export const CardItem: React.FC<CardItemProps> = ({
     .onFinalize(() => {
       'worklet';
       scale.value = withSpring(1, { damping: 14, stiffness: 180 });
-      floatY.value = withSpring(0, { damping: 14, stiffness: 160 });
-      rotateX.value = withSpring(BASE_ROTATE_X, { damping: 14, stiffness: 160 });
-      rotateY.value = withSpring(BASE_ROTATE_Y, { damping: 14, stiffness: 160 });
-      rotateZ.value = withSpring(BASE_ROTATE_Z, { damping: 14, stiffness: 160 }, (finished) => {
+      floatY.value = withTiming(-7, { duration: 320, easing: Easing.out(Easing.cubic) }, (finished) => {
         if (finished) {
           startSubtleFloatAnimation();
         }
       });
+      rotateX.value = withTiming(BASE_ROTATE_X - 4.2, { duration: 320, easing: Easing.out(Easing.cubic) });
+      rotateY.value = withTiming(BASE_ROTATE_Y - 5.0, { duration: 320, easing: Easing.out(Easing.cubic) });
+      rotateZ.value = withTiming(BASE_ROTATE_Z - 1.8, { duration: 320, easing: Easing.out(Easing.cubic) });
     });
 
   const cardGesture = Gesture.Exclusive(panGesture, tapGesture);

@@ -40,12 +40,20 @@ export function useSwipeModalDismiss({
     isClosingRef.current = true;
     Animated.timing(panY, {
       toValue: -SCREEN_HEIGHT,
-      duration: 180,
+      duration: 200,
       useNativeDriver: true,
-    }).start(() => {
-      onClose();
-      panY.setValue(0);
-      isClosingRef.current = false;
+    }).start(({ finished }) => {
+      if (finished) {
+        onClose();
+        setTimeout(() => {
+          if (isClosingRef.current) {
+            isClosingRef.current = false;
+            panY.setValue(0);
+          }
+        }, 500);
+      } else {
+        isClosingRef.current = false;
+      }
     });
   };
 
@@ -54,12 +62,20 @@ export function useSwipeModalDismiss({
     isClosingRef.current = true;
     Animated.timing(panY, {
       toValue: SCREEN_HEIGHT,
-      duration: 180,
+      duration: 200,
       useNativeDriver: true,
-    }).start(() => {
-      onClose();
-      panY.setValue(0);
-      isClosingRef.current = false;
+    }).start(({ finished }) => {
+      if (finished) {
+        onClose();
+        setTimeout(() => {
+          if (isClosingRef.current) {
+            isClosingRef.current = false;
+            panY.setValue(0);
+          }
+        }, 500);
+      } else {
+        isClosingRef.current = false;
+      }
     });
   };
 
@@ -140,7 +156,7 @@ export function useSwipeModalDismiss({
     transform: [{ translateY: panY }],
     opacity: panY.interpolate({
       inputRange: [-SCREEN_HEIGHT * 0.45, 0, SCREEN_HEIGHT * 0.45],
-      outputRange: [0.3, 1, 0.3],
+      outputRange: [0, 1, 0],
       extrapolate: 'clamp' as const,
     }),
   };

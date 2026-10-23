@@ -582,6 +582,33 @@ export function loadNotificationPreference(): 'all' | 'alerts_only' | 'transacti
   }
 }
 
+export function persistLastUncategorizedCount(count: number): void {
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['last_uncategorized_count', count.toString()]
+    );
+  } catch (e) {
+    console.warn('[db.web] Falha ao persistir contagem de não categorizadas:', e);
+  }
+}
+
+export function loadLastUncategorizedCount(): number | null {
+  try {
+    const row = db.getFirstSync<{ value: string }>(
+      'SELECT value FROM system_meta WHERE key = ?',
+      ['last_uncategorized_count']
+    );
+    if (row?.value !== undefined && row?.value !== null) {
+      const parsed = parseInt(row.value, 10);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function clearAllLocalData(): void {
   try {
     db.execSync(`

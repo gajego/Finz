@@ -39,6 +39,7 @@ import { PerformanceScreen } from './src/features/performance/PerformanceScreen'
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
+import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src/services/database/db';
 import { BankCard, Transaction } from './src/types';
 import * as Notifications from 'expo-notifications';
 
@@ -79,26 +80,36 @@ export default function App() {
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
-  const [hasNotifiedUncategorized, setHasNotifiedUncategorized] = useState(false);
 
   const activeTransaction = selectedTransactionForDetails
     ? transactions.find((t) => t.id === selectedTransactionForDetails.id) || selectedTransactionForDetails
     : null;
 
-  // Notificação inteligente quando houver gastos pendentes de classificação
+  // Notificação inteligente apenas quando o volume de gastos não categorizados aumentar
   useEffect(() => {
-    if (!isInitialized || hasNotifiedUncategorized) return;
+    if (!isInitialized) return;
+
     const uncatList = transactions.filter(
       (t) =>
         t.type === 'EXPENSE' &&
         (t.categoryId === 'cat_others' || !t.categoryId || t.categoryId === '')
     );
-    if (uncatList.length > 0) {
-      setHasNotifiedUncategorized(true);
+    const currentCount = uncatList.length;
+    const lastCount = loadLastUncategorizedCount();
+
+    if (lastCount === null) {
+      // Primeira inicialização com a nova regra: grava o marco base sem notificar
+      persistLastUncategorizedCount(currentCount);
+    } else if (currentCount > lastCount) {
+      // A quantidade de não categorizadas aumentou: notifica e atualiza o marco
+      persistLastUncategorizedCount(currentCount);
       const total = uncatList.reduce((acc, t) => acc + t.amount, 0);
-      notifyUncategorizedTransactions(uncatList.length, total);
+      notifyUncategorizedTransactions(currentCount, total);
+    } else if (currentCount < lastCount) {
+      // O usuário categorizou transações: atualiza o marco para refletir a redução
+      persistLastUncategorizedCount(currentCount);
     }
-  }, [isInitialized, transactions, hasNotifiedUncategorized]);
+  }, [isInitialized, transactions]);
 
   // Escuta cliques em notificações nativas para redirecionar diretamente
   useEffect(() => {

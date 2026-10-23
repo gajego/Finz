@@ -66,7 +66,10 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
           style={({ pressed }) => [
             styles.banner,
             styles.bannerBudget,
-            { opacity: pressed ? 0.82 : 1 },
+            {
+              transform: [{ scale: pressed ? 0.985 : 1 }],
+              opacity: pressed ? 0.82 : 1,
+            },
           ]}
         >
           <View style={[styles.iconCircle, styles.iconCircleBudget]}>
@@ -117,7 +120,10 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
             styles.banner,
             styles.bannerUncategorized,
             showBudgetAlert && { marginTop: 6 },
-            { opacity: pressed ? 0.82 : 1 },
+            {
+              transform: [{ scale: pressed ? 0.985 : 1 }],
+              opacity: pressed ? 0.82 : 1,
+            },
           ]}
         >
           <View style={[styles.iconCircle, styles.iconCircleUncategorized]}>

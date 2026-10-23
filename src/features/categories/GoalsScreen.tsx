@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,12 @@ import {
   ScrollView,
   Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import {
   Sliders,
   Plus,
@@ -24,6 +30,32 @@ import { Typography, Radii } from '@/theme/typography';
 import { formatBRL } from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from './categoryIcons';
 import { CategoryModal } from './CategoryModal';
+
+const AnimatedGoalBar: React.FC<{
+  percent: number;
+  color: string;
+  trackStyle: any;
+  barStyle: any;
+}> = ({ percent, color, trackStyle, barStyle }) => {
+  const animatedWidth = useSharedValue(0);
+
+  useEffect(() => {
+    animatedWidth.value = withTiming(Math.min(percent, 100), {
+      duration: 750,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [percent]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${animatedWidth.value}%`,
+  }));
+
+  return (
+    <View style={trackStyle}>
+      <Animated.View style={[barStyle, { backgroundColor: color }, animStyle]} />
+    </View>
+  );
+};
 
 export const GoalsScreen: React.FC = () => {
   const { colors, mode } = useTheme();
@@ -177,30 +209,24 @@ export const GoalsScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Barra de Progresso Global */}
+          {/* Barra de Progresso Global Animada */}
           {totalBudget > 0 && (
             <View style={styles.progressContainer}>
-              <View
-                style={[
+              <AnimatedGoalBar
+                percent={overallPercent}
+                color={
+                  overallPercent > 100
+                    ? colors.danger
+                    : overallPercent >= 75
+                    ? colors.warning
+                    : colors.primary
+                }
+                trackStyle={[
                   styles.progressTrack,
                   { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' },
                 ]}
-              >
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${Math.min(overallPercent, 100)}%`,
-                      backgroundColor:
-                        overallPercent > 100
-                          ? colors.danger
-                          : overallPercent >= 75
-                          ? colors.warning
-                          : colors.primary,
-                    },
-                  ]}
-                />
-              </View>
+                barStyle={styles.progressBar}
+              />
 
               <View style={styles.progressMeta}>
                 <Text style={[styles.progressMetaText, { color: colors.textMuted }]}>
@@ -337,23 +363,20 @@ export const GoalsScreen: React.FC = () => {
                   </View>
                 </View>
 
-                {/* Barra de Progresso do Teto Individual */}
+                {/* Barra de Progresso do Teto Individual Animada */}
                 {hasLimit && (
-                  <View style={styles.individualProgressTrack}>
-                    <View
-                      style={[
-                        styles.individualProgressBar,
-                        {
-                          width: `${Math.min(percent, 100)}%`,
-                          backgroundColor: isCritical
-                            ? colors.danger
-                            : isWarning
-                            ? colors.warning
-                            : cat.color,
-                        },
-                      ]}
-                    />
-                  </View>
+                  <AnimatedGoalBar
+                    percent={percent}
+                    color={
+                      isCritical
+                        ? colors.danger
+                        : isWarning
+                        ? colors.warning
+                        : cat.color
+                    }
+                    trackStyle={styles.individualProgressTrack}
+                    barStyle={styles.individualProgressBar}
+                  />
                 )}
               </Pressable>
             );

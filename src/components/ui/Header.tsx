@@ -125,6 +125,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
               {
                 backgroundColor: colors.surfaceElevated,
                 borderColor: colors.borderSubtle,
+                transform: [{ scale: pressed ? 0.90 : 1 }],
                 opacity: pressed ? 0.75 : 1,
               },
             ]}
@@ -143,6 +144,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
             {
               backgroundColor: colors.surfaceElevated,
               borderColor: colors.borderSubtle,
+              transform: [{ scale: pressed ? 0.90 : 1 }],
               opacity: pressed ? 0.75 : 1,
             },
           ]}
@@ -164,6 +166,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
             {
               backgroundColor: colors.surfaceElevated,
               borderColor: colors.borderSubtle,
+              transform: [{ scale: pressed ? 0.90 : 1 }],
               opacity: pressed ? 0.75 : 1,
             },
           ]}

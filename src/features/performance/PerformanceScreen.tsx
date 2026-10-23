@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,12 @@ import {
   Pressable,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import Svg, { G, Circle } from 'react-native-svg';
 import {
   TrendingUp,
@@ -26,6 +32,32 @@ import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { formatBRL } from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
+
+const AnimatedCompareBar: React.FC<{
+  widthPct: number;
+  color: string;
+  barTrackStyle: any;
+  barFillStyle: any;
+}> = ({ widthPct, color, barTrackStyle, barFillStyle }) => {
+  const animatedWidth = useSharedValue(0);
+
+  useEffect(() => {
+    animatedWidth.value = withTiming(Math.min(widthPct, 100), {
+      duration: 650,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [widthPct]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    width: `${animatedWidth.value}%`,
+  }));
+
+  return (
+    <View style={barTrackStyle}>
+      <Animated.View style={[barFillStyle, { backgroundColor: color }, animStyle]} />
+    </View>
+  );
+};
 
 export const PerformanceScreen: React.FC = () => {
   const { colors, mode } = useTheme();
@@ -644,24 +676,19 @@ export const PerformanceScreen: React.FC = () => {
                       )}
                     </View>
 
-                    {/* Barras Comparativas Lado a Lado */}
+                    {/* Barras Comparativas Lado a Lado Animadas */}
                     <View style={styles.comparisonBars}>
                       {/* Linha Mês Atual */}
                       <View style={styles.barLine}>
                         <Text style={[styles.barLabel, { color: colors.textSecondary }]}>
                           Este mês
                         </Text>
-                        <View style={styles.barTrack}>
-                          <View
-                            style={[
-                              styles.barFill,
-                              {
-                                width: `${curWidthPct}%`,
-                                backgroundColor: item.category.color || colors.primary,
-                              },
-                            ]}
-                          />
-                        </View>
+                        <AnimatedCompareBar
+                          widthPct={curWidthPct}
+                          color={item.category.color || colors.primary}
+                          barTrackStyle={styles.barTrack}
+                          barFillStyle={styles.barFill}
+                        />
                         <Text style={[styles.barValueText, { color: colors.text }]}>
                           {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
                         </Text>
@@ -672,17 +699,12 @@ export const PerformanceScreen: React.FC = () => {
                         <Text style={[styles.barLabel, { color: colors.textMuted }]}>
                           Mês passado
                         </Text>
-                        <View style={styles.barTrack}>
-                          <View
-                            style={[
-                              styles.barFill,
-                              {
-                                width: `${prevWidthPct}%`,
-                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)',
-                              },
-                            ]}
-                          />
-                        </View>
+                        <AnimatedCompareBar
+                          widthPct={prevWidthPct}
+                          color={isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)'}
+                          barTrackStyle={styles.barTrack}
+                          barFillStyle={styles.barFill}
+                        />
                         <Text style={[styles.barValueText, { color: colors.textSecondary }]}>
                           {privacyMode ? '••••••' : formatBRL(item.prevSpent)}
                         </Text>

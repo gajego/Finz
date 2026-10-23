@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,11 @@ import {
   Pressable,
   Platform,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { Home, TrendingUp, Target } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
@@ -16,6 +21,75 @@ interface FloatingBottomNavProps {
   activeTab: MainTab;
   onTabChange: (tab: MainTab) => void;
 }
+
+interface TabButtonProps {
+  label: string;
+  Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
+  isActive: boolean;
+  onPress: () => void;
+  colors: any;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({
+  label,
+  Icon,
+  isActive,
+  onPress,
+  colors,
+}) => {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (isActive) {
+      scale.value = withSpring(1.03, { damping: 12, stiffness: 260 }, () => {
+        scale.value = withSpring(1, { damping: 14, stiffness: 200 });
+      });
+    }
+  }, [isActive]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={() => {
+          scale.value = withSpring(0.92, { damping: 14, stiffness: 350 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 12, stiffness: 250 });
+        }}
+        style={[
+          styles.tabItem,
+          isActive && [
+            styles.activeTabItem,
+            { backgroundColor: colors.primary },
+          ],
+        ]}
+        hitSlop={8}
+      >
+        <Icon
+          size={16}
+          color={isActive ? colors.primaryForeground : colors.textSecondary}
+          strokeWidth={isActive ? 2.4 : 2}
+        />
+        <Text
+          style={[
+            styles.tabLabel,
+            {
+              color: isActive ? colors.primaryForeground : colors.textSecondary,
+              fontFamily: isActive ? Typography.bold : Typography.medium,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
 
 export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
   activeTab,
@@ -39,41 +113,13 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
         ]}
       >
         {/* Aba 1: Início */}
-        <Pressable
+        <TabButton
+          label="Início"
+          Icon={Home}
+          isActive={activeTab === 'home'}
           onPress={() => onTabChange('home')}
-          style={({ pressed }) => [
-            styles.tabItem,
-            activeTab === 'home' && [
-              styles.activeTabItem,
-              { backgroundColor: colors.primary },
-            ],
-            { transform: [{ scale: pressed ? 0.96 : 1 }] },
-          ]}
-          hitSlop={8}
-        >
-          <Home
-            size={16}
-            color={
-              activeTab === 'home'
-                ? colors.primaryForeground
-                : colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              {
-                color:
-                  activeTab === 'home'
-                    ? colors.primaryForeground
-                    : colors.textSecondary,
-                fontFamily: activeTab === 'home' ? Typography.bold : Typography.medium,
-              },
-            ]}
-          >
-            Início
-          </Text>
-        </Pressable>
+          colors={colors}
+        />
 
         {/* Separador Sutil 1 */}
         <View
@@ -84,41 +130,13 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
         />
 
         {/* Aba 2: Desempenho */}
-        <Pressable
+        <TabButton
+          label="Desempenho"
+          Icon={TrendingUp}
+          isActive={activeTab === 'performance'}
           onPress={() => onTabChange('performance')}
-          style={({ pressed }) => [
-            styles.tabItem,
-            activeTab === 'performance' && [
-              styles.activeTabItem,
-              { backgroundColor: colors.primary },
-            ],
-            { transform: [{ scale: pressed ? 0.96 : 1 }] },
-          ]}
-          hitSlop={8}
-        >
-          <TrendingUp
-            size={16}
-            color={
-              activeTab === 'performance'
-                ? colors.primaryForeground
-                : colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              {
-                color:
-                  activeTab === 'performance'
-                    ? colors.primaryForeground
-                    : colors.textSecondary,
-                fontFamily: activeTab === 'performance' ? Typography.bold : Typography.medium,
-              },
-            ]}
-          >
-            Desempenho
-          </Text>
-        </Pressable>
+          colors={colors}
+        />
 
         {/* Separador Sutil 2 */}
         <View
@@ -129,41 +147,13 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
         />
 
         {/* Aba 3: Metas */}
-        <Pressable
+        <TabButton
+          label="Metas"
+          Icon={Target}
+          isActive={activeTab === 'goals'}
           onPress={() => onTabChange('goals')}
-          style={({ pressed }) => [
-            styles.tabItem,
-            activeTab === 'goals' && [
-              styles.activeTabItem,
-              { backgroundColor: colors.primary },
-            ],
-            { transform: [{ scale: pressed ? 0.96 : 1 }] },
-          ]}
-          hitSlop={8}
-        >
-          <Target
-            size={16}
-            color={
-              activeTab === 'goals'
-                ? colors.primaryForeground
-                : colors.textSecondary
-            }
-          />
-          <Text
-            style={[
-              styles.tabLabel,
-              {
-                color:
-                  activeTab === 'goals'
-                    ? colors.primaryForeground
-                    : colors.textSecondary,
-                fontFamily: activeTab === 'goals' ? Typography.bold : Typography.medium,
-              },
-            ]}
-          >
-            Metas
-          </Text>
-        </Pressable>
+          colors={colors}
+        />
       </View>
     </View>
   );

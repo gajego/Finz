@@ -241,50 +241,48 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
     startSubtleFloatAnimation();
   }, []);
 
-  // Gesto de Clique: Quando clicar, o cartão apenas dá uma afundada suave bem rápido
+  // Gesto de Clique: Quando clicar, o cartão apenas dá uma afundada suave bem rápido e elástica
   const tapGesture = Gesture.Tap()
-    .maxDuration(300)
+    .maxDuration(350)
     .onBegin(() => {
       'worklet';
-      // Afundada suave bem rápido
-      scale.value = withTiming(0.95, { duration: 110, easing: Easing.out(Easing.quad) });
+      scale.value = withSpring(0.94, { damping: 14, stiffness: 350 });
     })
     .onEnd(() => {
       'worklet';
-      // Retorno suave bem rápido
-      scale.value = withTiming(1, { duration: 130, easing: Easing.out(Easing.quad) });
+      scale.value = withSpring(1, { damping: 12, stiffness: 280 });
       runOnJS(onEditSkin)(card);
     });
 
-  // Gesto de Arrasto 3D: Permite inclinar o cartão manualmente com o dedo
+  // Gesto de Arrasto 3D: Permite inclinar o cartão manualmente com o dedo com física elástica
   const panGesture = Gesture.Pan()
-    .activeOffsetY([-8, 8])
-    .failOffsetX([-22, 22]) // Deixa o carrossel horizontal de cartões livre
+    .activeOffsetY([-6, 6])
+    .failOffsetX([-24, 24]) // Deixa o carrossel horizontal de cartões livre
     .onBegin(() => {
       'worklet';
-      scale.value = withSpring(0.98, { damping: 16, stiffness: 200 });
+      scale.value = withSpring(0.97, { damping: 14, stiffness: 220 });
     })
     .onUpdate((e) => {
       'worklet';
       rotateY.value = interpolate(
         e.translationX,
         [-CARD_WIDTH / 2, CARD_WIDTH / 2],
-        [BASE_ROTATE_Y - 14, BASE_ROTATE_Y + 14],
+        [BASE_ROTATE_Y - 18, BASE_ROTATE_Y + 18],
         'clamp'
       );
       rotateX.value = interpolate(
         e.translationY,
         [-CARD_HEIGHT / 2, CARD_HEIGHT / 2],
-        [BASE_ROTATE_X + 12, BASE_ROTATE_X - 12],
+        [BASE_ROTATE_X + 16, BASE_ROTATE_X - 16],
         'clamp'
       );
     })
     .onFinalize(() => {
       'worklet';
-      scale.value = withSpring(1, { damping: 15, stiffness: 140 });
-      rotateX.value = withSpring(BASE_ROTATE_X, { damping: 15, stiffness: 140 });
-      rotateY.value = withSpring(BASE_ROTATE_Y, { damping: 15, stiffness: 140 });
-      rotateZ.value = withSpring(BASE_ROTATE_Z, { damping: 15, stiffness: 140 }, (finished) => {
+      scale.value = withSpring(1, { damping: 14, stiffness: 180 });
+      rotateX.value = withSpring(BASE_ROTATE_X, { damping: 14, stiffness: 160 });
+      rotateY.value = withSpring(BASE_ROTATE_Y, { damping: 14, stiffness: 160 });
+      rotateZ.value = withSpring(BASE_ROTATE_Z, { damping: 14, stiffness: 160 }, (finished) => {
         if (finished) {
           startSubtleFloatAnimation();
         }

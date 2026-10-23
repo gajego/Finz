@@ -191,7 +191,11 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
           styles.row,
           {
             borderBottomColor: colors.borderSubtle,
-            opacity: pressed ? 0.72 : 1,
+            backgroundColor: pressed
+              ? (isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)')
+              : 'transparent',
+            transform: [{ scale: pressed ? 0.985 : 1 }],
+            opacity: pressed ? 0.85 : 1,
           },
         ]}
       >

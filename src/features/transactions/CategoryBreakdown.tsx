@@ -1,5 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import {
   AlertTriangle,
   Utensils,
@@ -24,6 +30,37 @@ import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
 interface CategoryBreakdownProps {
   onOpenBudgetManager: (categoryId?: string) => void;
 }
+
+const AnimatedProgressBar: React.FC<{
+  percent: number;
+  color: string;
+  trackBg: string;
+}> = ({ percent, color, trackBg }) => {
+  const animatedWidth = useSharedValue(0);
+
+  useEffect(() => {
+    animatedWidth.value = withTiming(Math.min(percent, 100), {
+      duration: 750,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [percent]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    width: `${animatedWidth.value}%`,
+  }));
+
+  return (
+    <View style={[styles.progressTrack, { backgroundColor: trackBg }]}>
+      <Animated.View
+        style={[
+          styles.progressFill,
+          { backgroundColor: color },
+          animatedStyle,
+        ]}
+      />
+    </View>
+  );
+};
 
 export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudgetManager }) => {
   const { colors, mode } = useTheme();
@@ -203,28 +240,16 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
                 </Text>
               </View>
 
-              {/* Barra de Progresso com Cantos Arredondados e Altura Suave (7px) */}
-              <View
-                style={[
-                  styles.progressTrack,
-                  {
-                    backgroundColor:
-                      mode === 'dark'
-                        ? 'rgba(255, 255, 255, 0.08)'
-                        : 'rgba(0, 0, 0, 0.06)',
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      width: `${Math.min(percent, 100)}%`,
-                      backgroundColor: statusColor,
-                    },
-                  ]}
-                />
-              </View>
+              {/* Barra de Progresso Animada com Cantos Arredondados e Altura Suave (7px) */}
+              <AnimatedProgressBar
+                percent={hasLimit ? percent : 0}
+                color={statusColor}
+                trackBg={
+                  mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.08)'
+                    : 'rgba(0, 0, 0, 0.06)'
+                }
+              />
 
               {/* Rodapé do Card: Restante ou Ação de Ajuste */}
               <View style={styles.cardFooter}>

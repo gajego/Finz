@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  View,
+  useWindowDimensions,
   RefreshControl,
   Linking,
   Alert,
@@ -43,6 +45,8 @@ import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src
 import { BankCard, Transaction } from './src/types';
 import * as Notifications from 'expo-notifications';
 
+const MAIN_TABS: MainTab[] = ['home', 'performance', 'goals'];
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Ubuntu_300Light,
@@ -80,6 +84,44 @@ export default function App() {
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
+  const { width: screenWidth } = useWindowDimensions();
+  const horizontalScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
+  const isProgrammaticScrollRef = useRef(false);
+
+  const handleTabChange = (tab: MainTab) => {
+    setActiveMainTab(tab);
+    const targetIndex = MAIN_TABS.indexOf(tab);
+    if (targetIndex >= 0 && horizontalScrollRef.current) {
+      isProgrammaticScrollRef.current = true;
+      horizontalScrollRef.current.scrollTo({
+        x: targetIndex * screenWidth,
+        animated: true,
+      });
+      setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 450);
+    }
+  };
+
+  const handleHorizontalScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isProgrammaticScrollRef.current) return;
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const pageIndex = Math.round(offsetX / screenWidth);
+    const nextTab = MAIN_TABS[pageIndex];
+    if (nextTab && nextTab !== activeMainTab) {
+      setActiveMainTab(nextTab);
+    }
+  };
+
+  useEffect(() => {
+    const targetIndex = MAIN_TABS.indexOf(activeMainTab);
+    if (targetIndex >= 0 && horizontalScrollRef.current) {
+      horizontalScrollRef.current.scrollTo({
+        x: targetIndex * screenWidth,
+        animated: false,
+      });
+    }
+  }, [screenWidth]);
 
   const activeTransaction = selectedTransactionForDetails
     ? transactions.find((t) => t.id === selectedTransactionForDetails.id) || selectedTransactionForDetails
@@ -246,63 +288,86 @@ export default function App() {
           onOpenProfile={() => setProfileVisible(true)}
         />
 
-        {activeMainTab === 'home' ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            scrollEventThrottle={32}
-            onScroll={handleScroll}
-            refreshControl={
-              <RefreshControl
-                refreshing={isSyncingPluggy}
-                onRefresh={handleSyncPluggy}
-                tintColor={colors.primary}
-                colors={[colors.primary]}
-                progressBackgroundColor={mode === 'dark' ? colors.surfaceElevated : colors.surface}
+        {/* Pager Horizontal com Navegação por Gesto de Arrastar para o Lado */}
+        <ScrollView
+          ref={horizontalScrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          overScrollMode="never"
+          nestedScrollEnabled={true}
+          scrollEventThrottle={16}
+          onScroll={handleHorizontalScroll}
+          onMomentumScrollEnd={handleHorizontalScroll}
+          onScrollEndDrag={handleHorizontalScroll}
+          style={{ flex: 1 }}
+        >
+          {/* Tela 1: Início */}
+          <View style={{ width: screenWidth, flex: 1 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              scrollEventThrottle={32}
+              onScroll={handleScroll}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isSyncingPluggy}
+                  onRefresh={handleSyncPluggy}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                  progressBackgroundColor={mode === 'dark' ? colors.surfaceElevated : colors.surface}
+                />
+              }
+            >
+              {/* Alerta Inteligente Vermelho quando limite é atingido ou Âmbar para Não Categorizadas */}
+              <AlertBanner
+                onOpenBudgetManager={() => handleTabChange('goals')}
+                onOpenUncategorized={() => setUncategorizedModalVisible(true)}
               />
-            }
-          >
-            {/* Alerta Inteligente Vermelho quando limite é atingido ou Âmbar para Não Categorizadas */}
-            <AlertBanner
-              onOpenBudgetManager={() => setActiveMainTab('goals')}
-              onOpenUncategorized={() => setUncategorizedModalVisible(true)}
-            />
 
-            {/* Cartões Físicos Interativos com Física 3D por Gesto */}
-            <CardCarousel
-              cards={cards}
-              activeIndex={activeCardIndex}
-              onIndexChange={setActiveCardIndex}
-              onEditSkin={(card) => setSelectedCardForSkin(card)}
-              onOpenPluggy={() => setPluggyModalVisible(true)}
-            />
+              {/* Cartões Físicos Interativos com Física 3D por Gesto */}
+              <CardCarousel
+                cards={cards}
+                activeIndex={activeCardIndex}
+                onIndexChange={setActiveCardIndex}
+                onEditSkin={(card) => setSelectedCardForSkin(card)}
+                onOpenPluggy={() => setPluggyModalVisible(true)}
+              />
 
-            {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
-            <CategoryBreakdown onOpenBudgetManager={() => setActiveMainTab('goals')} />
+              {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
+              <CategoryBreakdown onOpenBudgetManager={() => handleTabChange('goals')} />
 
-            {/* Extrato com Estilo Editorial Suíço e Estornos */}
-            <TransactionList
-              visibleCount={txVisibleCount}
-              pageSize={30}
-              onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
-              onPressTransaction={(tx) => {
-                console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
-                setSelectedTransactionForDetails(tx);
-              }}
+              {/* Extrato com Estilo Editorial Suíço e Estornos */}
+              <TransactionList
+                visibleCount={txVisibleCount}
+                pageSize={30}
+                onEndReached={() => setTxVisibleCount((prev) => prev + 30)}
+                onPressTransaction={(tx) => {
+                  console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
+                  setSelectedTransactionForDetails(tx);
+                }}
+              />
+            </ScrollView>
+          </View>
+
+          {/* Tela 2: Desempenho */}
+          <View style={{ width: screenWidth, flex: 1 }}>
+            <PerformanceScreen
+              onPressTransaction={(tx) => setSelectedTransactionForDetails(tx)}
             />
-          </ScrollView>
-        ) : activeMainTab === 'performance' ? (
-          <PerformanceScreen
-            onPressTransaction={(tx) => setSelectedTransactionForDetails(tx)}
-          />
-        ) : (
-          <GoalsScreen />
-        )}
+          </View>
+
+          {/* Tela 3: Metas */}
+          <View style={{ width: screenWidth, flex: 1 }}>
+            <GoalsScreen />
+          </View>
+        </ScrollView>
 
         {/* Menu Flutuante ao Fundo da Tela (Início / Desempenho / Metas) */}
         <FloatingBottomNav
           activeTab={activeMainTab}
-          onTabChange={setActiveMainTab}
+          onTabChange={handleTabChange}
         />
 
         {/* Menu de Perfil e Ajustes */}

@@ -11,7 +11,13 @@ import {
   KeyboardAvoidingView,
   Alert,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import {
   X,
   User,
@@ -159,6 +165,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
     );
   };
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -167,22 +179,24 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
       >
         <Pressable style={styles.backdropArea} onPress={onClose} />
 
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: isDark ? colors.surfaceElevated : colors.background,
               borderColor: colors.borderStrong,
             },
+            animatedSheetStyle,
           ]}
         >
-          {/* Barra de Arraste / Top Indicator */}
-          <View style={styles.topHandleBar}>
-            <View style={[styles.handleIndicator, { backgroundColor: colors.border }]} />
-          </View>
+          {/* Barra de Arraste Superior com Gesto de Arrastar para Fechar */}
+          <ModalTopHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.border}
+          />
 
-          {/* Header do Menu de Perfil */}
-          <View style={styles.header}>
+          {/* Header do Menu de Perfil com Gesto de Arraste */}
+          <View {...headerPanResponder.panHandlers} style={styles.header}>
             <View style={styles.headerTextGroup}>
               <Text style={[styles.title, { color: colors.text }]}>MENU DE PERFIL</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -736,7 +750,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
               </Pressable>
             </View>
           </ScrollView>
-        </View>
+
+          {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+          <ModalBottomHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.border}
+          />
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

@@ -8,7 +8,13 @@ import {
   ScrollView,
   SafeAreaView,
   Platform,
+  Animated,
 } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import {
   X,
   Tag,
@@ -88,6 +94,12 @@ export const UncategorizedTransactionsModal: React.FC<UncategorizedTransactionsM
     }
   };
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal
       visible={visible}
@@ -95,9 +107,16 @@ export const UncategorizedTransactionsModal: React.FC<UncategorizedTransactionsM
       transparent={false}
       onRequestClose={onClose}
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        {/* Top Header Editorial */}
-        <View style={[styles.headerBar, { borderBottomColor: colors.borderSubtle }]}>
+      <Animated.View style={[{ flex: 1 }, animatedSheetStyle]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+          {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+          <ModalTopHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.borderStrong}
+          />
+
+          {/* Top Header Editorial com Gesto de Arraste */}
+          <View {...headerPanResponder.panHandlers} style={[styles.headerBar, { borderBottomColor: colors.borderSubtle }]}>
           <View style={styles.headerTitleGroup}>
             <View
               style={[
@@ -339,8 +358,15 @@ export const UncategorizedTransactionsModal: React.FC<UncategorizedTransactionsM
             </Pressable>
           </View>
         )}
+
+        {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+        <ModalBottomHandle
+          panHandlers={handlePanResponder.panHandlers}
+          color={colors.borderStrong}
+        />
       </SafeAreaView>
-    </Modal>
+    </Animated.View>
+  </Modal>
   );
 };
 

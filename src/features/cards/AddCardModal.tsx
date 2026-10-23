@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import { X, Check, CreditCard, ShieldCheck, Landmark, ArrowRight } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
@@ -49,6 +54,12 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, on
     onClose();
   };
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -57,17 +68,24 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, on
       >
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={onClose} />
-          <View
+          <Animated.View
             style={[
               styles.sheet,
               {
                 backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
                 borderColor: colors.borderStrong,
               },
+              animatedSheetStyle,
             ]}
           >
-            {/* Topo Fixo */}
-            <View style={styles.header}>
+            {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+            <ModalTopHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+
+            {/* Topo Fixo com Gesto de Arraste */}
+            <View {...headerPanResponder.panHandlers} style={styles.header}>
               <View>
                 <View style={styles.badgeRow}>
                   <CreditCard size={12} color={colors.primary} />
@@ -210,7 +228,13 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({ visible, onClose, on
                 </Text>
               </Pressable>
             </ScrollView>
-          </View>
+
+            {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+            <ModalBottomHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

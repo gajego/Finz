@@ -10,7 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  Animated as RNAnimated,
 } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import { Image } from 'expo-image';
 import Svg, {
   Rect,
@@ -260,6 +266,12 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
     };
   });
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible: visible && !!card });
+
   if (!card) return null;
 
   // Categoria e Nomenclatura Real do Cartão
@@ -324,17 +336,24 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={onClose} />
 
-          <View
+          <RNAnimated.View
             style={[
               styles.sheet,
               {
                 backgroundColor: mode === 'dark' ? colors.surfaceElevated : colors.background,
                 borderColor: colors.borderStrong,
               },
+              animatedSheetStyle,
             ]}
           >
-            {/* Header com Affordance e Fechar */}
-            <View style={styles.header}>
+            {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+            <ModalTopHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+
+            {/* Header com Affordance e Fechar com Gesto de Arraste */}
+            <View {...headerPanResponder.panHandlers} style={styles.header}>
               <View>
                 <Text style={[styles.title, { color: colors.text }]}>PERSONALIZAR CARTÃO</Text>
                 <Text style={[styles.subtitle, { color: colors.primary }]}>
@@ -624,7 +643,13 @@ export const CardSkinModal: React.FC<CardSkinModalProps> = ({ card, visible, onC
                 </Text>
               </Pressable>
             </ScrollView>
-          </View>
+
+            {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+            <ModalBottomHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+          </RNAnimated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

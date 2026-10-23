@@ -281,7 +281,9 @@ export default function App() {
             />
           </ScrollView>
         ) : activeMainTab === 'performance' ? (
-          <PerformanceScreen />
+          <PerformanceScreen
+            onPressTransaction={(tx) => setSelectedTransactionForDetails(tx)}
+          />
         ) : (
           <GoalsScreen />
         )}

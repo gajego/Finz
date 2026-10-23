@@ -1,5 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ScrollView, Animated } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import {
   X,
   Bell,
@@ -296,27 +301,35 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
     }
   };
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
 
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
               borderColor: colors.borderStrong,
             },
+            animatedSheetStyle,
           ]}
         >
-          {/* Barra Superior de Arrasto Visual */}
-          <View style={styles.handleContainer}>
-            <View style={[styles.handleBar, { backgroundColor: colors.borderStrong }]} />
-          </View>
+          {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+          <ModalTopHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.borderStrong}
+          />
 
-          {/* Cabeçalho */}
-          <View style={styles.header}>
+          {/* Cabeçalho com Gesto de Arraste */}
+          <View {...headerPanResponder.panHandlers} style={styles.header}>
             <View style={styles.titleRow}>
               <View style={[styles.iconBadge, { backgroundColor: colors.surfaceSubtle }]}>
                 <Bell size={16} color={colors.primary} />
@@ -515,7 +528,13 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
               </View>
             )}
           </ScrollView>
-        </View>
+
+          {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+          <ModalBottomHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.borderStrong}
+          />
+        </Animated.View>
       </View>
     </Modal>
   );

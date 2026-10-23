@@ -10,7 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Animated,
 } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import {
   X,
   Check,
@@ -139,6 +145,12 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
   const PreviewIcon = getCategoryIconComponent(selectedIcon);
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal
       visible={visible}
@@ -152,21 +164,23 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       >
         <Pressable style={styles.backdropArea} onPress={onClose} />
 
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: isDark ? colors.surfaceElevated : colors.background,
               borderColor: colors.borderStrong,
             },
+            animatedSheetStyle,
           ]}
         >
-          {/* Barra de Arraste / Header */}
-          <View style={styles.topHandleBar}>
-            <View style={[styles.handleIndicator, { backgroundColor: colors.border }]} />
-          </View>
+          {/* Barra de Arraste Superior com Gesto de Arrastar para Fechar */}
+          <ModalTopHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.border}
+          />
 
-          <View style={styles.header}>
+          <View {...headerPanResponder.panHandlers} style={styles.header}>
             <View style={styles.headerTextGroup}>
               <Text style={[styles.title, { color: colors.text }]}>
                 {isEditing ? 'EDITAR CATEGORIA' : 'NOVA CATEGORIA'}
@@ -505,7 +519,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </Pressable>
             )}
           </View>
-        </View>
+
+          {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+          <ModalBottomHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.border}
+          />
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );

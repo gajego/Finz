@@ -33,6 +33,11 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { Category } from '@/types';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 
 const getCategoryIcon = (iconName: string): LucideIcon => {
   switch (iconName?.toLowerCase()) {
@@ -205,6 +210,12 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
     ? colors.successSubtle
     : colors.surfaceSubtle;
 
+  const {
+    panY,
+    handlePanResponder,
+    headerPanResponder,
+  } = useSwipeModalDismiss({ onClose: handleClose, visible });
+
   return (
     <Modal
       visible={visible}
@@ -223,7 +234,7 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
             <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
           </Animated.View>
 
-          {/* Bottom Sheet com Suporte a Slide & Fade Suave */}
+          {/* Bottom Sheet com Suporte a Slide, Fade e Gesto de Arraste */}
           <Animated.View
             style={[
               styles.sheet,
@@ -231,27 +242,22 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
                 backgroundColor: mode === 'dark' ? colors.surface : colors.surfaceElevated,
                 borderColor: colors.borderStrong,
                 opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
+                transform: [{ translateY: Animated.add(slideAnim, panY) }],
               },
             ]}
           >
-            {/* Grabber visual industrial */}
-            <View style={styles.grabberContainer}>
-              <View
-                style={[
-                  styles.grabber,
-                  {
-                    backgroundColor:
-                      mode === 'dark'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : 'rgba(0, 0, 0, 0.15)',
-                  },
-                ]}
-              />
-            </View>
+            {/* Grabber visual com Gesto de Arrastar para Fechar */}
+            <ModalTopHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={
+                mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.25)'
+                  : 'rgba(0, 0, 0, 0.2)'
+              }
+            />
 
-            {/* Cabeçalho Fixo do Modal */}
-            <View style={styles.header}>
+            {/* Cabeçalho Fixo do Modal com Gesto de Arraste */}
+            <View {...headerPanResponder.panHandlers} style={styles.header}>
               <View>
                 <View style={styles.titleBadge}>
                   <Sliders size={12} color={colors.primary} />
@@ -584,6 +590,16 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
                 </Text>
               </Pressable>
             </ScrollView>
+
+            {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+            <ModalBottomHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={
+                mode === 'dark'
+                  ? 'rgba(255, 255, 255, 0.25)'
+                  : 'rgba(0, 0, 0, 0.2)'
+              }
+            />
           </Animated.View>
         </View>
       </KeyboardAvoidingView>

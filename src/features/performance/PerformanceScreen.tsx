@@ -25,12 +25,15 @@ import {
   Layers,
   PieChart as PieIcon,
   BarChart2,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react-native';
 import { Category, Transaction } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
-import { formatBRL } from '@/features/transactions/transactionUtils';
+import { formatBRL, parseMerchantAndInstallments } from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
 
 const AnimatedCompareBar: React.FC<{
@@ -59,7 +62,241 @@ const AnimatedCompareBar: React.FC<{
   );
 };
 
-export const PerformanceScreen: React.FC = () => {
+interface PerformanceScreenProps {
+  onPressTransaction?: (transaction: Transaction) => void;
+}
+
+interface OverBudgetCategoryCardProps {
+  item: {
+    category: Category;
+    currentSpent: number;
+    budget: number;
+    isOver: boolean;
+    overAmount: number;
+  };
+  transactions: Transaction[];
+  currentMonthStart: number;
+  currentMonthEnd: number;
+  privacyMode: boolean;
+  colors: any;
+  isDark: boolean;
+  onPressTransaction?: (transaction: Transaction) => void;
+}
+
+const OverBudgetCategoryCard: React.FC<OverBudgetCategoryCardProps> = ({
+  item,
+  transactions,
+  currentMonthStart,
+  currentMonthEnd,
+  privacyMode,
+  colors,
+  isDark,
+  onPressTransaction,
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  const IconComponent = getCategoryIconComponent(item.category.icon);
+  const pct = Math.round((item.currentSpent / item.budget) * 100);
+
+  const categoryTransactions = useMemo(() => {
+    return transactions
+      .filter(
+        (t) =>
+          t.categoryId === item.category.id &&
+          t.type === 'EXPENSE' &&
+          t.timestamp >= currentMonthStart &&
+          t.timestamp <= currentMonthEnd
+      )
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }, [transactions, item.category.id, currentMonthStart, currentMonthEnd]);
+
+  const visibleTransactions = expanded
+    ? categoryTransactions
+    : categoryTransactions.slice(0, 4);
+
+  const formatShortDate = (ts: number) => {
+    try {
+      return new Intl.DateTimeFormat('pt-BR', {
+        day: '2-digit',
+        month: 'short',
+        timeZone: 'America/Sao_Paulo',
+      }).format(new Date(ts));
+    } catch {
+      return '';
+    }
+  };
+
+  return (
+    <View
+      style={[
+        styles.overBudgetCard,
+        {
+          backgroundColor: colors.surface,
+          borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.25)',
+        },
+      ]}
+    >
+      <View style={styles.overBudgetCardHeader}>
+        <View style={styles.overBudgetCategoryInfo}>
+          <View
+            style={[
+              styles.categoryIconBox,
+              { backgroundColor: `${item.category.color}22` },
+            ]}
+          >
+            <IconComponent size={18} color={item.category.color} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.overBudgetName, { color: colors.text }]}>
+              {item.category.name}
+            </Text>
+            <Text style={[styles.overBudgetLimits, { color: colors.textSecondary }]}>
+              Teto: {privacyMode ? '••••••' : formatBRL(item.budget)} • Gasto:{' '}
+              {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.overBudgetTag,
+            { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.12)' },
+          ]}
+        >
+          <Text style={[styles.overBudgetTagText, { color: colors.danger }]}>
+            {pct}%
+          </Text>
+        </View>
+      </View>
+
+      {/* Barra de Progresso Estourada */}
+      <View
+        style={[
+          styles.progressBarTrack,
+          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' },
+        ]}
+      >
+        <View
+          style={[
+            styles.progressBarFill,
+            {
+              width: '100%',
+              backgroundColor: colors.danger,
+            },
+          ]}
+        />
+      </View>
+
+      <View style={styles.overBudgetFooter}>
+        <Text style={[styles.overBudgetExceededText, { color: colors.danger }]}>
+          Excedeu {privacyMode ? '••••••' : formatBRL(item.overAmount)} do teto planejado
+        </Text>
+      </View>
+
+      {/* Lista de Itens da Categoria que Estouraram o Teto */}
+      {categoryTransactions.length > 0 && (
+        <View style={styles.txListContainer}>
+          <View style={[styles.txListDivider, { backgroundColor: colors.borderSubtle }]} />
+
+          <View style={styles.txListHeader}>
+            <Text style={[styles.txListHeaderTitle, { color: colors.textSecondary }]}>
+              ITENS DESTA CATEGORIA NO MÊS ({categoryTransactions.length})
+            </Text>
+          </View>
+
+          <View style={styles.txItemsList}>
+            {visibleTransactions.map((tx) => {
+              const { cleanName } = parseMerchantAndInstallments(tx.merchant, tx.rawText);
+              const dateStr = formatShortDate(tx.timestamp);
+
+              return (
+                <Pressable
+                  key={tx.id}
+                  onPress={() => onPressTransaction?.(tx)}
+                  style={({ pressed }) => [
+                    styles.txItemRow,
+                    {
+                      backgroundColor: pressed
+                        ? isDark
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'rgba(0, 0, 0, 0.04)'
+                        : 'transparent',
+                      transform: [{ scale: pressed ? 0.985 : 1 }],
+                      borderBottomColor: colors.borderSubtle,
+                    },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${cleanName}, ${formatBRL(tx.amount)}, toque para abrir detalhes`}
+                >
+                  <View style={styles.txItemLeft}>
+                    <View
+                      style={[
+                        styles.txBullet,
+                        { backgroundColor: item.category.color || colors.danger },
+                      ]}
+                    />
+                    <View style={styles.txMetaTexts}>
+                      <Text
+                        style={[styles.txMerchantText, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {cleanName}
+                      </Text>
+                      <Text style={[styles.txDateText, { color: colors.textMuted }]}>
+                        {dateStr}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.txItemRight}>
+                    <Text
+                      style={[
+                        styles.txAmountText,
+                        { color: isDark ? '#F87171' : '#E11D48' },
+                      ]}
+                    >
+                      - {privacyMode ? '••••••' : formatBRL(tx.amount)}
+                    </Text>
+                    <ChevronRight size={13} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Botão Ver Todas / Recolher */}
+          {categoryTransactions.length > 4 && (
+            <Pressable
+              onPress={() => setExpanded(!expanded)}
+              style={({ pressed }) => [
+                styles.expandBtn,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: colors.borderSubtle,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Text style={[styles.expandBtnText, { color: colors.textSecondary }]}>
+                {expanded
+                  ? 'Recolher itens'
+                  : `Ver todas as ${categoryTransactions.length} movimentações`}
+              </Text>
+              {expanded ? (
+                <ChevronUp size={14} color={colors.textSecondary} />
+              ) : (
+                <ChevronDown size={14} color={colors.textSecondary} />
+              )}
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
+
+export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTransaction }) => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
 
@@ -349,80 +586,19 @@ export const PerformanceScreen: React.FC = () => {
             </View>
 
             <View style={styles.overBudgetList}>
-              {overBudgetCategories.map((item) => {
-                const IconComponent = getCategoryIconComponent(item.category.icon);
-                const pct = Math.round((item.currentSpent / item.budget) * 100);
-
-                return (
-                  <View
-                    key={item.category.id}
-                    style={[
-                      styles.overBudgetCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(239, 68, 68, 0.25)',
-                      },
-                    ]}
-                  >
-                    <View style={styles.overBudgetCardHeader}>
-                      <View style={styles.overBudgetCategoryInfo}>
-                        <View
-                          style={[
-                            styles.categoryIconBox,
-                            { backgroundColor: `${item.category.color}22` },
-                          ]}
-                        >
-                          <IconComponent size={18} color={item.category.color} />
-                        </View>
-                        <View>
-                          <Text style={[styles.overBudgetName, { color: colors.text }]}>
-                            {item.category.name}
-                          </Text>
-                          <Text style={[styles.overBudgetLimits, { color: colors.textSecondary }]}>
-                            Teto: {privacyMode ? '••••••' : formatBRL(item.budget)} • Gasto:{' '}
-                            {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View
-                        style={[
-                          styles.overBudgetTag,
-                          { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.12)' },
-                        ]}
-                      >
-                        <Text style={[styles.overBudgetTagText, { color: colors.danger }]}>
-                          {pct}%
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Barra de Progresso Estourada */}
-                    <View
-                      style={[
-                        styles.progressBarTrack,
-                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          {
-                            width: '100%',
-                            backgroundColor: colors.danger,
-                          },
-                        ]}
-                      />
-                    </View>
-
-                    <View style={styles.overBudgetFooter}>
-                      <Text style={[styles.overBudgetExceededText, { color: colors.danger }]}>
-                        Excedeu {privacyMode ? '••••••' : formatBRL(item.overAmount)} do teto planejado
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
+              {overBudgetCategories.map((item) => (
+                <OverBudgetCategoryCard
+                  key={item.category.id}
+                  item={item}
+                  transactions={transactions}
+                  currentMonthStart={currentMonthStart}
+                  currentMonthEnd={currentMonthEnd}
+                  privacyMode={privacyMode}
+                  colors={colors}
+                  isDark={isDark}
+                  onPressTransaction={onPressTransaction}
+                />
+              ))}
             </View>
           </View>
         )}
@@ -885,6 +1061,84 @@ const styles = StyleSheet.create({
   overBudgetExceededText: {
     fontSize: 12,
     fontFamily: Typography.medium,
+  },
+  txListContainer: {
+    marginTop: 14,
+  },
+  txListDivider: {
+    height: 1,
+    marginBottom: 12,
+  },
+  txListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  txListHeaderTitle: {
+    fontSize: 10,
+    fontFamily: Typography.bold,
+    letterSpacing: 0.8,
+  },
+  txItemsList: {
+    gap: 2,
+  },
+  txItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  txItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  txBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 10,
+  },
+  txMetaTexts: {
+    flex: 1,
+  },
+  txMerchantText: {
+    fontSize: 13,
+    fontFamily: Typography.medium,
+  },
+  txDateText: {
+    fontSize: 11,
+    fontFamily: Typography.regular,
+    marginTop: 1,
+  },
+  txItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  txAmountText: {
+    fontSize: 13,
+    fontFamily: Typography.bold,
+  },
+  expandBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 10,
+    gap: 6,
+  },
+  expandBtnText: {
+    fontSize: 11,
+    fontFamily: Typography.bold,
+    letterSpacing: 0.2,
   },
   chartContainerCard: {
     padding: 18,

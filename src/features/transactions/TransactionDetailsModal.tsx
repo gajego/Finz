@@ -8,6 +8,7 @@ import {
   ScrollView,
   SafeAreaView,
   Platform,
+  Animated,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -46,6 +47,11 @@ import {
   getPaymentModality,
 } from './transactionUtils';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 
 interface TransactionDetailsModalProps {
   visible: boolean;
@@ -69,6 +75,12 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
   const [copiedId, setCopiedId] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible: visible && !!transaction });
 
   if (!transaction) {
     return null;
@@ -186,22 +198,27 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
           accessibilityLabel="Fechar modal"
         />
 
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
               borderColor: colors.borderStrong,
             },
+            animatedSheetStyle,
           ]}
         >
-          {/* Barra Superior de Arrasto Visual */}
-          <View style={styles.handleContainer}>
-            <View style={[styles.handleBar, { backgroundColor: colors.borderStrong }]} />
-          </View>
+          {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+          <ModalTopHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.borderStrong}
+          />
 
-          {/* Barra Superior de Ações */}
-          <View style={[styles.headerBar, { borderBottomColor: colors.borderSubtle }]}>
+          {/* Barra Superior de Ações com Gesto de Arraste */}
+          <View
+            {...headerPanResponder.panHandlers}
+            style={[styles.headerBar, { borderBottomColor: colors.borderSubtle }]}
+          >
             <Pressable
               onPress={onClose}
               hitSlop={12}
@@ -576,7 +593,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
 
             <View style={styles.bottomSpacer} />
           </ScrollView>
-        </View>
+
+          {/* Barra Inferior com Gesto de Arrastar para Fechar (de baixo para cima ou para baixo) */}
+          <ModalBottomHandle
+            panHandlers={handlePanResponder.panHandlers}
+            color={colors.borderStrong}
+          />
+        </Animated.View>
       </View>
     </Modal>
   );

@@ -11,7 +11,13 @@ import {
   Platform,
   Alert,
   Linking,
+  Animated,
 } from 'react-native';
+import {
+  useSwipeModalDismiss,
+  ModalTopHandle,
+  ModalBottomHandle,
+} from '@/components/ui/SwipeableModalSheet';
 import {
   X,
   Landmark,
@@ -201,6 +207,12 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
     Linking.openURL('https://dashboard.pluggy.ai');
   };
 
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -210,17 +222,24 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={onClose} />
 
-          <View
+          <Animated.View
             style={[
               styles.sheet,
               {
                 backgroundColor: mode === 'dark' ? colors.surface : colors.background,
                 borderColor: colors.borderStrong,
               },
+              animatedSheetStyle,
             ]}
           >
-            {/* Header com Ícone Squircle */}
-            <View style={styles.header}>
+            {/* Barra Superior de Arrasto com Gesto de Arrastar para Fechar */}
+            <ModalTopHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+
+            {/* Header com Ícone Squircle e Gesto de Arraste */}
+            <View {...headerPanResponder.panHandlers} style={styles.header}>
               <View style={styles.headerTitleRow}>
                 <View style={[styles.iconBox, { backgroundColor: colors.surfaceSubtle }]}>
                   <Landmark size={20} color={colors.primary} />
@@ -531,7 +550,13 @@ export const PluggyConnectModal: React.FC<PluggyConnectModalProps> = ({ visible,
                 </View>
               )}
             </ScrollView>
-          </View>
+
+            {/* Barra Inferior com Gesto de Arrastar para Fechar */}
+            <ModalBottomHandle
+              panHandlers={handlePanResponder.panHandlers}
+              color={colors.borderStrong}
+            />
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

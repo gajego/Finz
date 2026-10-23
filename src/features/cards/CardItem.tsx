@@ -10,6 +10,7 @@ import Svg, {
   Stop,
 } from 'react-native-svg';
 import Animated, {
+  SharedValue,
   useSharedValue,
   useAnimatedStyle,
   withSpring,
@@ -32,6 +33,10 @@ const CARD_HEIGHT = CARD_WIDTH / 1.586;
 
 interface CardItemProps {
   card: BankCard;
+  index?: number;
+  cardScrollX?: SharedValue<number>;
+  scrollY?: SharedValue<number>;
+  pagerScrollX?: SharedValue<number>;
   onEditSkin: (card: BankCard) => void;
 }
 
@@ -193,7 +198,14 @@ const HologramPatchSvg: React.FC = () => {
   );
 };
 
-export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
+export const CardItem: React.FC<CardItemProps> = ({
+  card,
+  index = 0,
+  cardScrollX,
+  scrollY,
+  pagerScrollX,
+  onEditSkin,
+}) => {
   const { colors } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
@@ -203,34 +215,43 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const BASE_ROTATE_Y = -13;
   const BASE_ROTATE_Z = 2.5;
 
+  const floatY = useSharedValue(0);
   const rotateX = useSharedValue(BASE_ROTATE_X);
   const rotateY = useSharedValue(BASE_ROTATE_Y);
   const rotateZ = useSharedValue(BASE_ROTATE_Z);
   const scale = useSharedValue(1);
 
-  // Inicia o movimento contínuo bem sutil em torno do ângulo inclinado 3D
+  // Inicia o movimento contínuo de levitação 3D (mais visível, elástico e amplo)
   const startSubtleFloatAnimation = () => {
     'worklet';
+    floatY.value = withRepeat(
+      withSequence(
+        withTiming(-7, { duration: 2800, easing: Easing.inOut(Easing.sin) }),
+        withTiming(7, { duration: 2800, easing: Easing.inOut(Easing.sin) })
+      ),
+      -1,
+      true
+    );
     rotateX.value = withRepeat(
       withSequence(
-        withTiming(BASE_ROTATE_X + 1.8, { duration: 3400, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_X - 1.8, { duration: 3400, easing: Easing.inOut(Easing.sin) })
+        withTiming(BASE_ROTATE_X + 4.2, { duration: 3400, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_X - 4.2, { duration: 3400, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true
     );
     rotateY.value = withRepeat(
       withSequence(
-        withTiming(BASE_ROTATE_Y - 2.0, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_Y + 2.0, { duration: 4000, easing: Easing.inOut(Easing.sin) })
+        withTiming(BASE_ROTATE_Y - 5.0, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_Y + 5.0, { duration: 4000, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true
     );
     rotateZ.value = withRepeat(
       withSequence(
-        withTiming(BASE_ROTATE_Z + 0.8, { duration: 4600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(BASE_ROTATE_Z - 0.8, { duration: 4600, easing: Easing.inOut(Easing.sin) })
+        withTiming(BASE_ROTATE_Z + 1.8, { duration: 4600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(BASE_ROTATE_Z - 1.8, { duration: 4600, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true
@@ -280,6 +301,7 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
     .onFinalize(() => {
       'worklet';
       scale.value = withSpring(1, { damping: 14, stiffness: 180 });
+      floatY.value = withSpring(0, { damping: 14, stiffness: 160 });
       rotateX.value = withSpring(BASE_ROTATE_X, { damping: 14, stiffness: 160 });
       rotateY.value = withSpring(BASE_ROTATE_Y, { damping: 14, stiffness: 160 });
       rotateZ.value = withSpring(BASE_ROTATE_Z, { damping: 14, stiffness: 160 }, (finished) => {
@@ -292,28 +314,130 @@ export const CardItem: React.FC<CardItemProps> = ({ card, onEditSkin }) => {
   const cardGesture = Gesture.Exclusive(panGesture, tapGesture);
 
   const animatedCardStyle = useAnimatedStyle(() => {
+    // 1. Reação ao Scroll Vertical
+    let scrollTiltX = 0;
+    let scrollScale = 1;
+    let scrollTransY = 0;
+    if (scrollY) {
+      scrollTiltX = interpolate(
+        scrollY.value,
+        [-150, 0, 300],
+        [8, 0, -8],
+        'clamp'
+      );
+      scrollScale = interpolate(
+        scrollY.value,
+        [-150, 0, 300],
+        [1.04, 1, 0.96],
+        'clamp'
+      );
+      scrollTransY = interpolate(
+        scrollY.value,
+        [-150, 0],
+        [-18, 0],
+        'clamp'
+      );
+    }
+
+    // 2. Reação ao Trocar de Cartão no Carrossel Horizontal
+    let cardSwipeRotY = 0;
+    let cardSwipeRotZ = 0;
+    let cardSwipeScale = 1;
+    if (cardScrollX && index !== undefined) {
+      const deltaX = cardScrollX.value - index * width;
+      cardSwipeRotY = interpolate(
+        deltaX,
+        [-width, 0, width],
+        [16, 0, -16],
+        'clamp'
+      );
+      cardSwipeRotZ = interpolate(
+        deltaX,
+        [-width, 0, width],
+        [-2.5, 0, 2.5],
+        'clamp'
+      );
+      cardSwipeScale = interpolate(
+        Math.abs(deltaX),
+        [0, width],
+        [1, 0.93],
+        'clamp'
+      );
+    }
+
+    // 3. Reação ao Trocar de Tela no Pager Horizontal (arrastar para Desempenho)
+    let pagerTiltY = 0;
+    let pagerTiltZ = 0;
+    let pagerScale = 1;
+    if (pagerScrollX) {
+      pagerTiltY = interpolate(
+        pagerScrollX.value,
+        [0, width],
+        [0, -18],
+        'clamp'
+      );
+      pagerTiltZ = interpolate(
+        pagerScrollX.value,
+        [0, width],
+        [0, 2.5],
+        'clamp'
+      );
+      pagerScale = interpolate(
+        pagerScrollX.value,
+        [0, width],
+        [1, 0.94],
+        'clamp'
+      );
+    }
+
+    const currentRotX = rotateX.value + scrollTiltX;
+    const currentRotY = rotateY.value + cardSwipeRotY + pagerTiltY;
+    const currentRotZ = rotateZ.value + cardSwipeRotZ + pagerTiltZ;
+    const currentScale = scale.value * scrollScale * cardSwipeScale * pagerScale;
+    const currentTransY = floatY.value + scrollTransY;
+
     return {
       transform: [
-        { perspective: 1000 },
-        { scale: scale.value },
-        { rotateX: `${rotateX.value}deg` },
-        { rotateY: `${rotateY.value}deg` },
-        { rotateZ: `${rotateZ.value}deg` },
+        { perspective: 1100 },
+        { translateY: currentTransY },
+        { scale: currentScale },
+        { rotateX: `${currentRotX}deg` },
+        { rotateY: `${currentRotY}deg` },
+        { rotateZ: `${currentRotZ}deg` },
       ],
     };
   });
 
-  // Reflexo de Luz Especular Dinâmico que acompanha os ângulos 3D
+  // Reflexo de Luz Especular Dinâmico que acompanha todos os ângulos 3D (idle, scroll e swipes)
   const animatedGlareStyle = useAnimatedStyle(() => {
+    let cardSwipeRotY = 0;
+    if (cardScrollX && index !== undefined) {
+      const deltaX = cardScrollX.value - index * width;
+      cardSwipeRotY = interpolate(deltaX, [-width, 0, width], [16, 0, -16], 'clamp');
+    }
+
+    let pagerTiltY = 0;
+    if (pagerScrollX) {
+      pagerTiltY = interpolate(pagerScrollX.value, [0, width], [0, -18], 'clamp');
+    }
+
+    let scrollTiltX = 0;
+    if (scrollY) {
+      scrollTiltX = interpolate(scrollY.value, [-150, 0, 300], [8, 0, -8], 'clamp');
+    }
+
+    const totalRotY = rotateY.value + cardSwipeRotY + pagerTiltY;
+    const totalRotX = rotateX.value + scrollTiltX;
+
     const translateX = interpolate(
-      rotateY.value,
-      [BASE_ROTATE_Y - 16, BASE_ROTATE_Y + 16],
-      [-CARD_WIDTH * 0.45, CARD_WIDTH * 0.45]
+      totalRotY,
+      [BASE_ROTATE_Y - 26, BASE_ROTATE_Y + 26],
+      [-CARD_WIDTH * 0.55, CARD_WIDTH * 0.55]
     );
     const translateY = interpolate(
-      rotateX.value,
-      [BASE_ROTATE_X - 14, BASE_ROTATE_X + 14],
-      [-CARD_HEIGHT * 0.35, CARD_HEIGHT * 0.35]
+      totalRotX,
+      [BASE_ROTATE_X - 22, BASE_ROTATE_X + 22],
+      [-CARD_HEIGHT * 0.45, CARD_HEIGHT * 0.45]
     );
     return {
       transform: [{ translateX }, { translateY }],

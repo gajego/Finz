@@ -43,6 +43,7 @@ import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
 import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src/services/database/db';
 import { BankCard, Transaction } from './src/types';
+import { useSharedValue } from 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
 
 const MAIN_TABS: MainTab[] = ['home', 'performance', 'goals'];
@@ -87,6 +88,8 @@ export default function App() {
   const { width: screenWidth } = useWindowDimensions();
   const horizontalScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const isProgrammaticScrollRef = useRef(false);
+  const homeScrollY = useSharedValue(0);
+  const pagerScrollX = useSharedValue(0);
 
   const handleTabChange = (tab: MainTab) => {
     setActiveMainTab(tab);
@@ -104,8 +107,9 @@ export default function App() {
   };
 
   const handleHorizontalScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (isProgrammaticScrollRef.current) return;
     const offsetX = event.nativeEvent.contentOffset.x;
+    pagerScrollX.value = offsetX;
+    if (isProgrammaticScrollRef.current) return;
     const pageIndex = Math.round(offsetX / screenWidth);
     const nextTab = MAIN_TABS[pageIndex];
     if (nextTab && nextTab !== activeMainTab) {
@@ -261,6 +265,7 @@ export default function App() {
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    homeScrollY.value = contentOffset.y;
     // Dispara carregamento de mais itens quando o scroll estiver a 250px do final
     if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 250) {
       setTxVisibleCount((prev) => prev + 30);
@@ -333,6 +338,8 @@ export default function App() {
                 onIndexChange={setActiveCardIndex}
                 onEditSkin={(card) => setSelectedCardForSkin(card)}
                 onOpenPluggy={() => setPluggyModalVisible(true)}
+                scrollY={homeScrollY}
+                pagerScrollX={pagerScrollX}
               />
 
               {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}

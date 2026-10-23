@@ -10,6 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Landmark, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
+import { SharedValue, useSharedValue } from 'react-native-reanimated';
 import { BankCard } from '@/types';
 import { CardItem } from './CardItem';
 import { useTheme } from '@/theme/useTheme';
@@ -26,6 +27,8 @@ interface CardCarouselProps {
   onIndexChange: (index: number) => void;
   onEditSkin: (card: BankCard) => void;
   onOpenPluggy?: () => void;
+  scrollY?: SharedValue<number>;
+  pagerScrollX?: SharedValue<number>;
 }
 
 export const CardCarousel: React.FC<CardCarouselProps> = ({
@@ -34,13 +37,18 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   onIndexChange,
   onEditSkin,
   onOpenPluggy,
+  scrollY,
+  pagerScrollX,
 }) => {
   const { colors } = useTheme();
   const privacyMode = useWalletStore((s) => s.privacyMode);
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
 
+  const cardScrollX = useSharedValue(0);
+
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
+    cardScrollX.value = offsetX;
     const index = Math.round(offsetX / width);
     if (index !== activeIndex && index >= 0 && index < cards.length) {
       onIndexChange(index);
@@ -97,11 +105,18 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         decelerationRate="fast"
         nestedScrollEnabled={true}
         onScroll={handleScroll}
-        scrollEventThrottle={32}
+        scrollEventThrottle={16}
         onMomentumScrollEnd={handleScroll}
         onScrollEndDrag={handleScroll}
-        renderItem={({ item }) => (
-          <CardItem card={item} onEditSkin={onEditSkin} />
+        renderItem={({ item, index }) => (
+          <CardItem
+            card={item}
+            index={index}
+            cardScrollX={cardScrollX}
+            scrollY={scrollY}
+            pagerScrollX={pagerScrollX}
+            onEditSkin={onEditSkin}
+          />
         )}
       />
 

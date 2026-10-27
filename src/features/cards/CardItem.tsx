@@ -197,7 +197,7 @@ const HologramPatchSvg: React.FC = () => {
   );
 };
 
-export const CardItem: React.FC<CardItemProps> = ({
+const CardItemComponent: React.FC<CardItemProps> = ({
   card,
   index = 0,
   cardScrollX,
@@ -731,3 +731,21 @@ const styles = StyleSheet.create({
     letterSpacing: LetterSpacing.tight,
   },
 });
+
+export const CardItem = React.memo<CardItemProps>(
+  CardItemComponent,
+  (prev, next) => {
+    return (
+      prev.card.id === next.card.id &&
+      prev.card.balance === next.card.balance &&
+      prev.card.bankBalance === next.card.bankBalance &&
+      prev.card.limit === next.card.limit &&
+      prev.card.wallpaperUri === next.card.wallpaperUri &&
+      prev.card.gradient[0] === next.card.gradient[0] &&
+      prev.card.gradient[1] === next.card.gradient[1] &&
+      prev.card.lastFourDigits === next.card.lastFourDigits &&
+      prev.card.bankName === next.card.bankName &&
+      prev.index === next.index
+    );
+  }
+);

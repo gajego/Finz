@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { UserProfile, BankCard, Transaction, Category, SmartAlert, NotificationPreference } from '@/types';
+import { UserProfile, BankCard, Transaction, Category, SmartAlert, NotificationPreference, Investment } from '@/types';
 import {
   db,
   initDatabase,
@@ -24,6 +24,7 @@ interface WalletState {
   cards: BankCard[];
   transactions: Transaction[];
   categories: Category[];
+  investments: Investment[];
   activeCardIndex: number;
   privacyMode: boolean;
   activeAlert: SmartAlert | null;
@@ -33,6 +34,7 @@ interface WalletState {
   // Ações
   initStore: () => void;
   reloadFromSQLite: () => void;
+  setInvestments: (investments: Investment[]) => void;
   setProfile: (profile: Partial<UserProfile>) => void;
   setNotificationPreference: (pref: NotificationPreference) => void;
   clearAllLocalData: () => void;
@@ -61,6 +63,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   cards: [],
   transactions: [],
   categories: [],
+  investments: [],
   activeCardIndex: 0,
   privacyMode: false,
   activeAlert: null,
@@ -83,6 +86,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         cards: data.cards,
         categories: data.categories,
         transactions: data.transactions,
+        investments: data.investments || [],
         ...(data.profile ? { profile: data.profile } : {}),
         notificationPreference: notifPref,
         isInitialized: true,
@@ -100,6 +104,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         cards: data.cards,
         categories: data.categories,
         transactions: data.transactions,
+        investments: data.investments || [],
         ...(data.profile ? { profile: data.profile } : {}),
         notificationPreference: notifPref,
       });
@@ -107,6 +112,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       console.error('Falha ao recarregar SQLite:', e);
     }
   },
+
+  setInvestments: (investments) => set({ investments }),
 
   setProfile: (data) =>
     set((state) => {
@@ -127,6 +134,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       cards: data.cards,
       categories: data.categories,
       transactions: data.transactions,
+      investments: data.investments || [],
       activeAlert: null,
       activeCardIndex: 0,
       profile: {

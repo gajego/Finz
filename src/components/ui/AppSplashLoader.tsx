@@ -1,19 +1,21 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
   withRepeat,
   withSequence,
   runOnJS,
   Easing,
+  interpolate,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Proporção de exibição equilibrada no viewport (40% da largura, max 176px)
-const LOGO_WIDTH = Math.min(Math.round(SCREEN_WIDTH * 0.40), 176);
+
+const TEXT_WIDTH = 160;
+const TEXT_HEIGHT = 72;
+const BEAM_WIDTH = 64;
 
 interface AppSplashLoaderProps {
   isReady: boolean;
@@ -24,115 +26,141 @@ export const AppSplashLoader: React.FC<AppSplashLoaderProps> = ({
   isReady,
   onFinish,
 }) => {
-  // 1. Escala base e Opacidade do Logo
-  const logoOpacity = useSharedValue(0);
-  const logoScale = useSharedValue(0.94);
-
-  // 2. Idle breathing refinado (pulso milimétrico calmo 1.0 -> 1.018)
-  const breathingScale = useSharedValue(1.0);
-  const ambientGlowOpacity = useSharedValue(0);
-
-  // 3. Transição de saída cinematográfica
-  const exitScale = useSharedValue(1.0);
-  const containerOpacity = useSharedValue(1.0);
+  // Posição do feixe neon percorrendo o nome (de -BEAM_WIDTH até TEXT_WIDTH + 20)
+  const beamProgress = useSharedValue(0);
+  const containerOpacity = useSharedValue(1);
+  const fullNeonFlash = useSharedValue(0);
+  const ambientPulse = useSharedValue(0.3);
 
   useEffect(() => {
-    // Entrada sutil e tátil no padrão Apple/Nubank: fade in + spring suave
-    logoOpacity.value = withTiming(1, {
-      duration: 650,
-      easing: Easing.bezier(0.16, 1, 0.3, 1),
-    });
-
-    logoScale.value = withSpring(1.0, {
-      damping: 18,
-      stiffness: 130,
-      mass: 0.9,
-    });
-
-    // Brilho ambiente sutil de fundo que acorda suavemente
-    ambientGlowOpacity.value = withTiming(0.16, {
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-    });
-
-    // Idle breathing contínuo e suave (loop orgânico calmo)
-    breathingScale.value = withRepeat(
+    // 1. Feixe de neon percorrendo continuamente o nome 'finz' da esquerda para a direita
+    beamProgress.value = withRepeat(
       withSequence(
-        withTiming(1.018, {
-          duration: 1900,
-          easing: Easing.inOut(Easing.quad),
+        withTiming(1, {
+          duration: 1250,
+          easing: Easing.bezier(0.4, 0.0, 0.2, 1),
         }),
-        withTiming(1.0, {
-          duration: 1900,
-          easing: Easing.inOut(Easing.quad),
+        withTiming(0, {
+          duration: 0,
         })
+      ),
+      -1,
+      false
+    );
+
+    // 2. Pulso de energia do ambiente
+    ambientPulse.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 1100, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.25, { duration: 1100, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
     );
   }, []);
 
-  // Transição de saída impecável quando a inicialização estiver pronta (isReady)
+  // Transição de saída quando a aplicação estiver pronta
   useEffect(() => {
     if (isReady) {
-      // 1. Desacelera a respiração para sincronizar com a expansão de saída
-      breathingScale.value = withTiming(1.0, { duration: 180 });
-
-      // 2. Leve expansão para frente (1.0 -> 1.06)
-      exitScale.value = withTiming(1.06, {
-        duration: 420,
-        easing: Easing.bezier(0.16, 1, 0.3, 1),
-      });
-
-      // 3. Fade out fluido do container revelando o app
-      containerOpacity.value = withTiming(
-        0,
-        {
-          duration: 420,
-          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-        },
-        (finished) => {
-          if (finished) {
-            runOnJS(onFinish)();
+      // Quando pronto, acende o neon completo no nome inteiro em flash elegante
+      fullNeonFlash.value = withTiming(1, { duration: 250 }, () => {
+        containerOpacity.value = withTiming(
+          0,
+          {
+            duration: 380,
+            easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          },
+          (finished) => {
+            if (finished) {
+              runOnJS(onFinish)();
+            }
           }
-        }
-      );
+        );
+      });
     }
   }, [isReady, onFinish]);
 
-  const animatedLogoStyle = useAnimatedStyle(() => {
-    const totalScale = logoScale.value * breathingScale.value * exitScale.value;
+  // Estilo da janela de feixe neon que se desloca da esquerda para a direita
+  const beamWindowStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      beamProgress.value,
+      [0, 1],
+      [-BEAM_WIDTH, TEXT_WIDTH + 10]
+    );
+
     return {
-      opacity: logoOpacity.value,
-      transform: [{ scale: totalScale }],
+      transform: [{ translateX }],
     };
   });
 
-  const animatedAmbientGlowStyle = useAnimatedStyle(() => ({
-    opacity: ambientGlowOpacity.value * containerOpacity.value,
-    transform: [{ scale: breathingScale.value * exitScale.value }],
+  // O texto neon interno compensa o deslocamento da janela para criar o efeito de máscara perfeita
+  const neonInnerTextStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      beamProgress.value,
+      [0, 1],
+      [BEAM_WIDTH, -(TEXT_WIDTH + 10)]
+    );
+
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  // Ponto/feixe laser que corre na linha inferior
+  const beamLaserDotStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      beamProgress.value,
+      [0, 1],
+      [-20, TEXT_WIDTH + 10]
+    );
+
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const fullFlashStyle = useAnimatedStyle(() => ({
+    opacity: fullNeonFlash.value,
   }));
 
-  const animatedContainerStyle = useAnimatedStyle(() => ({
+  const ambientGlowStyle = useAnimatedStyle(() => ({
+    opacity: ambientPulse.value,
+  }));
+
+  const containerAnimatedStyle = useAnimatedStyle(() => ({
     opacity: containerOpacity.value,
   }));
 
   return (
     <Animated.View
-      style={[styles.container, animatedContainerStyle]}
+      style={[styles.container, containerAnimatedStyle]}
       pointerEvents={isReady ? 'none' : 'box-none'}
     >
-      {/* Halo de luz ambiente suave e difuso (Aura Fintech) */}
-      <Animated.View style={[styles.ambientGlow, animatedAmbientGlowStyle]} />
+      {/* Halo de luz ambiente neon no fundo */}
+      <Animated.View style={[styles.ambientGlow, ambientGlowStyle]} />
 
-      {/* Logo isolada e pura, proporção 100% matemática sem distorção */}
-      <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
-        <Image
-          source={require('../../../assets/finz-logo.png')}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </Animated.View>
+      {/* Caixa do texto 'finz' */}
+      <View style={styles.textContainer}>
+        {/* 1. Base fosca escura do nome 'finz' */}
+        <Text style={styles.baseText}>finz</Text>
+
+        {/* 2. Feixe neon percorrendo as letras através de janela deslizante */}
+        <Animated.View style={[styles.beamWindow, beamWindowStyle]}>
+          <Animated.View style={[styles.neonTextWrapper, neonInnerTextStyle]}>
+            <Text style={styles.neonText}>finz</Text>
+          </Animated.View>
+        </Animated.View>
+
+        {/* 3. Camada de flash neon total no momento de liberação */}
+        <Animated.View style={[StyleSheet.absoluteFill, fullFlashStyle]} pointerEvents="none">
+          <Text style={styles.neonText}>finz</Text>
+        </Animated.View>
+
+        {/* 4. Linha guia de energia neon abaixo do nome */}
+        <View style={styles.laserTrack}>
+          <Animated.View style={[styles.laserBeam, beamLaserDotStyle]} />
+        </View>
+      </View>
     </Animated.View>
   );
 };
@@ -147,24 +175,77 @@ const styles = StyleSheet.create({
   },
   ambientGlow: {
     position: 'absolute',
-    width: LOGO_WIDTH * 1.8,
-    height: LOGO_WIDTH * 1.8,
-    borderRadius: (LOGO_WIDTH * 1.8) / 2,
-    backgroundColor: '#2A2C38',
-    // Leve difusão para profundidade OLED
-    shadowColor: '#72FB02',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: '#D9F920',
+    opacity: 0.12,
+    shadowColor: '#D9F920',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 40,
-    elevation: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 50,
+    elevation: 12,
   },
-  logoContainer: {
+  textContainer: {
+    width: TEXT_WIDTH,
+    height: TEXT_HEIGHT + 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  baseText: {
+    color: 'rgba(255, 255, 255, 0.18)',
+    fontSize: 54,
+    fontWeight: '900',
+    letterSpacing: 6,
+    textTransform: 'lowercase',
+    textAlign: 'center',
+  },
+  beamWindow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: BEAM_WIDTH,
+    height: TEXT_HEIGHT,
+    overflow: 'hidden',
+  },
+  neonTextWrapper: {
+    width: TEXT_WIDTH,
+    height: TEXT_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoImage: {
-    width: LOGO_WIDTH,
-    // Proporção 100% fiel à imagem original (1024 largura / 952 altura)
-    aspectRatio: 1024 / 952,
+  neonText: {
+    color: '#D9F920',
+    fontSize: 54,
+    fontWeight: '900',
+    letterSpacing: 6,
+    textTransform: 'lowercase',
+    textAlign: 'center',
+    textShadowColor: '#D9F920',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+  },
+  laserTrack: {
+    position: 'absolute',
+    bottom: 2,
+    left: 12,
+    right: 12,
+    height: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 1,
+    overflow: 'hidden',
+  },
+  laserBeam: {
+    width: 36,
+    height: '100%',
+    backgroundColor: '#D9F920',
+    borderRadius: 1,
+    shadowColor: '#D9F920',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

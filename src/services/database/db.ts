@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { BankCard, Category, Transaction, UserProfile } from '@/types';
+import { BankCard, Category, Transaction, UserProfile, Investment } from '@/types';
 
 const DB_NAME = 'finz.db';
 
@@ -49,6 +49,20 @@ export function initDatabase() {
     CREATE TABLE IF NOT EXISTS system_meta (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS investments (
+      id TEXT PRIMARY KEY,
+      item_id TEXT,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      institution TEXT NOT NULL,
+      current_value INTEGER NOT NULL,
+      initial_value INTEGER NOT NULL,
+      purchase_date TEXT,
+      maturity_date TEXT,
+      annual_rate REAL,
+      color TEXT NOT NULL
     );
   `);
 
@@ -178,6 +192,7 @@ export function loadAllDataFromSQLite(): {
   cards: BankCard[];
   categories: Category[];
   transactions: Transaction[];
+  investments: Investment[];
   profile?: UserProfile;
 } {
   const cardRows = db.getAllSync<any>('SELECT * FROM cards');
@@ -196,6 +211,10 @@ export function loadAllDataFromSQLite(): {
     LEFT JOIN transaction_category_overrides o ON t.id = o.transaction_id
     ORDER BY t.timestamp DESC
   `);
+  let invRows: any[] = [];
+  try {
+    invRows = db.getAllSync<any>('SELECT * FROM investments');
+  } catch {}
 
   const cards: BankCard[] = cardRows.map((r) => {
     let bankName = String(r.bank_name || 'NUBANK');
@@ -241,6 +260,19 @@ export function loadAllDataFromSQLite(): {
     rawText: r.raw_text || undefined,
   }));
 
+  const investments: Investment[] = invRows.map((r) => ({
+    id: String(r.id),
+    name: String(r.name),
+    type: r.type,
+    institution: String(r.institution),
+    currentValue: Number(r.current_value) || 0,
+    initialValue: Number(r.initial_value) || 0,
+    purchaseDate: String(r.purchase_date || ''),
+    maturityDate: r.maturity_date ? String(r.maturity_date) : undefined,
+    annualRate: r.annual_rate !== null && r.annual_rate !== undefined ? Number(r.annual_rate) : undefined,
+    color: String(r.color || '#22c55e'),
+  }));
+
   let profile: UserProfile | undefined = undefined;
   const profileRow = db.getFirstSync<{ value: string }>(
     'SELECT value FROM system_meta WHERE key = ?',
@@ -252,7 +284,39 @@ export function loadAllDataFromSQLite(): {
     } catch {}
   }
 
-  return { cards, categories, transactions, profile };
+  return { cards, categories, transactions, investments, profile };
+}
+
+export function persistInvestment(inv: Investment, itemId?: string) {
+  try {
+    db.runSync(
+      `INSERT OR REPLACE INTO investments (id, item_id, name, type, institution, current_value, initial_value, purchase_date, maturity_date, annual_rate, color)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        inv.id,
+        itemId || null,
+        inv.name,
+        inv.type,
+        inv.institution,
+        inv.currentValue,
+        inv.initialValue,
+        inv.purchaseDate,
+        inv.maturityDate || null,
+        inv.annualRate !== undefined && inv.annualRate !== null ? inv.annualRate : null,
+        inv.color,
+      ]
+    );
+  } catch (e) {
+    console.warn('[db] Falha ao persistir investimento:', e);
+  }
+}
+
+export function clearInvestmentsByItemId(itemId: string) {
+  try {
+    db.runSync('DELETE FROM investments WHERE item_id = ?', [itemId]);
+  } catch (e) {
+    console.warn('[db] Falha ao limpar investimentos do item:', e);
+  }
 }
 
 export function persistProfile(profile: UserProfile) {
@@ -462,6 +526,7 @@ export function clearAllLocalData(): void {
     db.execSync(`
       DELETE FROM transactions;
       DELETE FROM cards;
+      DELETE FROM investments;
       DELETE FROM transaction_category_overrides;
       DELETE FROM system_meta WHERE key NOT IN ('pluggy_client_id', 'pluggy_client_secret');
     `);

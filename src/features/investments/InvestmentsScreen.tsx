@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  RefreshControl,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -31,6 +32,7 @@ import { Typography, Radii } from '@/theme/typography';
 import { Investment, InvestmentType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { formatBRL } from '@/features/transactions/transactionUtils';
+import { syncAllPluggyItems } from '@/services/pluggy/pluggyService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -339,9 +341,19 @@ export const InvestmentsScreen: React.FC = () => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
   const privacyMode = useWalletStore((s) => s.privacyMode);
+  const investments = useWalletStore((s) => s.investments);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Sem integração Pluggy para investimentos ainda — lista vazia
-  const investments: Investment[] = [];
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await syncAllPluggyItems();
+    } catch (e) {
+      console.warn('[Investments] Erro ao sincronizar investimentos:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   const { totalValue, totalInitial, totalDayGain, totalWeekGain, totalMonthGain } = useMemo(() => {
     const tv = investments.reduce((s, i) => s + i.currentValue, 0);
@@ -359,6 +371,15 @@ export const InvestmentsScreen: React.FC = () => {
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+          progressBackgroundColor={mode === 'dark' ? colors.surfaceElevated : colors.surface}
+        />
+      }
     >
       {/* Header */}
       <View style={styles.header}>

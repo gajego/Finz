@@ -1,6 +1,6 @@
 import { Linking, Platform } from 'react-native';
-import { db, loadAllDataFromSQLite, getTransactionCategoryOverrides } from '@/services/database/db';
-import { BankCard, Transaction, TransactionType } from '@/types';
+import { db, loadAllDataFromSQLite, getTransactionCategoryOverrides, persistInvestment, clearInvestmentsByItemId } from '@/services/database/db';
+import { BankCard, Transaction, TransactionType, Investment, InvestmentType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { notifyNewTransaction, notifyBalanceChange } from '@/services/notifications/notificationService';
 
@@ -359,6 +359,37 @@ export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: numb
   });
   activeItemSyncs.set(itemId, promise);
   return promise;
+}
+
+function mapPluggyInvestmentType(type?: string, subtype?: string, name?: string): InvestmentType {
+  const normSub = (subtype || '').toUpperCase();
+  const normName = (name || '').toUpperCase();
+  const normType = (type || '').toUpperCase();
+
+  if (normSub.includes('TREASURY') || normName.includes('TESOURO')) return 'Tesouro Direto';
+  if (normSub.includes('CDB') || normName.includes('CDB')) return 'CDB';
+  if (normSub.includes('LCI') || normName.includes('LCI')) return 'LCI';
+  if (normSub.includes('LCA') || normName.includes('LCA')) return 'LCA';
+  if (normSub.includes('FII') || normName.includes('FII') || /\b[A-Z]{4}11\b/.test(normName)) return 'FII';
+  if (normType === 'EQUITY' || normSub.includes('STOCK') || normName.includes('AÇÕES') || normName.includes('ACOES')) return 'Ações';
+  if (normType === 'ETF' || normSub.includes('ETF')) return 'ETF';
+  if (normType.includes('CRIPTO') || normSub.includes('CRYPTO')) return 'Cripto';
+  if (normType === 'FIXED_INCOME') return 'CDB';
+  return 'Outro';
+}
+
+function getInvestmentColor(type: InvestmentType): string {
+  switch (type) {
+    case 'Tesouro Direto': return '#22C55E';
+    case 'CDB': return '#A855F7';
+    case 'LCI':
+    case 'LCA': return '#06B6D4';
+    case 'FII': return '#F59E0B';
+    case 'Ações':
+    case 'ETF': return '#3B82F6';
+    case 'Cripto': return '#EAB308';
+    default: return '#10B981';
+  }
 }
 
 async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
@@ -761,11 +792,68 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
     }
   }
 
-  // Recarrega cartões e transações no Zustand Store garantindo estado reativo imediato
+  // 3. Busca investimentos da instituição conectada (BTG Pactual, XP, Tesouro Direto, CDBs, etc.)
+  try {
+    const invRes = await fetch(`${PLUGGY_API_BASE}/investments?itemId=${itemId}`, {
+      headers: { 'X-API-KEY': apiKey },
+    });
+    if (invRes.ok) {
+      const invData = await invRes.json();
+      const rawInvestments: any[] = Array.isArray(invData?.results) ? invData.results : [];
+      if (rawInvestments.length > 0) {
+        clearInvestmentsByItemId(itemId);
+      }
+      for (const item of rawInvestments) {
+        const invType = mapPluggyInvestmentType(item.type, item.subtype, item.name);
+        const currentVal = typeof item.balance === 'number' && Number.isFinite(item.balance)
+          ? Math.round(item.balance * 100)
+          : (typeof item.value === 'number' && Number.isFinite(item.value) ? Math.round(item.value * 100) : 0);
+
+        let initialVal = typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0
+          ? Math.round(item.amount * 100)
+          : (typeof item.originalAmount === 'number' && Number.isFinite(item.originalAmount) ? Math.round(item.originalAmount * 100) : currentVal);
+
+        if (initialVal <= 0) initialVal = currentVal;
+
+        const investment: Investment = {
+          id: `pluggy_inv_${item.id}`,
+          name: item.name || 'Ativo de Investimento',
+          type: invType,
+          institution: connectorName || 'BTG PACTUAL',
+          currentValue: currentVal,
+          initialValue: initialVal,
+          purchaseDate: item.date ? String(item.date).slice(0, 10) : new Date().toISOString().slice(0, 10),
+          maturityDate: item.dueDate ? String(item.dueDate).slice(0, 10) : undefined,
+          annualRate: typeof item.annualRate === 'number' ? item.annualRate : (typeof item.rate === 'number' ? item.rate / 100 : undefined),
+          color: getInvestmentColor(invType),
+        };
+        persistInvestment(investment, itemId);
+      }
+    }
+  } catch (e) {
+    console.warn(`[Pluggy] Erro ao sincronizar investimentos do item ${itemId}:`, e);
+  }
+
+  // Recarrega dados no Zustand Store evitando re-render que faz os cartões piscarem
   const updatedData = loadAllDataFromSQLite();
+  const currentCards = useWalletStore.getState().cards;
+  const cardsChanged =
+    currentCards.length !== updatedData.cards.length ||
+    updatedData.cards.some((nc, i) => {
+      const oc = currentCards[i];
+      return (
+        !oc ||
+        oc.id !== nc.id ||
+        oc.balance !== nc.balance ||
+        oc.bankBalance !== nc.bankBalance ||
+        oc.limit !== nc.limit
+      );
+    });
+
   useWalletStore.setState({
-    cards: updatedData.cards,
+    ...(cardsChanged ? { cards: updatedData.cards } : {}),
     transactions: updatedData.transactions,
+    investments: updatedData.investments,
   });
 
   savePluggyItemId(itemId);
@@ -802,9 +890,24 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
 
   // Recarrega todos os dados no Zustand Store após o ciclo completo de sincronização
   const updatedData = loadAllDataFromSQLite();
+  const currentCards = useWalletStore.getState().cards;
+  const cardsChanged =
+    currentCards.length !== updatedData.cards.length ||
+    updatedData.cards.some((nc, i) => {
+      const oc = currentCards[i];
+      return (
+        !oc ||
+        oc.id !== nc.id ||
+        oc.balance !== nc.balance ||
+        oc.bankBalance !== nc.bankBalance ||
+        oc.limit !== nc.limit
+      );
+    });
+
   useWalletStore.setState({
-    cards: updatedData.cards,
+    ...(cardsChanged ? { cards: updatedData.cards } : {}),
     transactions: updatedData.transactions,
+    investments: updatedData.investments,
   });
 
   return { cardsTotal, txTotal };

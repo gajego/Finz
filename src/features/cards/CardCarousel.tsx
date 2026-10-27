@@ -45,14 +45,26 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   const togglePrivacyMode = useWalletStore((s) => s.togglePrivacyMode);
 
   const cardScrollX = useSharedValue(0);
+  const flatListRef = React.useRef<FlatList<BankCard>>(null);
+  const isUserScrollingRef = React.useRef(false);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     cardScrollX.value = offsetX;
+  };
+
+  const handleMomentumScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    cardScrollX.value = offsetX;
     const index = Math.round(offsetX / width);
+    isUserScrollingRef.current = false;
     if (index !== activeIndex && index >= 0 && index < cards.length) {
       onIndexChange(index);
     }
+  };
+
+  const handleScrollBeginDrag = () => {
+    isUserScrollingRef.current = true;
   };
 
   if (cards.length === 0) {
@@ -96,6 +108,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={cards}
         keyExtractor={(item) => item.id}
         horizontal
@@ -106,8 +119,17 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
         nestedScrollEnabled={true}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScroll}
-        onScrollEndDrag={handleScroll}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        getItemLayout={(_, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
+        initialScrollIndex={activeIndex < cards.length ? activeIndex : 0}
+        removeClippedSubviews={false}
+        windowSize={3}
+        maxToRenderPerBatch={3}
         renderItem={({ item, index }) => (
           <CardItem
             card={item}

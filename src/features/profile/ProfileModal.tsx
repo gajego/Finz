@@ -41,6 +41,7 @@ import {
   Phone,
   FileText,
   Sparkles,
+  Presentation,
 } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
@@ -64,6 +65,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
   const notificationPreference = useWalletStore((s) => s.notificationPreference);
   const setNotificationPreference = useWalletStore((s) => s.setNotificationPreference);
   const clearAllLocalData = useWalletStore((s) => s.clearAllLocalData);
+  const presentationMode = useWalletStore((s) => s.presentationMode);
+  const togglePresentationMode = useWalletStore((s) => s.togglePresentationMode);
 
   // Formulário de dados básicos
   const [fullName, setFullName] = useState(profile.fullName || '');
@@ -207,6 +210,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
         },
       ]
     );
+  };
+
+  // Alternar Modo Apresentação (dados fictícios para demonstração)
+  const handleTogglePresentationMode = () => {
+    togglePresentationMode();
+    const willBeActive = !presentationMode;
+    setSaveSuccessNotice(
+      willBeActive
+        ? 'Modo Apresentação ativado com dados de demonstração!'
+        : 'Modo Apresentação desativado. Dados reais restaurados!'
+    );
+    setTimeout(() => setSaveSuccessNotice(null), 3500);
   };
 
   // Limpar dados locais com confirmação dupla
@@ -910,6 +925,92 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                 </View>
               </Pressable>
             </View>
+
+            {/* SEÇÃO 7: Modo Apresentação (Demonstração com Dados Fictícios) */}
+            <View style={[styles.section, { marginBottom: 36 }]}>
+              <View style={styles.sectionHeaderRow}>
+                <Presentation size={13} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                  MODO APRESENTAÇÃO
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.presentationCard,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                    borderColor: presentationMode ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.presentationHeader}>
+                  <View
+                    style={[
+                      styles.presentationIconCircle,
+                      {
+                        backgroundColor: presentationMode ? `${colors.primary}20` : colors.surfaceSubtle,
+                        borderColor: presentationMode ? colors.primary : colors.borderSubtle,
+                      },
+                    ]}
+                  >
+                    <Presentation
+                      size={18}
+                      color={presentationMode ? colors.primary : colors.textMuted}
+                    />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={styles.presentationTitleRow}>
+                      <Text style={[styles.presentationTitle, { color: colors.text }]}>
+                        Modo Apresentação
+                      </Text>
+                      {presentationMode && (
+                        <View style={[styles.demoActiveBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={[styles.demoActiveText, { color: colors.primaryForeground }]}>
+                            DEMO ATIVO
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.presentationDesc, { color: colors.textSecondary }]}>
+                      {presentationMode
+                        ? 'Exibindo dados fictícios de demonstração. Ao desativar, seus dados reais voltam imediatamente.'
+                        : 'Ativa um ambiente fictício ideal para testes, gravações e demonstrações. Seus dados reais permanecem 100% salvos e protegidos.'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Botão de Alternar Modo Apresentação */}
+                <Pressable
+                  onPress={handleTogglePresentationMode}
+                  style={({ pressed }) => [
+                    styles.presentationButton,
+                    {
+                      backgroundColor: presentationMode ? 'rgba(239, 68, 68, 0.12)' : colors.primary,
+                      borderColor: presentationMode ? 'rgba(239, 68, 68, 0.35)' : 'transparent',
+                      borderWidth: presentationMode ? 1 : 0,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Sparkles
+                    size={15}
+                    color={presentationMode ? colors.danger : colors.primaryForeground}
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text
+                    style={[
+                      styles.presentationButtonText,
+                      {
+                        color: presentationMode ? colors.danger : colors.primaryForeground,
+                      },
+                    ]}
+                  >
+                    {presentationMode ? 'DESATIVAR MODO APRESENTAÇÃO' : 'ATIVAR MODO APRESENTAÇÃO'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           </ScrollView>
 
           {/* Barra Inferior com Gesto de Arrastar para Fechar */}
@@ -1266,5 +1367,62 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 10.5,
     marginTop: 2,
+  },
+  presentationCard: {
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  presentationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  presentationIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  presentationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  presentationTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 14,
+  },
+  demoActiveBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  demoActiveText: {
+    fontFamily: Typography.bold,
+    fontSize: 9.5,
+    letterSpacing: 0.5,
+  },
+  presentationDesc: {
+    fontFamily: Typography.regular,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  presentationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    gap: 6,
+  },
+  presentationButtonText: {
+    fontFamily: Typography.bold,
+    fontSize: 12,
+    letterSpacing: 0.5,
   },
 });

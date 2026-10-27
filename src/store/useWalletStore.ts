@@ -18,6 +18,13 @@ import {
   clearAllLocalData as dbClearAllLocalData,
 } from '@/services/database/db';
 import { notifyBalanceChange } from '@/services/notifications/notificationService';
+import {
+  DEMO_PROFILE,
+  DEMO_CARDS,
+  DEMO_TRANSACTIONS,
+  DEMO_INVESTMENTS,
+  DEMO_CATEGORIES,
+} from '@/services/demo/demoData';
 
 interface WalletState {
   profile: UserProfile;
@@ -27,6 +34,7 @@ interface WalletState {
   investments: Investment[];
   activeCardIndex: number;
   privacyMode: boolean;
+  presentationMode: boolean;
   activeAlert: SmartAlert | null;
   isInitialized: boolean;
   notificationPreference: NotificationPreference;
@@ -34,6 +42,7 @@ interface WalletState {
   // Ações
   initStore: () => void;
   reloadFromSQLite: () => void;
+  togglePresentationMode: () => void;
   setInvestments: (investments: Investment[]) => void;
   setProfile: (profile: Partial<UserProfile>) => void;
   setNotificationPreference: (pref: NotificationPreference) => void;
@@ -66,6 +75,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   investments: [],
   activeCardIndex: 0,
   privacyMode: false,
+  presentationMode: false,
   activeAlert: null,
   isInitialized: false,
   notificationPreference: 'all',
@@ -113,12 +123,35 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     }
   },
 
+  togglePresentationMode: () => {
+    const isDemo = get().presentationMode;
+    if (!isDemo) {
+      // Ativa Modo Apresentação com dados fictícios para demonstração
+      set({
+        presentationMode: true,
+        profile: DEMO_PROFILE,
+        cards: DEMO_CARDS,
+        transactions: DEMO_TRANSACTIONS,
+        investments: DEMO_INVESTMENTS,
+        categories: DEMO_CATEGORIES,
+        activeCardIndex: 0,
+        activeAlert: null,
+      });
+    } else {
+      // Desativa Modo Apresentação e restaura todos os dados reais persistidos no SQLite
+      get().reloadFromSQLite();
+      set({ presentationMode: false });
+    }
+  },
+
   setInvestments: (investments) => set({ investments }),
 
   setProfile: (data) =>
     set((state) => {
       const updatedProfile = { ...state.profile, ...data };
-      persistProfile(updatedProfile);
+      if (!state.presentationMode) {
+        persistProfile(updatedProfile);
+      }
       return { profile: updatedProfile };
     }),
 
@@ -145,6 +178,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         onboardingCompleted: false,
       },
       notificationPreference: 'all',
+      presentationMode: false,
     });
   },
 
@@ -159,7 +193,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       ...cardData,
       id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     };
-    persistCard(newCard);
+    if (!get().presentationMode) {
+      persistCard(newCard);
+    }
     set((state) => ({
       cards: [...state.cards, newCard],
       activeCardIndex: state.cards.length,
@@ -167,7 +203,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   updateCardSkin: (cardId, wallpaperUri, gradient) => {
-    persistCardSkin(cardId, wallpaperUri, gradient);
+    if (!get().presentationMode) {
+      persistCardSkin(cardId, wallpaperUri, gradient);
+    }
     set((state) => ({
       cards: state.cards.map((c) =>
         c.id === cardId ? { ...c, wallpaperUri, gradient } : c
@@ -178,7 +216,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   updateCardBankBalance: (cardId, bankBalance) => {
     const card = get().cards.find((c) => c.id === cardId);
     const oldBalance = card?.bankBalance;
-    persistCardBankBalance(cardId, bankBalance);
+    if (!get().presentationMode) {
+      persistCardBankBalance(cardId, bankBalance);
+    }
     set((state) => ({
       cards: state.cards.map((c) =>
         c.id === cardId ? { ...c, bankBalance } : c
@@ -190,7 +230,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   updateCategoryBudget: (categoryId, newLimitInCents) => {
-    persistCategoryBudget(categoryId, newLimitInCents);
+    if (!get().presentationMode) {
+      persistCategoryBudget(categoryId, newLimitInCents);
+    }
     set((state) => ({
       categories: state.categories.map((c) =>
         c.id === categoryId ? { ...c, budgetLimit: newLimitInCents } : c
@@ -204,7 +246,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       budgetLimit: catData.budgetLimit ?? 0,
     };
-    persistCategory(newCat);
+    if (!get().presentationMode) {
+      persistCategory(newCat);
+    }
     set((state) => ({
       categories: [...state.categories, newCat],
     }));
@@ -220,7 +264,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const existing = state.categories.find((c) => c.id === id);
     if (!existing) return;
     const updated: Category = { ...existing, ...updates };
-    persistCategory(updated);
+    if (!state.presentationMode) {
+      persistCategory(updated);
+    }
     set((s) => ({
       categories: s.categories.map((c) => (c.id === id ? updated : c)),
     }));
@@ -231,7 +277,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       console.warn('[store] A categoria Não categorizado não pode ser excluída.');
       return;
     }
-    deleteCategory(id);
+    if (!get().presentationMode) {
+      deleteCategory(id);
+    }
     set((state) => ({
       categories: state.categories.filter((c) => c.id !== id),
       transactions: state.transactions.map((tx) =>
@@ -241,7 +289,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   updateTransactionCategory: (transactionId, newCategoryId) => {
-    persistTransactionCategory(transactionId, newCategoryId);
+    if (!get().presentationMode) {
+      persistTransactionCategory(transactionId, newCategoryId);
+    }
     set((state) => ({
       transactions: state.transactions.map((tx) =>
         tx.id === transactionId ? { ...tx, categoryId: newCategoryId } : tx
@@ -257,7 +307,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       timestamp: Date.now(),
     };
 
-    persistTransaction(newTx);
+    if (!state.presentationMode) {
+      persistTransaction(newTx);
+    }
 
     const updatedTransactions = [newTx, ...state.transactions];
 

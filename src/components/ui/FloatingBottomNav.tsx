@@ -1,19 +1,11 @@
-import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Platform,
-} from 'react-native';
+import React from 'react';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
-import { Home, TrendingUp, Target, Briefcase } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
-import { Typography } from '@/theme/typography';
 
 export type MainTab = 'home' | 'performance' | 'goals' | 'investments';
 
@@ -22,72 +14,54 @@ interface FloatingBottomNavProps {
   onTabChange: (tab: MainTab) => void;
 }
 
-interface TabButtonProps {
-  label: string;
-  Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
+const TABS: { id: MainTab; label: string }[] = [
+  { id: 'home', label: 'Início' },
+  { id: 'performance', label: 'Desempenho' },
+  { id: 'goals', label: 'Metas' },
+  { id: 'investments', label: 'Ativos' },
+];
+
+const IndicatorBar: React.FC<{
   isActive: boolean;
   onPress: () => void;
+  label: string;
   colors: any;
-}
-
-const TabButton: React.FC<TabButtonProps> = ({
-  label,
-  Icon,
-  isActive,
-  onPress,
-  colors,
-}) => {
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    if (isActive) {
-      scale.value = withSpring(1.03, { damping: 12, stiffness: 260 }, () => {
-        scale.value = withSpring(1, { damping: 14, stiffness: 200 });
-      });
-    }
-  }, [isActive]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+}> = ({ isActive, onPress, label, colors }) => {
+  const animatedBarStyle = useAnimatedStyle(() => {
+    return {
+      width: withTiming(isActive ? 24 : 6, {
+        duration: 220,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+      }),
+      backgroundColor: withTiming(
+        isActive ? colors.primary : colors.surfaceSubtle,
+        {
+          duration: 220,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+        }
+      ),
+    };
+  }, [isActive, colors.primary, colors.surfaceSubtle]);
 
   return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={() => {
-          scale.value = withSpring(0.92, { damping: 14, stiffness: 350 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 12, stiffness: 250 });
-        }}
+    <Pressable
+      onPress={onPress}
+      hitSlop={12}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: isActive }}
+      style={styles.touchArea}
+    >
+      <Animated.View
         style={[
-          styles.tabItem,
-          isActive && [
-            styles.activeTabItem,
-            { backgroundColor: colors.primary },
-          ],
+          styles.bar,
+          {
+            borderColor: isActive ? 'transparent' : colors.borderSubtle,
+          },
+          animatedBarStyle,
         ]}
-        hitSlop={8}
-      >
-        <Icon
-          size={16}
-          color={isActive ? colors.primaryForeground : colors.textSecondary}
-          strokeWidth={isActive ? 2.4 : 2}
-        />
-        <Text
-          style={[
-            styles.tabLabel,
-            {
-              color: isActive ? colors.primaryForeground : colors.textSecondary,
-              fontFamily: isActive ? Typography.bold : Typography.medium,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
+      />
+    </Pressable>
   );
 };
 
@@ -105,72 +79,22 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           styles.dockPill,
           {
             backgroundColor: isDark
-              ? 'rgba(24, 24, 27, 0.94)'
-              : 'rgba(255, 255, 255, 0.96)',
-            borderColor: colors.borderStrong,
+              ? 'rgba(13, 14, 18, 0.82)'
+              : 'rgba(255, 255, 255, 0.88)',
+            borderColor: colors.borderSubtle,
             shadowColor: '#000000',
           },
         ]}
       >
-        {/* Aba 1: Início */}
-        <TabButton
-          label="Início"
-          Icon={Home}
-          isActive={activeTab === 'home'}
-          onPress={() => onTabChange('home')}
-          colors={colors}
-        />
-
-        {/* Separador Sutil 1 */}
-        <View
-          style={[
-            styles.divider,
-            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' },
-          ]}
-        />
-
-        {/* Aba 2: Desempenho */}
-        <TabButton
-          label="Desempenho"
-          Icon={TrendingUp}
-          isActive={activeTab === 'performance'}
-          onPress={() => onTabChange('performance')}
-          colors={colors}
-        />
-
-        {/* Separador Sutil 2 */}
-        <View
-          style={[
-            styles.divider,
-            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' },
-          ]}
-        />
-
-        {/* Aba 3: Metas */}
-        <TabButton
-          label="Metas"
-          Icon={Target}
-          isActive={activeTab === 'goals'}
-          onPress={() => onTabChange('goals')}
-          colors={colors}
-        />
-
-        {/* Separador Sutil 3 */}
-        <View
-          style={[
-            styles.divider,
-            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' },
-          ]}
-        />
-
-        {/* Aba 4: Investimentos */}
-        <TabButton
-          label="Ativos"
-          Icon={Briefcase}
-          isActive={activeTab === 'investments'}
-          onPress={() => onTabChange('investments')}
-          colors={colors}
-        />
+        {TABS.map((tab) => (
+          <IndicatorBar
+            key={tab.id}
+            isActive={activeTab === tab.id}
+            onPress={() => onTabChange(tab.id)}
+            label={tab.label}
+            colors={colors}
+          />
+        ))}
       </View>
     </View>
   );
@@ -179,7 +103,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
 const styles = StyleSheet.create({
   outerContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 28 : 20,
+    bottom: Platform.OS === 'ios' ? 24 : 16,
     left: 0,
     right: 0,
     alignItems: 'center',
@@ -188,36 +112,26 @@ const styles = StyleSheet.create({
   dockPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 5,
-    borderRadius: 36,
-    borderWidth: 1.5,
-    elevation: 16,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    gap: 2,
-  },
-  tabItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 24,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     gap: 6,
   },
-  activeTabItem: {
-    elevation: 4,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+  touchArea: {
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  tabLabel: {
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
-  divider: {
-    width: 1,
-    height: 16,
+  bar: {
+    height: 4,
+    borderRadius: 2,
+    borderWidth: 0.5,
   },
 });

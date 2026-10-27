@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#040405"
+      "backgroundColor": "#060709"
     },
     "scheme": "finz",
     "ios": {
@@ -22,7 +22,7 @@
     "android": {
       "package": "com.finz.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0c0d12",
+        "backgroundColor": "#060709",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

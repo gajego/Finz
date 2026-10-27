@@ -623,3 +623,107 @@ export function clearAllLocalData(): void {
   }
 }
 
+export interface FinzBackupPayload {
+  format: 'finz_backup';
+  version: 1;
+  exportedAt: string;
+  appVersion: string;
+  summary: {
+    cardsCount: number;
+    transactionsCount: number;
+    categoriesCount: number;
+    investmentsCount: number;
+  };
+  data: {
+    profile?: UserProfile;
+    cards: BankCard[];
+    categories: Category[];
+    transactions: Transaction[];
+    investments: any[];
+    categoryOverrides?: Array<{ transactionId: string; categoryId: string }>;
+    themeMode?: 'dark' | 'light';
+    notificationPreference?: 'all' | 'alerts_only' | 'transactions_only' | 'none';
+  };
+}
+
+export function exportAllDataForBackup(): FinzBackupPayload {
+  const currentData = loadAllDataFromSQLite();
+  const themeMode = loadThemeMode() || 'dark';
+  const notificationPreference = loadNotificationPreference();
+
+  return {
+    format: 'finz_backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    appVersion: '1.0.0',
+    summary: {
+      cardsCount: currentData.cards.length,
+      transactionsCount: currentData.transactions.length,
+      categoriesCount: currentData.categories.length,
+      investmentsCount: 0,
+    },
+    data: {
+      profile: currentData.profile,
+      cards: currentData.cards,
+      categories: currentData.categories,
+      transactions: currentData.transactions,
+      investments: [],
+      categoryOverrides: [],
+      themeMode,
+      notificationPreference,
+    },
+  };
+}
+
+export function restoreAllDataFromBackup(payload: FinzBackupPayload): {
+  cards: number;
+  transactions: number;
+  investments: number;
+  categories: number;
+} {
+  if (!payload || typeof payload !== 'object' || payload.format !== 'finz_backup' || !payload.data) {
+    throw new Error('Arquivo de backup inválido ou não reconhecido pelo Finz.');
+  }
+
+  const { cards, categories, transactions, profile, themeMode, notificationPreference } = payload.data;
+
+  tables.transactions = {};
+  tables.cards = {};
+
+  if (Array.isArray(categories)) {
+    for (const cat of categories) {
+      persistCategory(cat);
+    }
+  }
+
+  if (Array.isArray(cards)) {
+    for (const card of cards) {
+      persistCard(card);
+    }
+  }
+
+  if (Array.isArray(transactions)) {
+    for (const tx of transactions) {
+      persistTransaction(tx);
+    }
+  }
+
+  if (profile) {
+    persistProfile(profile);
+  }
+  if (themeMode) {
+    persistThemeMode(themeMode);
+  }
+  if (notificationPreference) {
+    persistNotificationPreference(notificationPreference);
+  }
+
+  return {
+    cards: Array.isArray(cards) ? cards.length : 0,
+    transactions: Array.isArray(transactions) ? transactions.length : 0,
+    investments: 0,
+    categories: Array.isArray(categories) ? categories.length : 0,
+  };
+}
+
+

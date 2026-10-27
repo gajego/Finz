@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TextInput, Pressable, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
-import { Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react-native';
+import { View, Text, StyleSheet, Modal, TextInput, Pressable, KeyboardAvoidingView, ScrollView, Platform, Alert } from 'react-native';
+import { Sparkles, ArrowRight, CheckCircle2, Upload } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
+import { importBackupFromFile } from '@/services/backup/backupService';
 
 interface OnboardingModalProps {
   visible: boolean;
@@ -32,6 +33,24 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onClo
         onboardingCompleted: true,
       });
       onClose();
+    }
+  };
+
+  const handleRestoreBackup = async () => {
+    try {
+      const res = await importBackupFromFile();
+      if (res.canceled) return;
+      if (res.success && res.counts) {
+        Alert.alert(
+          'Backup Restaurado!',
+          `Seus dados foram recuperados com sucesso:\n• ${res.counts.cards} cartões\n• ${res.counts.transactions} transações\n• ${res.counts.investments} investimentos`,
+          [{ text: 'Entrar no Finz', onPress: onClose }]
+        );
+      } else if (res.error) {
+        Alert.alert('Erro ao Restaurar', res.error);
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Falha ao restaurar dados.');
     }
   };
 
@@ -148,6 +167,20 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ visible, onClo
                   <CheckCircle2 size={18} color="#0B0D13" />
                 )}
               </Pressable>
+
+              {/* Opção de restaurar backup existente para novos downloads/reinstalações */}
+              {step === 1 && (
+                <Pressable
+                  onPress={handleRestoreBackup}
+                  style={styles.restoreButton}
+                  hitSlop={8}
+                >
+                  <Upload size={15} color={colors.textSecondary} />
+                  <Text style={[styles.restoreButtonText, { color: colors.textSecondary }]}>
+                    Já tem um backup? Restaurar dados
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </ScrollView>
         </View>
@@ -219,5 +252,17 @@ const styles = StyleSheet.create({
     color: '#0B0D13',
     fontSize: 16,
     fontWeight: '800',
+  },
+  restoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 18,
+    paddingVertical: 8,
+  },
+  restoreButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

@@ -537,4 +537,151 @@ export function clearAllLocalData(): void {
   }
 }
 
+export interface FinzBackupPayload {
+  format: 'finz_backup';
+  version: 1;
+  exportedAt: string;
+  appVersion: string;
+  summary: {
+    cardsCount: number;
+    transactionsCount: number;
+    categoriesCount: number;
+    investmentsCount: number;
+  };
+  data: {
+    profile?: UserProfile;
+    cards: BankCard[];
+    categories: Category[];
+    transactions: Transaction[];
+    investments: Investment[];
+    categoryOverrides?: Array<{ transactionId: string; categoryId: string }>;
+    themeMode?: 'dark' | 'light';
+    notificationPreference?: 'all' | 'alerts_only' | 'transactions_only' | 'none';
+  };
+}
+
+export function exportAllDataForBackup(): FinzBackupPayload {
+  const currentData = loadAllDataFromSQLite();
+  const overridesMap = getTransactionCategoryOverrides();
+  const categoryOverrides: Array<{ transactionId: string; categoryId: string }> = [];
+  overridesMap.forEach((categoryId, transactionId) => {
+    categoryOverrides.push({ transactionId, categoryId });
+  });
+
+  const themeMode = loadThemeMode() || 'dark';
+  const notificationPreference = loadNotificationPreference();
+
+  return {
+    format: 'finz_backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    appVersion: '1.0.0',
+    summary: {
+      cardsCount: currentData.cards.length,
+      transactionsCount: currentData.transactions.length,
+      categoriesCount: currentData.categories.length,
+      investmentsCount: (currentData.investments || []).length,
+    },
+    data: {
+      profile: currentData.profile,
+      cards: currentData.cards,
+      categories: currentData.categories,
+      transactions: currentData.transactions,
+      investments: currentData.investments || [],
+      categoryOverrides,
+      themeMode,
+      notificationPreference,
+    },
+  };
+}
+
+export function restoreAllDataFromBackup(payload: FinzBackupPayload): {
+  cards: number;
+  transactions: number;
+  investments: number;
+  categories: number;
+} {
+  if (!payload || typeof payload !== 'object' || payload.format !== 'finz_backup' || !payload.data) {
+    throw new Error('Arquivo de backup inválido ou não reconhecido pelo Finz.');
+  }
+
+  const { cards, categories, transactions, investments, profile, categoryOverrides, themeMode, notificationPreference } = payload.data;
+
+  const runRestore = () => {
+    // 1. Limpa tabelas locais de dados transacionais
+    db.runSync('DELETE FROM transactions');
+    db.runSync('DELETE FROM transaction_category_overrides');
+    db.runSync('DELETE FROM cards');
+    try {
+      db.runSync('DELETE FROM investments');
+    } catch {}
+
+    // 2. Restaura Categorias
+    if (Array.isArray(categories)) {
+      for (const cat of categories) {
+        db.runSync(
+          'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
+          [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit || 0]
+        );
+      }
+    }
+
+    // 3. Restaura Cartões
+    if (Array.isArray(cards)) {
+      for (const card of cards) {
+        persistCard(card);
+      }
+    }
+
+    // 4. Restaura Transações
+    if (Array.isArray(transactions)) {
+      for (const tx of transactions) {
+        persistTransaction(tx);
+      }
+    }
+
+    // 5. Restaura Investimentos
+    if (Array.isArray(investments)) {
+      for (const inv of investments) {
+        persistInvestment(inv);
+      }
+    }
+
+    // 6. Restaura Sobrescritas manuais de categorias
+    if (Array.isArray(categoryOverrides)) {
+      for (const ov of categoryOverrides) {
+        db.runSync(
+          'INSERT OR REPLACE INTO transaction_category_overrides (transaction_id, category_id, updated_at) VALUES (?, ?, ?)',
+          [ov.transactionId, ov.categoryId, Date.now()]
+        );
+      }
+    }
+
+    // 7. Perfil e configurações do sistema
+    if (profile) {
+      persistProfile(profile);
+    }
+    if (themeMode) {
+      persistThemeMode(themeMode);
+    }
+    if (notificationPreference) {
+      persistNotificationPreference(notificationPreference);
+    }
+  };
+
+  if (typeof (db as any).withTransactionSync === 'function') {
+    (db as any).withTransactionSync(runRestore);
+  } else {
+    runRestore();
+  }
+
+  return {
+    cards: Array.isArray(cards) ? cards.length : 0,
+    transactions: Array.isArray(transactions) ? transactions.length : 0,
+    investments: Array.isArray(investments) ? investments.length : 0,
+    categories: Array.isArray(categories) ? categories.length : 0,
+  };
+}
+
+
 

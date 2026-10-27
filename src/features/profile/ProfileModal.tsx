@@ -30,6 +30,8 @@ import {
   CreditCard,
   Landmark,
   Download,
+  Upload,
+  Database,
   Info,
   Trash2,
   Check,
@@ -45,6 +47,7 @@ import { useTheme } from '@/theme/useTheme';
 import { Typography, LetterSpacing } from '@/theme/typography';
 import { NotificationPreference } from '@/types';
 import { fetchPluggyIdentity } from '@/services/pluggy/pluggyService';
+import { exportBackupToFile, importBackupFromFile } from '@/services/backup/backupService';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -71,6 +74,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
   const [phone, setPhone] = useState(profile.phone || '');
 
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+  const [isImportingBackup, setIsImportingBackup] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
 
   // Sincroniza estado com o store ao abrir
@@ -144,6 +149,64 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
     } finally {
       setIsImporting(false);
     }
+  };
+
+  // Exportar backup local em arquivo (.json)
+  const handleExportBackup = async () => {
+    setIsExportingBackup(true);
+    try {
+      const res = await exportBackupToFile();
+      if (res.canceled) return;
+      if (res.success) {
+        setSaveSuccessNotice('Backup gerado e salvo com sucesso!');
+        setTimeout(() => setSaveSuccessNotice(null), 3500);
+        Alert.alert(
+          'Backup Salvo!',
+          `Seu arquivo "${res.fileName}" foi salvo com sucesso no seu dispositivo.\n\nContém:\n• ${res.summary?.cardsCount || 0} cartões\n• ${res.summary?.transactionsCount || 0} transações\n• ${res.summary?.investmentsCount || 0} investimentos\n\nCaso desinstale o app, basta usar "Carregar dados de arquivo" para restaurar tudo.`
+        );
+      } else {
+        Alert.alert('Erro ao Salvar Backup', res.error || 'Não foi possível salvar o arquivo.');
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Falha ao processar backup.');
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
+  // Importar / Restaurar backup de arquivo selecionado pelo usuário
+  const handleImportBackup = () => {
+    Alert.alert(
+      'Restaurar Dados Locais',
+      'Deseja carregar um arquivo de backup local? Os dados atuais serão substituídos pelos registros do arquivo selecionado.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Selecionar Arquivo',
+          onPress: async () => {
+            setIsImportingBackup(true);
+            try {
+              const res = await importBackupFromFile();
+              if (res.canceled) return;
+              if (res.success && res.counts) {
+                setSaveSuccessNotice('Dados restaurados com sucesso!');
+                setTimeout(() => setSaveSuccessNotice(null), 4000);
+                Alert.alert(
+                  'Backup Restaurado!',
+                  `Arquivo: "${res.fileName}"\n\nRegistros recuperados:\n• ${res.counts.cards} cartões\n• ${res.counts.transactions} transações\n• ${res.counts.investments} investimentos\n• ${res.counts.categories} categorias`
+                );
+              } else {
+                Alert.alert('Falha na Restauração', res.error || 'Não foi possível restaurar os dados do arquivo.');
+              }
+            } catch (err: any) {
+              Alert.alert('Erro', err?.message || 'Erro inesperado ao restaurar backup.');
+            } finally {
+              setIsImportingBackup(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Limpar dados locais com confirmação dupla
@@ -718,7 +781,105 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
               </View>
             </View>
 
-            {/* SEÇÃO 5: Opções Avançadas (Zona de Risco) */}
+            {/* SEÇÃO 5: Backup e Restauração Local */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Database size={13} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.sectionTitle, { color: colors.primary }]}>
+                  BACKUP E RESTAURAÇÃO LOCAL
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.backupCard,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.backupExplainer, { color: colors.textSecondary }]}>
+                  Salve todos os seus dados em um arquivo local (.json) para restaurar caso desinstale e reinstale o aplicativo.
+                </Text>
+
+                {/* Botão Exportar / Salvar Dados */}
+                <Pressable
+                  onPress={handleExportBackup}
+                  disabled={isExportingBackup}
+                  style={({ pressed }) => [
+                    styles.backupActionRow,
+                    {
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.borderSubtle,
+                      opacity: pressed || isExportingBackup ? 0.75 : 1,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.backupIconCircle,
+                      {
+                        backgroundColor: `${colors.primary}18`,
+                        borderColor: `${colors.primary}44`,
+                      },
+                    ]}
+                  >
+                    {isExportingBackup ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Download size={16} color={colors.primary} />
+                    )}
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.backupActionTitle, { color: colors.text }]}>
+                      Salvar dados em arquivo
+                    </Text>
+                    <Text style={[styles.backupActionDesc, { color: colors.textMuted }]}>
+                      Gera um arquivo .json seguro com todos os seus cartões, transações e investimentos
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* Botão Importar / Carregar Dados */}
+                <Pressable
+                  onPress={handleImportBackup}
+                  disabled={isImportingBackup}
+                  style={({ pressed }) => [
+                    styles.backupActionRow,
+                    {
+                      opacity: pressed || isImportingBackup ? 0.75 : 1,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.backupIconCircle,
+                      {
+                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)',
+                        borderColor: isDark ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)',
+                      },
+                    ]}
+                  >
+                    {isImportingBackup ? (
+                      <ActivityIndicator size="small" color="#3B82F6" />
+                    ) : (
+                      <Upload size={16} color="#3B82F6" />
+                    )}
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.backupActionTitle, { color: colors.text }]}>
+                      Carregar dados de arquivo
+                    </Text>
+                    <Text style={[styles.backupActionDesc, { color: colors.textMuted }]}>
+                      Restaura o histórico de um arquivo de backup local previamente salvo
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* SEÇÃO 6: Opções Avançadas (Zona de Risco) */}
             <View style={[styles.section, { marginBottom: 30 }]}>
               <View style={styles.sectionHeaderRow}>
                 <ShieldAlert size={13} color={colors.danger} style={{ marginRight: 6 }} />
@@ -1071,6 +1232,39 @@ const styles = StyleSheet.create({
   clearDataSubText: {
     fontFamily: Typography.regular,
     fontSize: 10,
+    marginTop: 2,
+  },
+  backupCard: {
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  backupExplainer: {
+    fontFamily: Typography.regular,
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  backupActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  backupIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backupActionTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 13,
+  },
+  backupActionDesc: {
+    fontFamily: Typography.regular,
+    fontSize: 10.5,
     marginTop: 2,
   },
 });

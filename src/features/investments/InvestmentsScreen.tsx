@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,78 +18,19 @@ import {
   TrendingDown,
   Landmark,
   Bitcoin,
-  LineChart,
   BarChart2,
   ChevronDown,
   ChevronUp,
   Briefcase,
   Sparkles,
+  PackageOpen,
+  Link,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { Investment, InvestmentType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { formatBRL } from '@/features/transactions/transactionUtils';
-
-// ─── Dados de exemplo (reais viriam da Pluggy) ──────────────────────────────
-
-const DEMO_INVESTMENTS: Investment[] = [
-  {
-    id: 'inv_1',
-    name: 'Tesouro IPCA+ 2029',
-    type: 'Tesouro Direto',
-    institution: 'Tesouro Nacional',
-    currentValue: 1_234_567, // R$ 12.345,67
-    initialValue: 1_100_000,
-    purchaseDate: '2023-03-15',
-    maturityDate: '2029-05-15',
-    annualRate: 0.1265,
-    color: '#22c55e',
-  },
-  {
-    id: 'inv_2',
-    name: 'CDB Nubank 110% CDI',
-    type: 'CDB',
-    institution: 'Nubank',
-    currentValue: 550_890,
-    initialValue: 500_000,
-    purchaseDate: '2024-01-10',
-    annualRate: 0.1188,
-    color: '#a855f7',
-  },
-  {
-    id: 'inv_3',
-    name: 'KNRI11 - Kinea Renda',
-    type: 'FII',
-    institution: 'XP Investimentos',
-    currentValue: 382_100,
-    initialValue: 400_000,
-    purchaseDate: '2023-08-20',
-    color: '#f59e0b',
-  },
-  {
-    id: 'inv_4',
-    name: 'IVVB11 - S&P500',
-    type: 'ETF',
-    institution: 'BTG Pactual',
-    currentValue: 670_440,
-    initialValue: 580_000,
-    purchaseDate: '2022-11-05',
-    color: '#3b82f6',
-  },
-  {
-    id: 'inv_5',
-    name: 'LCI Banco do Brasil 92% CDI',
-    type: 'LCI',
-    institution: 'Banco do Brasil',
-    currentValue: 205_300,
-    initialValue: 200_000,
-    maturityDate: '2025-06-30',
-    purchaseDate: '2024-06-30',
-    annualRate: 0.0996,
-    color: '#06b6d4',
-  },
-];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -399,8 +340,8 @@ export const InvestmentsScreen: React.FC = () => {
   const isDark = mode === 'dark';
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
-  // shortcut: usando dados demo fixos, integração real com Pluggy virá depois
-  const investments = DEMO_INVESTMENTS;
+  // Sem integração Pluggy para investimentos ainda — lista vazia
+  const investments: Investment[] = [];
 
   const { totalValue, totalInitial, totalDayGain, totalWeekGain, totalMonthGain } = useMemo(() => {
     const tv = investments.reduce((s, i) => s + i.currentValue, 0);
@@ -427,51 +368,66 @@ export const InvestmentsScreen: React.FC = () => {
         <View>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Investimentos</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
-            {investments.length} ativos na carteira
+            {investments.length > 0 ? `${investments.length} ativos na carteira` : 'Nenhum ativo conectado'}
           </Text>
         </View>
       </View>
 
-      {/* Card resumo */}
-      <SummaryCard
-        totalValue={totalValue}
-        totalGain={totalGain}
-        dayGain={totalDayGain}
-        weekGain={totalWeekGain}
-        monthGain={totalMonthGain}
-        privacyMode={privacyMode}
-        colors={colors}
-        isDark={isDark}
-      />
+      {investments.length === 0 ? (
+        /* ── Empty State ── */
+        <View style={[styles.emptyBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.emptyIconRing, { backgroundColor: isDark ? 'rgba(22,163,74,0.10)' : 'rgba(22,163,74,0.07)', borderColor: isDark ? 'rgba(22,163,74,0.25)' : 'rgba(22,163,74,0.18)' }]}>
+            <PackageOpen size={32} color={colors.success} strokeWidth={1.5} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            Carteira vazia
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            Seus investimentos aparecerão aqui quando a integração com a Pluggy incluir contas do tipo investimento.
+          </Text>
+          <View style={[styles.emptyHint, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)' }]}>
+            <Link size={13} color={colors.textSecondary} />
+            <Text style={[styles.emptyHintText, { color: colors.textSecondary }]}>
+              Conecte sua corretora via Open Finance para ver ganhos diários, semanais e mensais de cada ativo.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          {/* Card resumo */}
+          <SummaryCard
+            totalValue={totalValue}
+            totalGain={totalGain}
+            dayGain={totalDayGain}
+            weekGain={totalWeekGain}
+            monthGain={totalMonthGain}
+            privacyMode={privacyMode}
+            colors={colors}
+            isDark={isDark}
+          />
 
-      {/* Lista de investimentos */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-        CARTEIRA
-      </Text>
+          {/* Lista de investimentos */}
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            CARTEIRA
+          </Text>
 
-      <View style={styles.investList}>
-        {investments.map((inv) => {
-          const share = totalValue > 0 ? (inv.currentValue / totalValue) * 100 : 0;
-          return (
-            <InvestmentCard
-              key={inv.id}
-              investment={inv}
-              shareOfTotal={share}
-              privacyMode={privacyMode}
-              colors={colors}
-              isDark={isDark}
-            />
-          );
-        })}
-      </View>
-
-      {/* Nota de dados demo */}
-      <View style={[styles.demoNote, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)' }]}>
-        <LineChart size={13} color={colors.textSecondary} />
-        <Text style={[styles.demoNoteText, { color: colors.textSecondary }]}>
-          Dados de demonstração. Rendimentos estimados com base na taxa a.a. informada.
-        </Text>
-      </View>
+          <View style={styles.investList}>
+            {investments.map((inv) => {
+              const share = totalValue > 0 ? (inv.currentValue / totalValue) * 100 : 0;
+              return (
+                <InvestmentCard
+                  key={inv.id}
+                  investment={inv}
+                  shareOfTotal={share}
+                  privacyMode={privacyMode}
+                  colors={colors}
+                  isDark={isDark}
+                />
+              );
+            })}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 };
@@ -707,6 +663,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   demoNoteText: {
+    fontSize: 11,
+    fontFamily: Typography.regular,
+    flex: 1,
+    lineHeight: 16,
+  },
+  emptyBox: {
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 8,
+  },
+  emptyIconRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: Typography.bold,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    fontFamily: Typography.regular,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  emptyHint: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    marginTop: 4,
+    width: '100%',
+  },
+  emptyHintText: {
     fontSize: 11,
     fontFamily: Typography.regular,
     flex: 1,

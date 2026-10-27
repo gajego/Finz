@@ -39,6 +39,7 @@ import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNa
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
 import { PerformanceScreen } from './src/features/performance/PerformanceScreen';
 import { InvestmentsScreen } from './src/features/investments/InvestmentsScreen';
+import { AppSplashLoader } from './src/components/ui/AppSplashLoader';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
@@ -86,6 +87,17 @@ export default function App() {
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
+  const [splashMounted, setSplashMounted] = useState(true);
+  const [minPresentationElapsed, setMinPresentationElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setMinPresentationElapsed(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const isAppReady = Boolean(fontsLoaded && isInitialized && minPresentationElapsed);
   const { width: screenWidth } = useWindowDimensions();
   const horizontalScrollRef = useRef<React.ElementRef<typeof ScrollView>>(null);
   const isProgrammaticScrollRef = useRef(false);
@@ -274,7 +286,12 @@ export default function App() {
   };
 
   if (!fontsLoaded) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#040405' }}>
+        <StatusBar style="light" />
+        <AppSplashLoader isReady={false} onFinish={() => setSplashMounted(false)} />
+      </View>
+    );
   }
 
   const handleOpenBudgetModal = (categoryId?: string) => {
@@ -436,6 +453,14 @@ export default function App() {
           transaction={activeTransaction}
           onClose={() => setSelectedTransactionForDetails(null)}
         />
+
+        {/* Loader de Apresentação Cinematográfico Estilo Nubank / Neo-Fintech */}
+        {splashMounted && (
+          <AppSplashLoader
+            isReady={isAppReady}
+            onFinish={() => setSplashMounted(false)}
+          />
+        )}
       </SafeAreaView>
     </GestureHandlerRootView>
   );

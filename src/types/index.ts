@@ -54,3 +54,30 @@ export interface SmartAlert {
   limit: number;
   timestamp: number;
 }
+
+export type InvestmentType =
+  | 'CDB'
+  | 'LCI'
+  | 'LCA'
+  | 'Tesouro Direto'
+  | 'Ações'
+  | 'FII'
+  | 'ETF'
+  | 'Cripto'
+  | 'Outro';
+
+export interface Investment {
+  id: string;
+  name: string;
+  type: InvestmentType;
+  institution: string;
+  /** Valor atual em centavos */
+  currentValue: number;
+  /** Valor inicial aplicado em centavos */
+  initialValue: number;
+  purchaseDate: string; // ISO date string
+  maturityDate?: string;
+  /** Taxa anual bruta (ex: 0.1250 = 12.50% a.a.) */
+  annualRate?: number;
+  color: string;
+}

@@ -38,6 +38,7 @@ import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
 import { PerformanceScreen } from './src/features/performance/PerformanceScreen';
+import { InvestmentsScreen } from './src/features/investments/InvestmentsScreen';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
@@ -46,7 +47,7 @@ import { BankCard, Transaction } from './src/types';
 import { useSharedValue } from 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
 
-const MAIN_TABS: MainTab[] = ['home', 'performance', 'goals'];
+const MAIN_TABS: MainTab[] = ['home', 'performance', 'goals', 'investments'];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -369,9 +370,14 @@ export default function App() {
           <View style={{ width: screenWidth, flex: 1 }}>
             <GoalsScreen />
           </View>
+
+          {/* Tela 4: Investimentos */}
+          <View style={{ width: screenWidth, flex: 1 }}>
+            <InvestmentsScreen />
+          </View>
         </ScrollView>
 
-        {/* Menu Flutuante ao Fundo da Tela (Início / Desempenho / Metas) */}
+        {/* Menu Flutuante ao Fundo da Tela (Início / Desempenho / Metas / Ativos) */}
         <FloatingBottomNav
           activeTab={activeMainTab}
           onTabChange={handleTabChange}

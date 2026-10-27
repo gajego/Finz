@@ -11,11 +11,11 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Home, TrendingUp, Target } from 'lucide-react-native';
+import { Home, TrendingUp, Target, Briefcase } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 
-export type MainTab = 'home' | 'performance' | 'goals';
+export type MainTab = 'home' | 'performance' | 'goals' | 'investments';
 
 interface FloatingBottomNavProps {
   activeTab: MainTab;
@@ -152,6 +152,23 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           Icon={Target}
           isActive={activeTab === 'goals'}
           onPress={() => onTabChange('goals')}
+          colors={colors}
+        />
+
+        {/* Separador Sutil 3 */}
+        <View
+          style={[
+            styles.divider,
+            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' },
+          ]}
+        />
+
+        {/* Aba 4: Investimentos */}
+        <TabButton
+          label="Ativos"
+          Icon={Briefcase}
+          isActive={activeTab === 'investments'}
+          onPress={() => onTabChange('investments')}
           colors={colors}
         />
       </View>

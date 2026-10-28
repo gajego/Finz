@@ -22,6 +22,7 @@ import {
   TrendingDown,
   Layers,
   Sparkles,
+  EyeOff,
 } from 'lucide-react-native';
 import { Category } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -95,13 +96,22 @@ export const GoalsScreen: React.FC = () => {
       .reduce((sum, t) => sum + t.amount, 0);
   };
 
-  // Estatísticas globais do mês
+  // Estatísticas globais do mês (considerando apenas categorias ativas nos totais)
   const { totalSpent, totalBudget, overallPercent } = useMemo(() => {
+    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
+
     const spent = transactions
-      .filter((t) => t.type === 'EXPENSE' && t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd)
+      .filter(
+        (t) =>
+          t.type === 'EXPENSE' &&
+          t.timestamp >= currentMonthStart &&
+          t.timestamp <= currentMonthEnd &&
+          consideredCatIds.has(t.categoryId)
+      )
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const budget = categories.reduce((sum, c) => sum + (c.budgetLimit || 0), 0);
+    const budget = consideredCategories.reduce((sum, c) => sum + (c.budgetLimit || 0), 0);
     const percent = budget > 0 ? Math.round((spent / budget) * 100) : 0;
 
     return { totalSpent: spent, totalBudget: budget, overallPercent: percent };
@@ -312,6 +322,22 @@ export const GoalsScreen: React.FC = () => {
                           <Lock size={10} color="#94A3B8" style={{ marginRight: 3 }} />
                           <Text style={[styles.protectedPillText, { color: colors.textMuted }]}>
                             PADRÃO
+                          </Text>
+                        </View>
+                      )}
+                      {cat.considerar === false && (
+                        <View
+                          style={[
+                            styles.ignoredPill,
+                            {
+                              backgroundColor: isDark ? 'rgba(148, 163, 184, 0.15)' : 'rgba(148, 163, 184, 0.1)',
+                              borderColor: colors.borderSubtle,
+                            },
+                          ]}
+                        >
+                          <EyeOff size={10} color={colors.textMuted} style={{ marginRight: 3 }} />
+                          <Text style={[styles.ignoredPillText, { color: colors.textMuted }]}>
+                            DESCONSIDERADA
                           </Text>
                         </View>
                       )}
@@ -542,6 +568,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   protectedPillText: {
+    fontFamily: Typography.bold,
+    fontSize: 8,
+    letterSpacing: 0.5,
+  },
+  ignoredPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  ignoredPillText: {
     fontFamily: Typography.bold,
     fontSize: 8,
     letterSpacing: 0.5,

@@ -395,6 +395,7 @@ export function loadAllDataFromSQLite(): {
     icon: String(r.icon),
     color: String(r.color),
     budgetLimit: Number(r.budget_limit) || 0,
+    considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
   }));
 
   const transactions: Transaction[] = txRows.map((r) => ({
@@ -473,9 +474,10 @@ export function persistCategoryBudget(categoryId: string, budgetLimitCents: numb
 
 export function persistCategory(cat: Category) {
   try {
+    const considerarVal = cat.considerar === false ? 0 : 1;
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar) VALUES (?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal]
     );
   } catch (e) {
     console.warn('[db.web] Falha ao persistir categoria:', e);

@@ -390,6 +390,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     overBudgetCategories,
     totalOverBudgetDiff,
   } = useMemo(() => {
+    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
+
     const curMap: Record<string, number> = {};
     const prevMap: Record<string, number> = {};
 
@@ -398,6 +401,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
 
     for (const t of transactions) {
       if (t.type !== 'EXPENSE') continue;
+      if (!consideredCatIds.has(t.categoryId)) continue;
 
       if (t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd) {
         curMap[t.categoryId] = (curMap[t.categoryId] || 0) + t.amount;
@@ -409,7 +413,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     }
 
     // Mapeamento enriquecido por categoria
-    const stats = categories.map((cat) => {
+    const stats = consideredCategories.map((cat) => {
       const current = curMap[cat.id] || 0;
       const previous = prevMap[cat.id] || 0;
       const budget = cat.budgetLimit || 0;
@@ -535,6 +539,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     paddingLeft,
     selectedPoint,
   } = useMemo(() => {
+    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
+
     const nowParts = getBrazilDateParts(Date.now());
     const todayDay = nowParts.day;
     const daysInMonth = new Date(nowParts.year, nowParts.month + 1, 0).getDate();
@@ -544,6 +551,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
 
     for (const t of transactions) {
       if (t.type !== 'EXPENSE') continue;
+      if (!consideredCatIds.has(t.categoryId)) continue;
       if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) continue;
 
       const parts = getBrazilDateParts(t.timestamp);
@@ -555,8 +563,8 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
       catTotalMap[catId] = (catTotalMap[catId] || 0) + t.amount;
     }
 
-    // Categorias com gastos no mês
-    const catsWithSpend = categories
+    // Categorias com gastos no mês (apenas consideradas)
+    const catsWithSpend = consideredCategories
       .filter((c) => (catTotalMap[c.id] || 0) > 0)
       .sort((a, b) => (catTotalMap[b.id] || 0) - (catTotalMap[a.id] || 0));
 
@@ -564,7 +572,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     const chosenCat =
       catsWithSpend.find((c) => c.id === selectedCategoryId) ||
       catsWithSpend[0] ||
-      categories[0] ||
+      consideredCategories[0] ||
       null;
 
     const chosenCatId = chosenCat ? chosenCat.id : null;

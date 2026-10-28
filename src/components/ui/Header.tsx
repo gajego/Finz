@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
   const hasAlert = useMemo(() => {
     if (activeAlert) return true;
     return categories.some((cat) => {
-      if (cat.budgetLimit <= 0) return false;
+      if (cat.considerar === false || cat.budgetLimit <= 0) return false;
       const spent = transactions
         .filter((t) => t.categoryId === cat.id && t.type === 'EXPENSE')
         .reduce((sum, t) => sum + t.amount, 0);

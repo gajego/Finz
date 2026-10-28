@@ -44,6 +44,7 @@ export interface Category {
   icon: string;
   color: string;
   budgetLimit: number; // Centavos
+  considerar?: boolean;
 }
 
 export interface SmartAlert {

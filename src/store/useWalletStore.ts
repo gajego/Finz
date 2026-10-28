@@ -245,6 +245,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       ...catData,
       id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       budgetLimit: catData.budgetLimit ?? 0,
+      considerar: catData.considerar !== false,
     };
     if (!get().presentationMode) {
       persistCategory(newCat);
@@ -316,7 +317,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     let triggeredAlert: SmartAlert | null = null;
     if (tx.type === 'EXPENSE') {
       const category = state.categories.find((c) => c.id === tx.categoryId);
-      if (category && category.budgetLimit > 0) {
+      if (category && category.considerar !== false && category.budgetLimit > 0) {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         const totalSpent = updatedTransactions

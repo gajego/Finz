@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Animated,
+  Switch,
 } from 'react-native';
 import {
   useSwipeModalDismiss,
@@ -27,6 +28,8 @@ import {
   DollarSign,
   Palette,
   Layers,
+  PieChart,
+  EyeOff,
 } from 'lucide-react-native';
 import { Category } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -63,6 +66,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [selectedIcon, setSelectedIcon] = useState('tag');
   const [selectedColor, setSelectedColor] = useState(CATEGORY_PALETTE[0]);
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
+  const [considerar, setConsiderar] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -76,11 +80,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             ? (categoryToEdit.budgetLimit / 100).toString()
             : ''
         );
+        setConsiderar(categoryToEdit.considerar !== false);
       } else {
         setName('');
         setSelectedIcon('tag');
         setSelectedColor(CATEGORY_PALETTE[Math.floor(Math.random() * 6)]);
         setBudgetLimitStr('');
+        setConsiderar(true);
       }
       setErrorMessage(null);
     }
@@ -110,6 +116,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         icon: selectedIcon,
         color: selectedColor,
         budgetLimit: budgetLimitCents,
+        considerar,
       });
     } else {
       createCategory({
@@ -117,6 +124,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         icon: selectedIcon,
         color: selectedColor,
         budgetLimit: budgetLimitCents,
+        considerar,
       });
     }
 
@@ -400,7 +408,43 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </View>
             </View>
 
-            {/* Campo 4: Seletor de Ícones (40 Ícones Lucide) */}
+            {/* Campo 4: Considerar nos Totais e Gráficos */}
+            <View
+              style={[
+                styles.toggleCard,
+                {
+                  backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View style={styles.toggleCardText}>
+                <View style={styles.toggleTitleRow}>
+                  {considerar ? (
+                    <PieChart size={15} color={colors.primary} style={{ marginRight: 6 }} />
+                  ) : (
+                    <EyeOff size={15} color={colors.textMuted} style={{ marginRight: 6 }} />
+                  )}
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                    Considerar nos totais e gráficos
+                  </Text>
+                </View>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  {considerar
+                    ? 'Os gastos desta categoria entram na soma total do mês e aparecem nos gráficos.'
+                    : 'Os gastos desta categoria NÃO entram nos totais gerais nem aparecem nos gráficos.'}
+                </Text>
+              </View>
+              <Switch
+                value={considerar}
+                onValueChange={setConsiderar}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={Platform.OS === 'android' ? (considerar ? '#FFFFFF' : '#F4F3F4') : undefined}
+                disabled={isProtected}
+              />
+            </View>
+
+            {/* Campo 5: Seletor de Ícones (40 Ícones Lucide) */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Layers size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
@@ -740,6 +784,33 @@ const styles = StyleSheet.create({
   quickValueText: {
     fontFamily: Typography.medium,
     fontSize: 10,
+  },
+  toggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 20,
+    gap: 12,
+  },
+  toggleCardText: {
+    flex: 1,
+  },
+  toggleTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  toggleTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 13,
+  },
+  toggleDescription: {
+    fontFamily: Typography.regular,
+    fontSize: 11,
+    lineHeight: 15,
   },
   pinnedFooter: {
     paddingHorizontal: 20,

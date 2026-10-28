@@ -104,9 +104,9 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
     });
   };
 
-  // Exibe exatamente 3 categorias para reservar o 4º card como "Ver mais"
+  // Exibe exatamente 3 categorias ativas para reservar o 4º card como "Ver mais"
   const displayedCategories = useMemo(() => {
-    return categories.slice(0, 3);
+    return categories.filter((c) => c.considerar !== false).slice(0, 3);
   }, [categories]);
 
   return (

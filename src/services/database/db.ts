@@ -29,7 +29,8 @@ export function initDatabase() {
       name TEXT NOT NULL,
       icon TEXT NOT NULL,
       color TEXT NOT NULL,
-      budget_limit INTEGER NOT NULL
+      budget_limit INTEGER NOT NULL,
+      considerar INTEGER DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -69,6 +70,11 @@ export function initDatabase() {
   // Migração segura para colunas adicionadas posteriormente
   try {
     db.execSync('ALTER TABLE cards ADD COLUMN bank_balance INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE categories ADD COLUMN considerar INTEGER DEFAULT 1;');
   } catch {
     // Coluna já existe
   }
@@ -182,7 +188,7 @@ function seedDefaultCategories() {
 
   for (const cat of initialCategories) {
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar) VALUES (?, ?, ?, ?, ?, 1)',
       [cat.id, cat.name, cat.icon, cat.color, cat.budget_limit]
     );
   }
@@ -247,6 +253,7 @@ export function loadAllDataFromSQLite(): {
     icon: String(r.icon),
     color: String(r.color),
     budgetLimit: Number(r.budget_limit) || 0,
+    considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
   }));
 
   const transactions: Transaction[] = txRows.map((r) => ({
@@ -370,9 +377,10 @@ export function persistCategoryBudget(categoryId: string, budgetLimitCents: numb
 
 export function persistCategory(cat: Category) {
   try {
+    const considerarVal = cat.considerar === false ? 0 : 1;
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit) VALUES (?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar) VALUES (?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal]
     );
   } catch (e) {
     console.warn('[db] Falha ao persistir categoria:', e);

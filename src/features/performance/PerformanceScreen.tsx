@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,17 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import Svg, { G, Circle } from 'react-native-svg';
+import Svg, {
+  G,
+  Circle,
+  Path,
+  Rect,
+  Line,
+  Text as SvgText,
+  Defs,
+  LinearGradient,
+  Stop,
+} from 'react-native-svg';
 import {
   TrendingUp,
   TrendingDown,
@@ -28,13 +38,46 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  Calendar,
+  X,
+  Activity,
 } from 'lucide-react-native';
 import { Category, Transaction } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
-import { formatBRL, parseMerchantAndInstallments } from '@/features/transactions/transactionUtils';
+import {
+  formatBRL,
+  parseMerchantAndInstallments,
+  getBrazilDateParts,
+} from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
+
+/**
+ * Gera um traçado suave (spline cúbico) entre os pontos informados.
+ */
+function createSmoothPath(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
 
 const AnimatedCompareBar: React.FC<{
   widthPct: number;
@@ -442,6 +485,194 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
       });
   }, [categoryStats, totalCurrentSpent, circumference, colors.primary]);
 
+  // Estados para o Gráfico de Linha Diário e Detalhamento de Transações
+  const chartScrollRef = useRef<any>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number>(() => getBrazilDateParts(Date.now()).day);
+  const [showDrilldown, setShowDrilldown] = useState<boolean>(true);
+
+  // Formatação de hora da transação
+  const formatTransactionTime = (ts: number) => {
+    try {
+      return new Intl.DateTimeFormat('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Sao_Paulo',
+      }).format(new Date(ts));
+    } catch {
+      return '';
+    }
+  };
+
+  // Dias do mês atual e dados diários consolidados
+  const {
+    daysInMonth,
+    todayDay,
+    categoryDayMap,
+    categoriesWithSpend,
+    activeCategory,
+    activeDayTransactions,
+    activeDayTotal,
+    daysWithSpendForActiveCat,
+    dailyPoints,
+    stepX,
+    chartHeight,
+    paddingBottom,
+    plotHeight,
+    svgWidth,
+    selectedPoint,
+  } = useMemo(() => {
+    const nowParts = getBrazilDateParts(Date.now());
+    const todayDay = nowParts.day;
+    const daysInMonth = new Date(nowParts.year, nowParts.month + 1, 0).getDate();
+
+    const catDayMap: Record<string, Record<number, number>> = {};
+    const catTotalMap: Record<string, number> = {};
+
+    for (const t of transactions) {
+      if (t.type !== 'EXPENSE') continue;
+      if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) continue;
+
+      const parts = getBrazilDateParts(t.timestamp);
+      const d = parts.day;
+      const catId = t.categoryId || 'other';
+
+      if (!catDayMap[catId]) catDayMap[catId] = {};
+      catDayMap[catId][d] = (catDayMap[catId][d] || 0) + t.amount;
+      catTotalMap[catId] = (catTotalMap[catId] || 0) + t.amount;
+    }
+
+    // Categorias com gastos no mês
+    const catsWithSpend = categories
+      .filter((c) => (catTotalMap[c.id] || 0) > 0)
+      .sort((a, b) => (catTotalMap[b.id] || 0) - (catTotalMap[a.id] || 0));
+
+    // Categoria ativa (selecionada ou a de maior gasto)
+    const chosenCat =
+      catsWithSpend.find((c) => c.id === selectedCategoryId) ||
+      catsWithSpend[0] ||
+      categories[0] ||
+      null;
+
+    const chosenCatId = chosenCat ? chosenCat.id : null;
+
+    // Dias com gastos na categoria ativa
+    const daysWithSpend: number[] = [];
+    if (chosenCatId && catDayMap[chosenCatId]) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        if ((catDayMap[chosenCatId][d] || 0) > 0) {
+          daysWithSpend.push(d);
+        }
+      }
+    }
+
+    // Transações do dia selecionado para a categoria ativa
+    const dayTxs = chosenCatId
+      ? transactions
+          .filter((t) => {
+            if (t.type !== 'EXPENSE' || t.categoryId !== chosenCatId) return false;
+            if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) return false;
+            const parts = getBrazilDateParts(t.timestamp);
+            return parts.day === selectedDay;
+          })
+          .sort((a, b) => b.amount - a.amount)
+      : [];
+
+    const dayTotal = dayTxs.reduce((sum, t) => sum + t.amount, 0);
+
+    // Configurações do SVG do gráfico de linha
+    const stepX = 38;
+    const chartHeight = 150;
+    const paddingBottom = 32;
+    const paddingTop = 20;
+    const plotHeight = chartHeight - paddingBottom - paddingTop;
+    const svgWidth = Math.max(Dimensions.get('window').width - 72, 24 + daysInMonth * stepX);
+
+    let maxAmount = 10;
+    if (chosenCatId && catDayMap[chosenCatId]) {
+      for (let d = 1; d <= daysInMonth; d++) {
+        const amt = catDayMap[chosenCatId][d] || 0;
+        if (amt > maxAmount) maxAmount = amt;
+      }
+    }
+
+    const points: { x: number; y: number; amount: number; day: number }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const amt = (chosenCatId && catDayMap[chosenCatId] ? catDayMap[chosenCatId][d] : 0) || 0;
+      const x = 20 + (d - 1) * stepX;
+      const y = chartHeight - paddingBottom - (amt / (maxAmount * 1.18)) * plotHeight;
+      points.push({ x, y, amount: amt, day: d });
+    }
+
+    const selectedPoint = points.find((p) => p.day === selectedDay) || null;
+
+    return {
+      daysInMonth,
+      todayDay,
+      categoryDayMap: catDayMap,
+      categoriesWithSpend: catsWithSpend,
+      activeCategory: chosenCat,
+      activeDayTransactions: dayTxs,
+      activeDayTotal: dayTotal,
+      daysWithSpendForActiveCat: daysWithSpend,
+      dailyPoints: points,
+      stepX,
+      chartHeight,
+      paddingBottom,
+      plotHeight,
+      svgWidth,
+      selectedPoint,
+    };
+  }, [
+    transactions,
+    categories,
+    currentMonthStart,
+    currentMonthEnd,
+    selectedCategoryId,
+    selectedDay,
+  ]);
+
+  // Caminho da linha e área SVG
+  const linePath = useMemo(() => {
+    return createSmoothPath(dailyPoints.map((p) => ({ x: p.x, y: p.y })));
+  }, [dailyPoints]);
+
+  const areaPath = useMemo(() => {
+    if (dailyPoints.length === 0) return '';
+    const first = dailyPoints[0];
+    const last = dailyPoints[dailyPoints.length - 1];
+    const baseline = chartHeight - paddingBottom;
+    return `${linePath} L ${last.x.toFixed(1)} ${baseline} L ${first.x.toFixed(1)} ${baseline} Z`;
+  }, [dailyPoints, linePath, chartHeight, paddingBottom]);
+
+  // Ao selecionar uma categoria, ajusta o dia para um dia com gastos se o atual estiver zerado
+  const handleSelectCategory = (catId: string) => {
+    setSelectedCategoryId(catId);
+    setShowDrilldown(true);
+
+    const catDays = categoryDayMap[catId] || {};
+    if (!catDays[selectedDay] || catDays[selectedDay] <= 0) {
+      let latestDay = 0;
+      for (let d = daysInMonth; d >= 1; d--) {
+        if ((catDays[d] || 0) > 0) {
+          latestDay = d;
+          break;
+        }
+      }
+      if (latestDay > 0) {
+        setSelectedDay(latestDay);
+      }
+    }
+  };
+
+  // Auto-scroll do gráfico de linha para o dia selecionado
+  useEffect(() => {
+    if (chartScrollRef.current && selectedDay > 0) {
+      const targetX = Math.max(0, (selectedDay - 3) * stepX);
+      chartScrollRef.current.scrollTo({ x: targetX, animated: true });
+    }
+  }, [selectedDay, stepX]);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
@@ -603,6 +834,555 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
           </View>
         )}
 
+        {/* SEÇÃO: Evolução Diária por Categoria & Detalhamento em Barras */}
+        <View style={styles.sectionBlock}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeaderLeft}>
+              <View
+                style={[
+                  styles.iconPill,
+                  { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.12)' },
+                ]}
+              >
+                <Activity size={16} color={colors.secondary} />
+              </View>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Evolução diária de gastos
+                </Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                  Acompanhe os gastos dia a dia e toque para detalhar
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Seletor Horizontal de Categorias (Chips) */}
+          {categoriesWithSpend.length > 0 ? (
+            <>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryChipsScroll}
+              >
+                {categoriesWithSpend.map((cat) => {
+                  const IconComp = getCategoryIconComponent(cat.icon);
+                  const isSelected = activeCategory?.id === cat.id;
+                  const catTotal = categoryStats.find((s) => s.category.id === cat.id)?.currentSpent || 0;
+
+                  return (
+                    <Pressable
+                      key={cat.id}
+                      onPress={() => handleSelectCategory(cat.id)}
+                      style={({ pressed }) => [
+                        styles.categoryChip,
+                        {
+                          backgroundColor: isSelected
+                            ? isDark
+                              ? `${cat.color}28`
+                              : `${cat.color}16`
+                            : colors.surface,
+                          borderColor: isSelected ? cat.color : colors.borderSubtle,
+                          transform: [{ scale: pressed ? 0.96 : 1 }],
+                        },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Selecionar categoria ${cat.name}`}
+                    >
+                      <View
+                        style={[
+                          styles.categoryChipIcon,
+                          { backgroundColor: `${cat.color}25` },
+                        ]}
+                      >
+                        <IconComp size={13} color={cat.color} />
+                      </View>
+                      <View>
+                        <Text
+                          style={[
+                            styles.categoryChipName,
+                            {
+                              color: isSelected ? (isDark ? '#FFFFFF' : '#0F172A') : colors.textSecondary,
+                              fontFamily: isSelected ? Typography.bold : Typography.medium,
+                            },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {cat.name}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.categoryChipAmount,
+                            { color: isSelected ? cat.color : colors.textMuted },
+                          ]}
+                        >
+                          {privacyMode ? '••••••' : formatBRL(catTotal)}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Card do Gráfico de Linha Diário */}
+              <View
+                style={[
+                  styles.chartContainerCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.borderSubtle,
+                    marginTop: 12,
+                  },
+                ]}
+              >
+                {/* Cabeçalho do Card */}
+                <View style={styles.dailyChartCardHeader}>
+                  <View style={styles.dailyChartHeaderLeft}>
+                    {activeCategory && (
+                      <View
+                        style={[
+                          styles.dailyCatBadge,
+                          { backgroundColor: `${activeCategory.color}20` },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.legendColorDot,
+                            { backgroundColor: activeCategory.color, marginRight: 6 },
+                          ]}
+                        />
+                        <Text
+                          style={[styles.dailyCatBadgeText, { color: activeCategory.color }]}
+                          numberOfLines={1}
+                        >
+                          {activeCategory.name}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={[styles.dailyChartHint, { color: colors.textSecondary }]}>
+                      Toque em um dia para abrir as transações
+                    </Text>
+                  </View>
+
+                  <View style={styles.dailyChartHeaderRight}>
+                    <Text style={[styles.dailyChartSelectedDayLabel, { color: colors.textSecondary }]}>
+                      Dia {selectedDay}
+                    </Text>
+                    <Text style={[styles.dailyChartSelectedDayAmount, { color: colors.text }]}>
+                      {privacyMode ? '••••••' : formatBRL(activeDayTotal)}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* SVG Scrollável com a Linha Diária */}
+                <ScrollView
+                  ref={chartScrollRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 4 }}
+                >
+                  <Svg width={svgWidth} height={chartHeight}>
+                    <Defs>
+                      <LinearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                        <Stop
+                          offset="0%"
+                          stopColor={activeCategory?.color || colors.primary}
+                          stopOpacity={isDark ? '0.35' : '0.22'}
+                        />
+                        <Stop
+                          offset="100%"
+                          stopColor={activeCategory?.color || colors.primary}
+                          stopOpacity="0"
+                        />
+                      </LinearGradient>
+                    </Defs>
+
+                    {/* Linhas de Grade Horizontais */}
+                    {[0.25, 0.5, 0.75, 1].map((ratio, idx) => {
+                      const yPos = chartHeight - paddingBottom - ratio * plotHeight;
+                      return (
+                        <Line
+                          key={idx}
+                          x1={10}
+                          y1={yPos}
+                          x2={svgWidth - 10}
+                          y2={yPos}
+                          stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}
+                          strokeWidth={1}
+                          strokeDasharray="4,4"
+                        />
+                      );
+                    })}
+
+                    {/* Preenchimento de Área com Gradiente */}
+                    {areaPath ? (
+                      <Path d={areaPath} fill="url(#lineGrad)" />
+                    ) : null}
+
+                    {/* Linha de Traçado Suave */}
+                    {linePath ? (
+                      <Path
+                        d={linePath}
+                        stroke={activeCategory?.color || colors.primary}
+                        strokeWidth={2.5}
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    ) : null}
+
+                    {/* Linha Vertical no Dia Selecionado */}
+                    {selectedPoint && (
+                      <Line
+                        x1={selectedPoint.x}
+                        y1={12}
+                        x2={selectedPoint.x}
+                        y2={chartHeight - paddingBottom}
+                        stroke={activeCategory?.color || colors.primary}
+                        strokeWidth={1.5}
+                        strokeDasharray="3,3"
+                        opacity={0.8}
+                      />
+                    )}
+
+                    {/* Pontos nos Dias e Rótulos do Eixo X */}
+                    {dailyPoints.map((pt) => {
+                      const isSel = pt.day === selectedDay;
+                      const hasSpend = pt.amount > 0;
+                      const isToday = pt.day === todayDay;
+
+                      return (
+                        <G key={pt.day}>
+                          {/* Ponto de Gasto */}
+                          {hasSpend && (
+                            <Circle
+                              cx={pt.x}
+                              cy={pt.y}
+                              r={isSel ? 6 : 4}
+                              fill={isSel ? '#FFFFFF' : (activeCategory?.color || colors.primary)}
+                              stroke={activeCategory?.color || colors.primary}
+                              strokeWidth={isSel ? 3 : 1.5}
+                            />
+                          )}
+
+                          {/* Se for o dia selecionado sem gasto, marcador sutil na base */}
+                          {isSel && !hasSpend && (
+                            <Circle
+                              cx={pt.x}
+                              cy={chartHeight - paddingBottom}
+                              r={4}
+                              fill={activeCategory?.color || colors.primary}
+                            />
+                          )}
+
+                          {/* Rótulo do Dia no Eixo X */}
+                          <SvgText
+                            x={pt.x}
+                            y={chartHeight - 12}
+                            textAnchor="middle"
+                            fontSize={isSel ? '12' : '10'}
+                            fontWeight={isSel ? 'bold' : 'normal'}
+                            fill={
+                              isSel
+                                ? (activeCategory?.color || colors.primary)
+                                : isToday
+                                ? colors.text
+                                : colors.textMuted
+                            }
+                          >
+                            {String(pt.day).padStart(2, '0')}
+                          </SvgText>
+
+                          {/* Coluna Invisível para Captura de Toque Generosa */}
+                          <Rect
+                            x={pt.x - stepX / 2}
+                            y={0}
+                            width={stepX}
+                            height={chartHeight}
+                            fill="transparent"
+                            onPress={() => {
+                              setSelectedDay(pt.day);
+                              setShowDrilldown(true);
+                            }}
+                          />
+                        </G>
+                      );
+                    })}
+                  </Svg>
+                </ScrollView>
+              </View>
+
+              {/* DETALHAMENTO EM GRÁFICO DE BARRAS DAS TRANSAÇÕES DO DIA */}
+              {showDrilldown && activeCategory && (
+                <View
+                  style={[
+                    styles.drilldownCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                      marginTop: 12,
+                    },
+                  ]}
+                >
+                  {/* Cabeçalho do Detalhamento */}
+                  <View style={styles.drilldownHeader}>
+                    <View style={styles.drilldownHeaderLeft}>
+                      <View
+                        style={[
+                          styles.categoryIconBox,
+                          {
+                            backgroundColor: `${activeCategory.color}22`,
+                            width: 32,
+                            height: 32,
+                            borderRadius: 10,
+                          },
+                        ]}
+                      >
+                        {(() => {
+                          const IconComp = getCategoryIconComponent(activeCategory.icon);
+                          return <IconComp size={16} color={activeCategory.color} />;
+                        })()}
+                      </View>
+                      <View>
+                        <Text style={[styles.drilldownCatTitle, { color: colors.text }]}>
+                          {activeCategory.name}
+                        </Text>
+                        <Text style={[styles.drilldownDaySubtitle, { color: colors.textSecondary }]}>
+                          Transações do Dia {String(selectedDay).padStart(2, '0')}
+                          {selectedDay === todayDay ? ' (Hoje)' : ''}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Navegador de Dias (< Dia >) e Botão Fechar */}
+                    <View style={styles.drilldownControls}>
+                      <View style={styles.drilldownDayNav}>
+                        <Pressable
+                          disabled={selectedDay <= 1}
+                          onPress={() => setSelectedDay((prev) => Math.max(1, prev - 1))}
+                          style={({ pressed }) => [
+                            styles.drilldownNavBtn,
+                            {
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                              opacity: selectedDay <= 1 ? 0.3 : pressed ? 0.6 : 1,
+                            },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Dia anterior"
+                        >
+                          <ChevronLeft size={16} color={colors.text} />
+                        </Pressable>
+                        <Pressable
+                          disabled={selectedDay >= daysInMonth}
+                          onPress={() => setSelectedDay((prev) => Math.min(daysInMonth, prev + 1))}
+                          style={({ pressed }) => [
+                            styles.drilldownNavBtn,
+                            {
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                              opacity: selectedDay >= daysInMonth ? 0.3 : pressed ? 0.6 : 1,
+                            },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Próximo dia"
+                        >
+                          <ChevronRight size={16} color={colors.text} />
+                        </Pressable>
+                      </View>
+
+                      <Pressable
+                        onPress={() => setShowDrilldown(false)}
+                        style={({ pressed }) => [
+                          styles.drilldownCloseBtn,
+                          {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                            opacity: pressed ? 0.6 : 1,
+                          },
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Fechar detalhamento de transações"
+                      >
+                        <X size={15} color={colors.textSecondary} />
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Resumo do Dia */}
+                  <View style={[styles.drilldownSummaryRow, { borderBottomColor: colors.borderSubtle }]}>
+                    <Text style={[styles.drilldownSummaryLabel, { color: colors.textSecondary }]}>
+                      TOTAL DO DIA
+                    </Text>
+                    <Text style={[styles.drilldownSummaryAmount, { color: activeCategory.color }]}>
+                      {privacyMode ? '••••••' : formatBRL(activeDayTotal)}
+                    </Text>
+                  </View>
+
+                  {/* GRÁFICO DE BARRAS DAS TRANSAÇÕES */}
+                  {activeDayTransactions.length > 0 ? (
+                    <View style={styles.drilldownBarsList}>
+                      {activeDayTransactions.map((tx) => {
+                        const { cleanName, installment } = parseMerchantAndInstallments(tx.merchant, tx.rawText);
+                        const maxTxAmount = Math.max(...activeDayTransactions.map((t) => t.amount), 1);
+                        const widthPct = Math.max(10, Math.round((tx.amount / maxTxAmount) * 100));
+                        const pctOfDay = activeDayTotal > 0 ? Math.round((tx.amount / activeDayTotal) * 100) : 100;
+                        const timeStr = formatTransactionTime(tx.timestamp);
+
+                        return (
+                          <Pressable
+                            key={tx.id}
+                            onPress={() => onPressTransaction?.(tx)}
+                            style={({ pressed }) => [
+                              styles.txBarCard,
+                              {
+                                backgroundColor: pressed
+                                  ? isDark
+                                    ? 'rgba(255, 255, 255, 0.05)'
+                                    : 'rgba(0, 0, 0, 0.04)'
+                                  : 'transparent',
+                                transform: [{ scale: pressed ? 0.985 : 1 }],
+                              },
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${cleanName}, ${formatBRL(tx.amount)}, toque para abrir detalhes`}
+                          >
+                            <View style={styles.txBarMetaRow}>
+                              <View style={styles.txBarMerchantInfo}>
+                                <Text
+                                  style={[styles.txBarMerchantName, { color: colors.text }]}
+                                  numberOfLines={1}
+                                >
+                                  {cleanName}
+                                </Text>
+                                {installment && (
+                                  <View
+                                    style={[
+                                      styles.installmentTag,
+                                      {
+                                        backgroundColor: isDark
+                                          ? 'rgba(255, 255, 255, 0.08)'
+                                          : 'rgba(0, 0, 0, 0.06)',
+                                      },
+                                    ]}
+                                  >
+                                    <Text style={[styles.installmentTagText, { color: colors.textSecondary }]}>
+                                      {installment.text}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text
+                                style={[
+                                  styles.txBarAmountText,
+                                  { color: isDark ? '#F87171' : '#E11D48' },
+                                ]}
+                              >
+                                - {privacyMode ? '••••••' : formatBRL(tx.amount)}
+                              </Text>
+                            </View>
+
+                            {/* Barra Visual Proporcional */}
+                            <AnimatedCompareBar
+                              widthPct={widthPct}
+                              color={activeCategory.color || colors.primary}
+                              barTrackStyle={[
+                                styles.txBarTrack,
+                                {
+                                  backgroundColor: isDark
+                                    ? 'rgba(255, 255, 255, 0.08)'
+                                    : 'rgba(0, 0, 0, 0.06)',
+                                },
+                              ]}
+                              barFillStyle={styles.txBarFill}
+                            />
+
+                            <View style={styles.txBarSubRow}>
+                              <Text style={[styles.txBarSubText, { color: colors.textMuted }]}>
+                                {pctOfDay}% do total do dia
+                              </Text>
+                              {timeStr ? (
+                                <Text style={[styles.txBarSubText, { color: colors.textMuted }]}>
+                                  {timeStr}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <View style={styles.drilldownEmptyBox}>
+                      <Text style={[styles.drilldownEmptyTitle, { color: colors.textSecondary }]}>
+                        Nenhum gasto em {activeCategory.name} no dia {selectedDay}
+                      </Text>
+
+                      {daysWithSpendForActiveCat.length > 0 && (
+                        <View style={styles.daysQuickPickContainer}>
+                          <Text style={[styles.daysQuickPickTitle, { color: colors.textMuted }]}>
+                            Dias com compras nesta categoria:
+                          </Text>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.daysQuickPickList}
+                          >
+                            {daysWithSpendForActiveCat.map((d) => {
+                              const daySpent = categoryDayMap[activeCategory.id]?.[d] || 0;
+                              return (
+                                <Pressable
+                                  key={d}
+                                  onPress={() => setSelectedDay(d)}
+                                  style={({ pressed }) => [
+                                    styles.dayQuickPickPill,
+                                    {
+                                      backgroundColor: isDark
+                                        ? 'rgba(255, 255, 255, 0.08)'
+                                        : 'rgba(0, 0, 0, 0.05)',
+                                      borderColor: colors.borderSubtle,
+                                      opacity: pressed ? 0.7 : 1,
+                                    },
+                                  ]}
+                                >
+                                  <Text style={[styles.dayQuickPickDay, { color: colors.text }]}>
+                                    Dia {String(d).padStart(2, '0')}
+                                  </Text>
+                                  <Text
+                                    style={[styles.dayQuickPickAmount, { color: activeCategory.color }]}
+                                  >
+                                    {privacyMode ? '••' : formatBRL(daySpent)}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              )}
+            </>
+          ) : (
+            <View
+              style={[
+                styles.chartContainerCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.borderSubtle,
+                  alignItems: 'center',
+                  paddingVertical: 28,
+                },
+              ]}
+            >
+              <Activity size={32} color={colors.textSecondary} />
+              <Text style={[styles.emptyChartTitle, { color: colors.text, marginTop: 8 }]}>
+                Sem despesas no mês
+              </Text>
+              <Text style={[styles.emptyChartSubtitle, { color: colors.textSecondary }]}>
+                A evolução diária por categoria aparecerá automaticamente quando você registrar compras.
+              </Text>
+            </View>
+          )}
+        </View>
+
         {/* SEÇÃO 2: Gráfico de Gastos por Categoria (Donut Chart) */}
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeader}>
@@ -690,7 +1470,16 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                       const IconComponent = getCategoryIconComponent(item.category.icon);
 
                       return (
-                        <View key={item.category.id} style={styles.legendRow}>
+                        <Pressable
+                          key={item.category.id}
+                          onPress={() => handleSelectCategory(item.category.id)}
+                          style={({ pressed }) => [
+                            styles.legendRow,
+                            { opacity: pressed ? 0.7 : 1 },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ver evolução da categoria ${item.category.name}`}
+                        >
                           <View style={styles.legendLeft}>
                             <View
                               style={[
@@ -731,7 +1520,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                               </Text>
                             </View>
                           </View>
-                        </View>
+                        </Pressable>
                       );
                     })}
                 </View>
@@ -1289,5 +2078,235 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     fontSize: 12,
     fontFamily: Typography.medium,
+  },
+  categoryChipsScroll: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: Radii.md,
+    borderWidth: 1.5,
+  },
+  categoryChipIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryChipName: {
+    fontSize: 12,
+  },
+  categoryChipAmount: {
+    fontSize: 11,
+    fontFamily: Typography.bold,
+    marginTop: 1,
+  },
+  dailyChartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dailyChartHeaderLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  dailyCatBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  dailyCatBadgeText: {
+    fontSize: 12,
+    fontFamily: Typography.bold,
+  },
+  dailyChartHint: {
+    fontSize: 11,
+    fontFamily: Typography.regular,
+  },
+  dailyChartHeaderRight: {
+    alignItems: 'flex-end',
+  },
+  dailyChartSelectedDayLabel: {
+    fontSize: 10,
+    fontFamily: Typography.bold,
+    letterSpacing: 0.8,
+  },
+  dailyChartSelectedDayAmount: {
+    fontSize: 15,
+    fontFamily: Typography.bold,
+    marginTop: 2,
+  },
+  drilldownCard: {
+    padding: 16,
+    borderRadius: Radii.xl,
+    borderWidth: 1,
+  },
+  drilldownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  drilldownHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  drilldownCatTitle: {
+    fontSize: 14,
+    fontFamily: Typography.bold,
+  },
+  drilldownDaySubtitle: {
+    fontSize: 11,
+    fontFamily: Typography.regular,
+    marginTop: 1,
+  },
+  drilldownControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  drilldownDayNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  drilldownNavBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drilldownCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  drilldownSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginBottom: 12,
+  },
+  drilldownSummaryLabel: {
+    fontSize: 10,
+    fontFamily: Typography.bold,
+    letterSpacing: 0.8,
+  },
+  drilldownSummaryAmount: {
+    fontSize: 15,
+    fontFamily: Typography.bold,
+  },
+  drilldownBarsList: {
+    gap: 12,
+  },
+  txBarCard: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
+  txBarMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  txBarMerchantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    marginRight: 8,
+  },
+  txBarMerchantName: {
+    fontSize: 13,
+    fontFamily: Typography.medium,
+    flexShrink: 1,
+  },
+  installmentTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  installmentTagText: {
+    fontSize: 10,
+    fontFamily: Typography.medium,
+  },
+  txBarAmountText: {
+    fontSize: 13,
+    fontFamily: Typography.bold,
+  },
+  txBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  txBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  txBarSubRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  txBarSubText: {
+    fontSize: 10,
+    fontFamily: Typography.regular,
+  },
+  drilldownEmptyBox: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  drilldownEmptyTitle: {
+    fontSize: 12,
+    fontFamily: Typography.medium,
+    textAlign: 'center',
+  },
+  daysQuickPickContainer: {
+    marginTop: 12,
+    width: '100%',
+  },
+  daysQuickPickTitle: {
+    fontSize: 11,
+    fontFamily: Typography.medium,
+    marginBottom: 8,
+  },
+  daysQuickPickList: {
+    gap: 8,
+  },
+  dayQuickPickPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  dayQuickPickDay: {
+    fontSize: 11,
+    fontFamily: Typography.bold,
+  },
+  dayQuickPickAmount: {
+    fontSize: 10,
+    fontFamily: Typography.medium,
+    marginTop: 2,
   },
 });

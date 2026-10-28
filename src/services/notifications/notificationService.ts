@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import type * as ExpoNotifications from 'expo-notifications';
 import { Transaction } from '@/types';
 import { loadNotificationPreference } from '@/services/database/db';
@@ -18,18 +18,39 @@ try {
   Notifications = require('expo-notifications');
   if (Notifications?.setNotificationHandler) {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
+      handleNotification: async () => {
+        // Se o usuário já está com o app aberto em primeiro plano, suprime o banner pop-up
+        // para não atrapalhar a visualização da tela com alertas repetitivos
+        const isForeground = AppState.currentState === 'active';
+        return {
+          shouldShowAlert: !isForeground,
+          shouldShowBanner: !isForeground,
+          shouldShowList: true,
+          shouldPlaySound: !isForeground,
+          shouldSetBadge: true,
+        };
+      },
     });
   }
 } catch (error) {
   console.warn('[NotificationService] Módulo nativo expo-notifications não carregado:', error);
   Notifications = null;
+}
+
+/**
+ * Obtém o token de Push Notification do dispositivo para push remoto quando o app estiver fechado
+ */
+export async function getExpoPushToken(): Promise<string | null> {
+  if (!Notifications || typeof Notifications.getExpoPushTokenAsync !== 'function') return null;
+  try {
+    const hasPerm = await requestNotificationPermissions();
+    if (!hasPerm) return null;
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    return tokenData.data || null;
+  } catch (e) {
+    console.warn('[NotificationService] Não foi possível obter token de push remoto:', e);
+    return null;
+  }
 }
 
 /**

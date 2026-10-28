@@ -1,4 +1,4 @@
-import { Linking, Platform } from 'react-native';
+import { Linking, Platform, AppState } from 'react-native';
 import { db, loadAllDataFromSQLite, getTransactionCategoryOverrides, persistInvestment, clearInvestmentsByItemId } from '@/services/database/db';
 import { BankCard, Transaction, TransactionType, Investment, InvestmentType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -919,21 +919,36 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
       // Notifica o usuário sobre movimentações novas (Pix ou transações)
       if (newTxsToNotify.length > 0) {
         const sortedNew = [...newTxsToNotify].sort((a, b) => b.timestamp - a.timestamp);
-        if (sortedNew.length <= 5) {
-          for (const newTx of sortedNew) {
-            await notifyNewTransaction(newTx, targetCardName);
+        const isForeground = AppState.currentState === 'active';
+        const now = Date.now();
+
+        if (!isForeground) {
+          // Em segundo plano: notifica até 3 transações recentes ou resumo
+          if (sortedNew.length <= 3) {
+            for (const newTx of sortedNew) {
+              await notifyNewTransaction(newTx, targetCardName);
+            }
+          } else {
+            for (const newTx of sortedNew.slice(0, 2)) {
+              await notifyNewTransaction(newTx, targetCardName);
+            }
+            await notifyNewTransaction(
+              `${sortedNew.length} novas movimentações sincronizadas`,
+              0,
+              targetCardName
+            );
           }
         } else {
-          // Notifica os 3 mais recentes individualmente
-          for (const newTx of sortedNew.slice(0, 3)) {
-            await notifyNewTransaction(newTx, targetCardName);
+          // Em primeiro plano (usuário com app aberto):
+          // Apenas notifica se for UMA única transação que acabou de acontecer nos últimos 2 minutos,
+          // evitando a rajada de notificações antigas sobrepostas ao abrir o app
+          if (sortedNew.length === 1) {
+            const tx = sortedNew[0];
+            const isFresh = Math.abs(now - (tx.timestamp || 0)) < 2 * 60 * 1000;
+            if (isFresh) {
+              await notifyNewTransaction(tx, targetCardName);
+            }
           }
-          // Notificação de resumo para o restante do lote
-          await notifyNewTransaction(
-            `${sortedNew.length} novas movimentações sincronizadas`,
-            0,
-            targetCardName
-          );
         }
       }
     } catch (e) {

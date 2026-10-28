@@ -54,6 +54,10 @@ import {
   getBrazilDateParts,
 } from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
+import { FinancialHealthScoreCard } from '@/features/insights/FinancialHealthScoreCard';
+import { DailyBurnRateCard } from '@/features/insights/DailyBurnRateCard';
+import { Budget503020Card } from '@/features/insights/Budget503020Card';
+import { RecurringSubscriptionsCard } from '@/features/insights/RecurringSubscriptionsCard';
 
 /**
  * Gera um traçado suave (spline cúbico) entre os pontos informados.
@@ -1035,6 +1039,10 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                 </View>
               </View>
             )}
+
+            {/* Diagnóstico de Saúde Financeira e Ritmo Diário */}
+            <FinancialHealthScoreCard noMargin />
+            <DailyBurnRateCard noMargin />
           </>
         )}
 
@@ -1667,7 +1675,8 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
 
         {/* ABA 1 (Continuação): Gráfico Donut de Distribuição de Despesas */}
         {activeTab === 'overview' && (
-          <View style={styles.sectionBlock}>
+          <>
+            <View style={styles.sectionBlock}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionHeaderLeft}>
                 <View
@@ -1821,6 +1830,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
               )}
             </View>
           </View>
+
+          {/* Diagnóstico Estrutural 50/30/20 & Drenos Silenciosos */}
+          <Budget503020Card noMargin />
+          <RecurringSubscriptionsCard noMargin />
+        </>
         )}
 
         {/* ABA 3: COMPARATIVO MENSAL */}

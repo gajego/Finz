@@ -389,14 +389,28 @@ export function loadAllDataFromSQLite(): {
     };
   });
 
-  const categories: Category[] = catRows.map((r) => ({
-    id: String(r.id),
-    name: String(r.name),
-    icon: String(r.icon),
-    color: String(r.color),
-    budgetLimit: Number(r.budget_limit) || 0,
-    considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
-  }));
+  const categories: Category[] = catRows.map((r) => {
+    const isInvest = r.is_investimento !== undefined && r.is_investimento !== null
+      ? Boolean(r.is_investimento)
+      : r.id === 'cat_investments' || String(r.name).toLowerCase().includes('invest');
+
+    const defaultPilar = isInvest
+      ? 'investment'
+      : ['cat_food', 'cat_transport'].includes(r.id) || /aliment|mercado|transport/i.test(r.name)
+      ? 'essential'
+      : 'lifestyle';
+
+    return {
+      id: String(r.id),
+      name: String(r.name),
+      icon: String(r.icon),
+      color: String(r.color),
+      budgetLimit: Number(r.budget_limit) || 0,
+      considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
+      isInvestimento: isInvest,
+      pilar: (r.pilar as any) || defaultPilar,
+    };
+  });
 
   const transactions: Transaction[] = txRows.map((r) => ({
     id: String(r.id),
@@ -475,9 +489,11 @@ export function persistCategoryBudget(categoryId: string, budgetLimitCents: numb
 export function persistCategory(cat: Category) {
   try {
     const considerarVal = cat.considerar === false ? 0 : 1;
+    const isInvestVal = cat.isInvestimento ? 1 : 0;
+    const pilarVal = cat.pilar || (cat.isInvestimento ? 'investment' : 'lifestyle');
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar) VALUES (?, ?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, pilarVal]
     );
   } catch (e) {
     console.warn('[db.web] Falha ao persistir categoria:', e);

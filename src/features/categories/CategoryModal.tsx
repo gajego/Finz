@@ -30,8 +30,11 @@ import {
   Layers,
   PieChart,
   EyeOff,
+  TrendingUp,
+  ShoppingBag,
+  Zap,
 } from 'lucide-react-native';
-import { Category } from '@/types';
+import { Category, CategoryPilar } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
@@ -67,6 +70,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [selectedColor, setSelectedColor] = useState(CATEGORY_PALETTE[0]);
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
   const [considerar, setConsiderar] = useState(true);
+  const [isInvestimento, setIsInvestimento] = useState(false);
+  const [pilar, setPilar] = useState<CategoryPilar>('lifestyle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,12 +86,17 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             : ''
         );
         setConsiderar(categoryToEdit.considerar !== false);
+        const isInv = !!categoryToEdit.isInvestimento || categoryToEdit.id === 'cat_investments' || categoryToEdit.pilar === 'investment';
+        setIsInvestimento(isInv);
+        setPilar(categoryToEdit.pilar || (isInv ? 'investment' : 'lifestyle'));
       } else {
         setName('');
         setSelectedIcon('tag');
         setSelectedColor(CATEGORY_PALETTE[Math.floor(Math.random() * 6)]);
         setBudgetLimitStr('');
         setConsiderar(true);
+        setIsInvestimento(false);
+        setPilar('lifestyle');
       }
       setErrorMessage(null);
     }
@@ -117,6 +127,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         color: selectedColor,
         budgetLimit: budgetLimitCents,
         considerar,
+        isInvestimento,
+        pilar,
       });
     } else {
       createCategory({
@@ -125,6 +137,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         color: selectedColor,
         budgetLimit: budgetLimitCents,
         considerar,
+        isInvestimento,
+        pilar,
       });
     }
 
@@ -444,7 +458,139 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               />
             </View>
 
-            {/* Campo 5: Seletor de Ícones (40 Ícones Lucide) */}
+            {/* Campo 5: Pilar Econômico (50 / 30 / 20) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <PieChart size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  PILAR ECONÔMICO (REGRA 50 / 30 / 20)
+                </Text>
+              </View>
+
+              <View style={styles.pilarSelectorRow}>
+                {/* 1. Necessidades */}
+                <Pressable
+                  onPress={() => {
+                    if (!isProtected) {
+                      setPilar('essential');
+                      setIsInvestimento(false);
+                    }
+                  }}
+                  disabled={isProtected}
+                  style={[
+                    styles.pilarChoiceCard,
+                    {
+                      backgroundColor: pilar === 'essential'
+                        ? (isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.1)')
+                        : (isDark ? colors.surface : colors.surfaceElevated),
+                      borderColor: pilar === 'essential' ? '#3B82F6' : colors.border,
+                    },
+                  ]}
+                >
+                  <Zap size={15} color={pilar === 'essential' ? '#3B82F6' : colors.textSecondary} />
+                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'essential' ? '#3B82F6' : colors.text }]}>
+                    Necessidades
+                  </Text>
+                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                    50% • Essenciais
+                  </Text>
+                </Pressable>
+
+                {/* 2. Estilo de Vida */}
+                <Pressable
+                  onPress={() => {
+                    if (!isProtected) {
+                      setPilar('lifestyle');
+                      setIsInvestimento(false);
+                    }
+                  }}
+                  disabled={isProtected}
+                  style={[
+                    styles.pilarChoiceCard,
+                    {
+                      backgroundColor: pilar === 'lifestyle'
+                        ? (isDark ? 'rgba(236, 72, 153, 0.18)' : 'rgba(236, 72, 153, 0.1)')
+                        : (isDark ? colors.surface : colors.surfaceElevated),
+                      borderColor: pilar === 'lifestyle' ? '#EC4899' : colors.border,
+                    },
+                  ]}
+                >
+                  <ShoppingBag size={15} color={pilar === 'lifestyle' ? '#EC4899' : colors.textSecondary} />
+                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'lifestyle' ? '#EC4899' : colors.text }]}>
+                    Estilo de Vida
+                  </Text>
+                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                    30% • Desejos
+                  </Text>
+                </Pressable>
+
+                {/* 3. Investimento */}
+                <Pressable
+                  onPress={() => {
+                    if (!isProtected) {
+                      setPilar('investment');
+                      setIsInvestimento(true);
+                    }
+                  }}
+                  disabled={isProtected}
+                  style={[
+                    styles.pilarChoiceCard,
+                    {
+                      backgroundColor: pilar === 'investment'
+                        ? (isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.1)')
+                        : (isDark ? colors.surface : colors.surfaceElevated),
+                      borderColor: pilar === 'investment' ? '#10B981' : colors.border,
+                    },
+                  ]}
+                >
+                  <TrendingUp size={15} color={pilar === 'investment' ? '#10B981' : colors.textSecondary} />
+                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'investment' ? '#10B981' : colors.text }]}>
+                    Investimento
+                  </Text>
+                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                    20% • Futuro
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Campo 6: Flag isInvestimento */}
+            <View
+              style={[
+                styles.toggleCard,
+                {
+                  backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                  borderColor: isInvestimento ? '#10B981' : colors.border,
+                },
+              ]}
+            >
+              <View style={styles.toggleCardText}>
+                <View style={styles.toggleTitleRow}>
+                  <TrendingUp size={15} color={isInvestimento ? '#10B981' : colors.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                    Categoria de investimento? (isInvestimento)
+                  </Text>
+                </View>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  {isInvestimento
+                    ? 'Movimentações nesta categoria representam aportes e formação de patrimônio.'
+                    : 'Movimentações nesta categoria são consideradas despesas e saídas comuns.'}
+                </Text>
+              </View>
+              <Switch
+                value={isInvestimento}
+                onValueChange={(val) => {
+                  setIsInvestimento(val);
+                  if (val) setPilar('investment');
+                  else if (pilar === 'investment') setPilar('lifestyle');
+                }}
+                trackColor={{ false: colors.border, true: '#10B981' }}
+                thumbColor={Platform.OS === 'android' ? (isInvestimento ? '#FFFFFF' : '#F4F3F4') : undefined}
+                disabled={isProtected}
+              />
+            </View>
+
+            {/* Campo 7: Seletor de Ícones (40 Ícones Lucide) */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Layers size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
@@ -811,6 +957,29 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 11,
     lineHeight: 15,
+  },
+  pilarSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  pilarChoiceCard: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  pilarChoiceTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  pilarChoiceSub: {
+    fontFamily: Typography.medium,
+    fontSize: 8.5,
+    textAlign: 'center',
   },
   pinnedFooter: {
     paddingHorizontal: 20,

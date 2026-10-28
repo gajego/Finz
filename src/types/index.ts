@@ -38,6 +38,8 @@ export interface Transaction {
   rawText?: string;
 }
 
+export type CategoryPilar = 'essential' | 'lifestyle' | 'investment';
+
 export interface Category {
   id: string;
   name: string;
@@ -45,6 +47,8 @@ export interface Category {
   color: string;
   budgetLimit: number; // Centavos
   considerar?: boolean;
+  isInvestimento?: boolean;
+  pilar?: CategoryPilar;
 }
 
 export interface SmartAlert {

@@ -297,6 +297,18 @@ export function calculateFinancialHealthScore(
  * Classifica despesas em Essenciais (50%), Estilo de Vida (30%) e Futuro (20%).
  */
 export function classifyCategoryPilar(cat: Category): BudgetPilar {
+  // 1. Definição explícita configurada pelo usuário
+  if (cat.isInvestimento || cat.pilar === 'investment') {
+    return 'future';
+  }
+  if (cat.pilar === 'essential') {
+    return 'essential';
+  }
+  if (cat.pilar === 'lifestyle') {
+    return 'lifestyle';
+  }
+
+  // 2. Fallback heurístico para categorias legadas ainda não classificadas
   const norm = `${cat.id} ${cat.name}`.toLowerCase();
 
   // Futuro / Investimentos
@@ -432,6 +444,13 @@ export function detectRecurringExpenses(
 ): RecurringDetectorResult {
   const catMap = new Map(categories.map((c) => [c.id, c]));
 
+  // Datas limite do mês atual (Brasília)
+  const now = Date.now();
+  const { month, year } = getBrazilParts(now);
+  const startOfMonth = new Date(year, month, 1).getTime();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const endOfMonth = new Date(year, month, daysInMonth, 23, 59, 59, 999).getTime();
+
   // Normalizador de nome de estabelecimento
   const normalize = (m: string) => {
     return (m || '')
@@ -466,21 +485,31 @@ export function detectRecurringExpenses(
   for (const [norm, { txs, merchant }] of grouped.entries()) {
     const isKnown = knownKeywords.some((kw) => norm.includes(kw));
 
-    // Se é serviço conhecido ou se repetiu em momentos diferentes com valor similar
+    // Exigência: Se é serviço conhecido ou se repetiu em momentos diferentes
     if (isKnown || txs.length >= 2) {
       // Ordena pelas mais recentes
       txs.sort((a, b) => b.timestamp - a.timestamp);
-      const latest = txs[0];
-      const monthlyAmount = latest.amount;
+
+      // Regra do Usuário: caso não tenha havido movimentações daquele valor no mês atual, não deve considerar
+      const currentMonthTx = txs.find(
+        (t) => t.timestamp >= startOfMonth && t.timestamp <= endOfMonth
+      );
+
+      // Se não houve movimentação no mês atual, ignora esta assinatura
+      if (!currentMonthTx) {
+        continue;
+      }
+
+      const monthlyAmount = currentMonthTx.amount;
       const annualAmount = monthlyAmount * 12;
-      const cat = catMap.get(latest.categoryId);
+      const cat = catMap.get(currentMonthTx.categoryId);
 
       items.push({
         id: `rec_${norm.slice(0, 16)}`,
         merchant: merchant.charAt(0).toUpperCase() + merchant.slice(1),
         monthlyAmount,
         annualAmount,
-        lastDate: latest.timestamp,
+        lastDate: currentMonthTx.timestamp,
         categoryName: cat?.name,
         categoryColor: cat?.color,
       });

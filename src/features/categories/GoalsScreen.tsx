@@ -20,6 +20,7 @@ import {
   Lock,
   ChevronRight,
   TrendingDown,
+  TrendingUp,
   Layers,
   Sparkles,
   EyeOff,
@@ -341,6 +342,22 @@ export const GoalsScreen: React.FC = () => {
                           </Text>
                         </View>
                       )}
+                      {cat.isInvestimento && (
+                        <View
+                          style={[
+                            styles.investPill,
+                            {
+                              backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)',
+                              borderColor: 'rgba(16, 185, 129, 0.3)',
+                            },
+                          ]}
+                        >
+                          <TrendingUp size={10} color="#10B981" style={{ marginRight: 3 }} />
+                          <Text style={[styles.investPillText, { color: '#10B981' }]}>
+                            INVESTIMENTO
+                          </Text>
+                        </View>
+                      )}
                     </View>
 
                     <Text style={[styles.categorySpentText, { color: colors.textSecondary }]}>
@@ -581,6 +598,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   ignoredPillText: {
+    fontFamily: Typography.bold,
+    fontSize: 8,
+    letterSpacing: 0.5,
+  },
+  investPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  investPillText: {
     fontFamily: Typography.bold,
     fontSize: 8,
     letterSpacing: 0.5,

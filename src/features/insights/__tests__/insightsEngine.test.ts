@@ -11,11 +11,11 @@ function runSelfCheck() {
   console.log('[insightsEngine.test] Iniciando verificação dos cálculos econômicos...');
 
   const mockCategories: Category[] = [
-    { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budgetLimit: 200000, considerar: true },
-    { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budgetLimit: 100000, considerar: true },
-    { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 50000, considerar: true },
-    { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budgetLimit: 50000, considerar: true },
-    { id: 'cat_ignored', name: 'Desconsiderada', icon: 'x', color: '#999999', budgetLimit: 100000, considerar: false },
+    { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budgetLimit: 200000, considerar: true, pilar: 'essential', isInvestimento: false },
+    { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budgetLimit: 100000, considerar: true, pilar: 'essential', isInvestimento: false },
+    { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 50000, considerar: true, pilar: 'lifestyle', isInvestimento: false },
+    { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budgetLimit: 50000, considerar: true, pilar: 'investment', isInvestimento: true },
+    { id: 'cat_ignored', name: 'Desconsiderada', icon: 'x', color: '#999999', budgetLimit: 100000, considerar: false, pilar: 'lifestyle', isInvestimento: false },
   ];
 
   const now = Date.now();
@@ -29,6 +29,9 @@ function runSelfCheck() {
     { id: 't6', cardId: 'c1', amount: 3990, type: 'EXPENSE', merchant: 'Netflix.com', categoryId: 'cat_leisure', timestamp: now },
     { id: 't7', cardId: 'c1', amount: 3990, type: 'EXPENSE', merchant: 'Netflix.com', categoryId: 'cat_leisure', timestamp: now - 30 * 86400000 },
     { id: 't8', cardId: 'c1', amount: 2190, type: 'EXPENSE', merchant: 'Spotify Premium', categoryId: 'cat_leisure', timestamp: now },
+    // Assinatura cancelada/sem cobrança neste mês (não deve ser considerada)
+    { id: 't9', cardId: 'c1', amount: 3490, type: 'EXPENSE', merchant: 'HBO Max', categoryId: 'cat_leisure', timestamp: now - 45 * 86400000 },
+    { id: 't10', cardId: 'c1', amount: 3490, type: 'EXPENSE', merchant: 'HBO Max', categoryId: 'cat_leisure', timestamp: now - 75 * 86400000 },
   ];
 
   // Teste 1: Burn Rate
@@ -58,12 +61,20 @@ function runSelfCheck() {
   }
   console.log('✓ Squad 3 (50/30/20 Diagnostic) validado.');
 
-  // Teste 4: Recurring Subscriptions
+  // Teste 4: Recurring Subscriptions (com filtro de movimentação no mês atual)
   const rec = detectRecurringExpenses(mockTransactions, mockCategories);
   if (rec.items.length === 0) {
     throw new Error('Recurring detector should have found Netflix or Spotify');
   }
-  console.log(`✓ Squad 4 (Recurring Subscriptions: ${rec.items.length} detectadas, total R$ ${rec.totalMonthly / 100}/mês) validado.`);
+  const hasHbo = rec.items.some((i) => i.merchant.toLowerCase().includes('hbo'));
+  if (hasHbo) {
+    throw new Error('HBO Max was not charged this month and should NOT be considered active!');
+  }
+  const hasNetflix = rec.items.some((i) => i.merchant.toLowerCase().includes('netflix'));
+  if (!hasNetflix) {
+    throw new Error('Netflix was charged this month and should be considered active!');
+  }
+  console.log(`✓ Squad 4 (Recurring Subscriptions: ${rec.items.length} ativas no mês atual, total R$ ${rec.totalMonthly / 100}/mês - HBO Max inativa ignorada com sucesso) validado.`);
 
   console.log('🎉 Todos os 4 Squads Econômicos passaram com sucesso nos testes unitários!');
 }

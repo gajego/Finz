@@ -246,6 +246,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       budgetLimit: catData.budgetLimit ?? 0,
       considerar: catData.considerar !== false,
+      isInvestimento: Boolean(catData.isInvestimento),
+      pilar: catData.pilar || (catData.isInvestimento ? 'investment' : 'lifestyle'),
     };
     if (!get().presentationMode) {
       persistCategory(newCat);

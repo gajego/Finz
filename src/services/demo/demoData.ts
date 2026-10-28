@@ -214,10 +214,10 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
 ];
 
 export const DEMO_CATEGORIES: Category[] = [
-  { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budgetLimit: 250000, considerar: true },
-  { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budgetLimit: 80000, considerar: true },
-  { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 120000, considerar: true },
-  { id: 'cat_shopping', name: 'Compras', icon: 'shopping-bag', color: '#8B5CF6', budgetLimit: 150000, considerar: true },
-  { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budgetLimit: 500000, considerar: true },
-  { id: 'cat_others', name: 'Não categorizado', icon: 'help-circle', color: '#64748B', budgetLimit: 0, considerar: true },
+  { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budgetLimit: 250000, considerar: true, isInvestimento: false, pilar: 'essential' },
+  { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budgetLimit: 80000, considerar: true, isInvestimento: false, pilar: 'essential' },
+  { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 120000, considerar: true, isInvestimento: false, pilar: 'lifestyle' },
+  { id: 'cat_shopping', name: 'Compras', icon: 'shopping-bag', color: '#8B5CF6', budgetLimit: 150000, considerar: true, isInvestimento: false, pilar: 'lifestyle' },
+  { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budgetLimit: 500000, considerar: true, isInvestimento: true, pilar: 'investment' },
+  { id: 'cat_others', name: 'Não categorizado', icon: 'help-circle', color: '#64748B', budgetLimit: 0, considerar: true, isInvestimento: false, pilar: 'lifestyle' },
 ];

@@ -490,6 +490,10 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
       });
   }, [categoryStats, totalCurrentSpent, circumference, colors.primary]);
 
+  // Controle de Abas Internas da Tela de Desempenho
+  type PerformanceTab = 'overview' | 'daily' | 'comparative';
+  const [activeTab, setActiveTab] = useState<PerformanceTab>('overview');
+
   // Estados para o Gráfico de Linha Diário e Detalhamento de Transações
   const categoryScrollRef = useRef<any>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
@@ -664,9 +668,12 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
 
   // Ao selecionar uma categoria, ajusta o dia para um dia com gastos se o atual estiver zerado
   const handleSelectCategory = useCallback(
-    (catId: string) => {
+    (catId: string, shouldSwitchTab = false) => {
       setSelectedCategoryId(catId);
       setShowDrilldown(true);
+      if (shouldSwitchTab) {
+        setActiveTab('daily');
+      }
 
       const catDays = categoryDayMap[catId] || {};
       if (!catDays[selectedDay] || catDays[selectedDay] <= 0) {
@@ -757,14 +764,18 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
         {/* Hero Cards: Resumo Geral */}
         <View style={styles.kpiRow}>
           {/* Card 1: Gasto Atual */}
-          <View
-            style={[
+          <Pressable
+            onPress={() => setActiveTab('comparative')}
+            style={({ pressed }) => [
               styles.kpiCard,
               {
                 backgroundColor: colors.surface,
-                borderColor: colors.borderSubtle,
+                borderColor: activeTab === 'comparative' ? colors.primary : colors.borderSubtle,
+                transform: [{ scale: pressed ? 0.985 : 1 }],
               },
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Ver comparativo mensal detalhado"
           >
             <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
               GASTO NO MÊS
@@ -814,18 +825,26 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                 vs mês anterior
               </Text>
             </View>
-          </View>
+          </Pressable>
 
           {/* Card 2: Status dos Tetos */}
-          <View
-            style={[
+          <Pressable
+            onPress={() => setActiveTab('overview')}
+            style={({ pressed }) => [
               styles.kpiCard,
               {
                 backgroundColor: colors.surface,
                 borderColor:
-                  overBudgetCategories.length > 0 ? colors.danger : colors.borderSubtle,
+                  overBudgetCategories.length > 0
+                    ? colors.danger
+                    : activeTab === 'overview'
+                    ? colors.primary
+                    : colors.borderSubtle,
+                transform: [{ scale: pressed ? 0.985 : 1 }],
               },
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Ver status de tetos e distribuição"
           >
             <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
               STATUS DOS TETOS
@@ -851,52 +870,168 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                 </Text>
               )}
             </View>
-          </View>
+          </Pressable>
         </View>
 
-        {/* SEÇÃO 1: Tetos Ultrapassados (Destaque Crítico) */}
-        {overBudgetCategories.length > 0 && (
-          <View style={styles.sectionBlock}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionHeaderLeft}>
-                <View
-                  style={[
-                    styles.iconPill,
-                    { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.12)' },
-                  ]}
-                >
-                  <AlertTriangle size={16} color={colors.danger} />
+        {/* Seletor Segmentado de Visualização (Organização em 3 Abas Focadas) */}
+        <View
+          style={[
+            styles.segmentContainer,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+              borderColor: colors.borderSubtle,
+            },
+          ]}
+        >
+          <Pressable
+            onPress={() => setActiveTab('overview')}
+            style={[
+              styles.segmentBtn,
+              activeTab === 'overview' && [
+                styles.segmentBtnActive,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                },
+              ],
+            ]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'overview' }}
+          >
+            <PieIcon
+              size={13}
+              color={activeTab === 'overview' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                {
+                  color: activeTab === 'overview' ? colors.text : colors.textSecondary,
+                  fontFamily: activeTab === 'overview' ? Typography.bold : Typography.medium,
+                },
+              ]}
+            >
+              Visão Geral
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setActiveTab('daily')}
+            style={[
+              styles.segmentBtn,
+              activeTab === 'daily' && [
+                styles.segmentBtnActive,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                },
+              ],
+            ]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'daily' }}
+          >
+            <Activity
+              size={13}
+              color={activeTab === 'daily' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                {
+                  color: activeTab === 'daily' ? colors.text : colors.textSecondary,
+                  fontFamily: activeTab === 'daily' ? Typography.bold : Typography.medium,
+                },
+              ]}
+            >
+              Evolução Diária
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setActiveTab('comparative')}
+            style={[
+              styles.segmentBtn,
+              activeTab === 'comparative' && [
+                styles.segmentBtnActive,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                },
+              ],
+            ]}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === 'comparative' }}
+          >
+            <BarChart2
+              size={13}
+              color={activeTab === 'comparative' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
+              style={{ marginRight: 6 }}
+            />
+            <Text
+              style={[
+                styles.segmentText,
+                {
+                  color: activeTab === 'comparative' ? colors.text : colors.textSecondary,
+                  fontFamily: activeTab === 'comparative' ? Typography.bold : Typography.medium,
+                },
+              ]}
+            >
+              Comparativo
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* ABA 1: VISÃO GERAL (Tetos Ultrapassados se houver + Distribuição Donut) */}
+        {activeTab === 'overview' && (
+          <>
+            {/* SEÇÃO 1: Tetos Ultrapassados (Destaque Crítico) */}
+            {overBudgetCategories.length > 0 && (
+              <View style={styles.sectionBlock}>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionHeaderLeft}>
+                    <View
+                      style={[
+                        styles.iconPill,
+                        { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.12)' },
+                      ]}
+                    >
+                      <AlertTriangle size={16} color={colors.danger} />
+                    </View>
+                    <View>
+                      <Text style={[styles.sectionTitle, { color: colors.danger }]}>
+                        Tetos ultrapassados
+                      </Text>
+                      <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                        Categorias que excederam o orçamento estipulado
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-                <View>
-                  <Text style={[styles.sectionTitle, { color: colors.danger }]}>
-                    Tetos ultrapassados
-                  </Text>
-                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                    Categorias que excederam o orçamento estipulado
-                  </Text>
+
+                <View style={styles.overBudgetList}>
+                  {overBudgetCategories.map((item) => (
+                    <OverBudgetCategoryCard
+                      key={item.category.id}
+                      item={item}
+                      transactions={transactions}
+                      currentMonthStart={currentMonthStart}
+                      currentMonthEnd={currentMonthEnd}
+                      privacyMode={privacyMode}
+                      colors={colors}
+                      isDark={isDark}
+                      onPressTransaction={onPressTransaction}
+                    />
+                  ))}
                 </View>
               </View>
-            </View>
-
-            <View style={styles.overBudgetList}>
-              {overBudgetCategories.map((item) => (
-                <OverBudgetCategoryCard
-                  key={item.category.id}
-                  item={item}
-                  transactions={transactions}
-                  currentMonthStart={currentMonthStart}
-                  currentMonthEnd={currentMonthEnd}
-                  privacyMode={privacyMode}
-                  colors={colors}
-                  isDark={isDark}
-                  onPressTransaction={onPressTransaction}
-                />
-              ))}
-            </View>
-          </View>
+            )}
+          </>
         )}
 
-        {/* SEÇÃO: Evolução Diária por Categoria & Detalhamento em Barras */}
+        {/* ABA 2: EVOLUÇÃO DIÁRIA (Gráfico de Linha por Categoria + Detalhamento em Barras) */}
+        {activeTab === 'daily' && (
         <View style={styles.sectionBlock}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionHeaderLeft}>
@@ -1520,304 +1655,309 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             </View>
           )}
         </View>
+        )}
 
-        {/* SEÇÃO 2: Gráfico de Gastos por Categoria (Donut Chart) */}
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <View
-                style={[
-                  styles.iconPill,
-                  { backgroundColor: isDark ? 'rgba(217, 249, 32, 0.18)' : 'rgba(0, 0, 0, 0.06)' },
-                ]}
-              >
-                <PieIcon size={16} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Distribuição de despesas
-                </Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                  Divisão percentual das categorias no mês atual
-                </Text>
+        {/* ABA 1 (Continuação): Gráfico Donut de Distribuição de Despesas */}
+        {activeTab === 'overview' && (
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <View
+                  style={[
+                    styles.iconPill,
+                    { backgroundColor: isDark ? 'rgba(217, 249, 32, 0.18)' : 'rgba(0, 0, 0, 0.06)' },
+                  ]}
+                >
+                  <PieIcon size={16} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Distribuição de despesas
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    Divisão percentual das categorias no mês atual
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          <View
-            style={[
-              styles.chartContainerCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.borderSubtle,
-              },
-            ]}
-          >
-            {totalCurrentSpent > 0 ? (
-              <>
-                {/* SVG Donut Chart Centralizado */}
-                <View style={styles.donutWrapper}>
-                  <Svg width={chartSize} height={chartSize}>
-                    <G rotation="-90" origin={`${chartSize / 2}, ${chartSize / 2}`}>
-                      {/* Trilha de Fundo do Círculo */}
-                      <Circle
-                        cx={chartSize / 2}
-                        cy={chartSize / 2}
-                        r={radius}
-                        stroke={isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'}
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                      />
-                      {/* Fatias das Categorias */}
-                      {chartSlices.map((slice) => (
+            <View
+              style={[
+                styles.chartContainerCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.borderSubtle,
+                },
+              ]}
+            >
+              {totalCurrentSpent > 0 ? (
+                <>
+                  {/* SVG Donut Chart Centralizado */}
+                  <View style={styles.donutWrapper}>
+                    <Svg width={chartSize} height={chartSize}>
+                      <G rotation="-90" origin={`${chartSize / 2}, ${chartSize / 2}`}>
+                        {/* Trilha de Fundo do Círculo */}
                         <Circle
-                          key={slice.id}
                           cx={chartSize / 2}
                           cy={chartSize / 2}
                           r={radius}
-                          stroke={slice.color}
+                          stroke={isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'}
                           strokeWidth={strokeWidth}
-                          strokeDasharray={slice.strokeDasharray}
-                          strokeDashoffset={slice.strokeDashoffset}
-                          strokeLinecap="round"
                           fill="transparent"
                         />
-                      ))}
-                    </G>
-                  </Svg>
+                        {/* Fatias das Categorias */}
+                        {chartSlices.map((slice) => (
+                          <Circle
+                            key={slice.id}
+                            cx={chartSize / 2}
+                            cy={chartSize / 2}
+                            r={radius}
+                            stroke={slice.color}
+                            strokeWidth={strokeWidth}
+                            strokeDasharray={slice.strokeDasharray}
+                            strokeDashoffset={slice.strokeDashoffset}
+                            strokeLinecap="round"
+                            fill="transparent"
+                          />
+                        ))}
+                      </G>
+                    </Svg>
 
-                  {/* Informação no Centro do Donut */}
-                  <View style={styles.donutCenterInfo}>
-                    <Text style={[styles.donutCenterLabel, { color: colors.textSecondary }]}>
-                      TOTAL
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.donutCenterValue, { color: colors.text }]}
-                    >
-                      {privacyMode ? '••••••' : formatBRL(totalCurrentSpent)}
-                    </Text>
+                    {/* Informação no Centro do Donut */}
+                    <View style={styles.donutCenterInfo}>
+                      <Text style={[styles.donutCenterLabel, { color: colors.textSecondary }]}>
+                        TOTAL
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.donutCenterValue, { color: colors.text }]}
+                      >
+                        {privacyMode ? '••••••' : formatBRL(totalCurrentSpent)}
+                      </Text>
+                    </View>
                   </View>
-                </View>
 
-                {/* Lista / Legenda das Categorias com % de Gasto */}
-                <View style={styles.legendContainer}>
-                  {categoryStats
-                    .filter((item) => item.currentSpent > 0)
-                    .map((item) => {
-                      const IconComponent = getCategoryIconComponent(item.category.icon);
+                  {/* Lista / Legenda das Categorias com % de Gasto */}
+                  <View style={styles.legendContainer}>
+                    {categoryStats
+                      .filter((item) => item.currentSpent > 0)
+                      .map((item) => {
+                        const IconComponent = getCategoryIconComponent(item.category.icon);
 
-                      return (
-                        <Pressable
-                          key={item.category.id}
-                          onPress={() => handleSelectCategory(item.category.id)}
-                          style={({ pressed }) => [
-                            styles.legendRow,
-                            { opacity: pressed ? 0.7 : 1 },
-                          ]}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Ver evolução da categoria ${item.category.name}`}
-                        >
-                          <View style={styles.legendLeft}>
-                            <View
-                              style={[
-                                styles.legendColorDot,
-                                { backgroundColor: item.category.color },
-                              ]}
-                            />
-                            <View
-                              style={[
-                                styles.legendIconBox,
-                                { backgroundColor: `${item.category.color}22` },
-                              ]}
-                            >
-                              <IconComponent size={14} color={item.category.color} />
-                            </View>
-                            <Text
-                              numberOfLines={1}
-                              style={[styles.legendName, { color: colors.text }]}
-                            >
-                              {item.category.name}
-                            </Text>
-                          </View>
-
-                          <View style={styles.legendRight}>
-                            <Text style={[styles.legendAmount, { color: colors.text }]}>
-                              {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
-                            </Text>
-                            <View
-                              style={[
-                                styles.legendSharePill,
-                                { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
-                              ]}
-                            >
-                              <Text
-                                style={[styles.legendShareText, { color: colors.textSecondary }]}
+                        return (
+                          <Pressable
+                            key={item.category.id}
+                            onPress={() => handleSelectCategory(item.category.id, true)}
+                            style={({ pressed }) => [
+                              styles.legendRow,
+                              { opacity: pressed ? 0.7 : 1 },
+                            ]}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Ver evolução da categoria ${item.category.name}`}
+                          >
+                            <View style={styles.legendLeft}>
+                              <View
+                                style={[
+                                  styles.legendColorDot,
+                                  { backgroundColor: item.category.color },
+                                ]}
+                              />
+                              <View
+                                style={[
+                                  styles.legendIconBox,
+                                  { backgroundColor: `${item.category.color}22` },
+                                ]}
                               >
-                                {item.shareOfTotal.toFixed(1)}%
+                                <IconComponent size={14} color={item.category.color} />
+                              </View>
+                              <Text
+                                numberOfLines={1}
+                                style={[styles.legendName, { color: colors.text }]}
+                              >
+                                {item.category.name}
                               </Text>
                             </View>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                </View>
-              </>
-            ) : (
-              <View style={styles.emptyChartBox}>
-                <Layers size={36} color={colors.textSecondary} />
-                <Text style={[styles.emptyChartTitle, { color: colors.text }]}>
-                  Nenhuma despesa registrada
-                </Text>
-                <Text style={[styles.emptyChartSubtitle, { color: colors.textSecondary }]}>
-                  Suas categorias serão exibidas aqui conforme as compras deste mês forem realizadas.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
 
-        {/* SEÇÃO 3: Comparativo com o Mês Passado */}
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderLeft}>
-              <View
-                style={[
-                  styles.iconPill,
-                  { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.12)' },
-                ]}
-              >
-                <BarChart2 size={16} color={colors.secondary} />
-              </View>
-              <View>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  Comparativo mensal
-                </Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                  {currentMonthLabel} vs {prevMonthLabel}
-                </Text>
-              </View>
+                            <View style={styles.legendRight}>
+                              <Text style={[styles.legendAmount, { color: colors.text }]}>
+                                {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
+                              </Text>
+                              <View
+                                style={[
+                                  styles.legendSharePill,
+                                  { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
+                                ]}
+                              >
+                                <Text
+                                  style={[styles.legendShareText, { color: colors.textSecondary }]}
+                                >
+                                  {item.shareOfTotal.toFixed(1)}%
+                                </Text>
+                              </View>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                  </View>
+                </>
+              ) : (
+                <View style={styles.emptyChartBox}>
+                  <Layers size={36} color={colors.textSecondary} />
+                  <Text style={[styles.emptyChartTitle, { color: colors.text }]}>
+                    Nenhuma despesa registrada
+                  </Text>
+                  <Text style={[styles.emptyChartSubtitle, { color: colors.textSecondary }]}>
+                    Suas categorias serão exibidas aqui conforme as compras deste mês forem realizadas.
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
+        )}
 
-          {/* Cards Comparativos por Categoria */}
-          <View style={styles.comparisonList}>
-            {categoryStats
-              .filter((item) => item.currentSpent > 0 || item.prevSpent > 0)
-              .map((item) => {
-                const IconComponent = getCategoryIconComponent(item.category.icon);
-                const maxSpent = Math.max(item.currentSpent, item.prevSpent, 1);
-                const curWidthPct = Math.max(8, Math.round((item.currentSpent / maxSpent) * 100));
-                const prevWidthPct = Math.max(8, Math.round((item.prevSpent / maxSpent) * 100));
+        {/* ABA 3: COMPARATIVO MENSAL */}
+        {activeTab === 'comparative' && (
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <View
+                  style={[
+                    styles.iconPill,
+                    { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(59, 130, 246, 0.12)' },
+                  ]}
+                >
+                  <BarChart2 size={16} color={colors.secondary} />
+                </View>
+                <View>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    Comparativo mensal
+                  </Text>
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    {currentMonthLabel} vs {prevMonthLabel}
+                  </Text>
+                </View>
+              </View>
+            </View>
 
-                const isHigher = item.diff > 0;
-                const isLower = item.diff < 0;
+            {/* Cards Comparativos por Categoria */}
+            <View style={styles.comparisonList}>
+              {categoryStats
+                .filter((item) => item.currentSpent > 0 || item.prevSpent > 0)
+                .map((item) => {
+                  const IconComponent = getCategoryIconComponent(item.category.icon);
+                  const maxSpent = Math.max(item.currentSpent, item.prevSpent, 1);
+                  const curWidthPct = Math.max(8, Math.round((item.currentSpent / maxSpent) * 100));
+                  const prevWidthPct = Math.max(8, Math.round((item.prevSpent / maxSpent) * 100));
 
-                return (
-                  <View
-                    key={item.category.id}
-                    style={[
-                      styles.comparisonCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.borderSubtle,
-                      },
-                    ]}
-                  >
-                    <View style={styles.comparisonHeader}>
-                      <View style={styles.comparisonCategoryInfo}>
-                        <View
-                          style={[
-                            styles.categoryIconBox,
-                            { backgroundColor: `${item.category.color}22` },
-                          ]}
-                        >
-                          <IconComponent size={16} color={item.category.color} />
+                  const isHigher = item.diff > 0;
+                  const isLower = item.diff < 0;
+
+                  return (
+                    <View
+                      key={item.category.id}
+                      style={[
+                        styles.comparisonCard,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.borderSubtle,
+                        },
+                      ]}
+                    >
+                      <View style={styles.comparisonHeader}>
+                        <View style={styles.comparisonCategoryInfo}>
+                          <View
+                            style={[
+                              styles.categoryIconBox,
+                              { backgroundColor: `${item.category.color}22` },
+                            ]}
+                          >
+                            <IconComponent size={16} color={item.category.color} />
+                          </View>
+                          <Text style={[styles.comparisonCategoryName, { color: colors.text }]}>
+                            {item.category.name}
+                          </Text>
                         </View>
-                        <Text style={[styles.comparisonCategoryName, { color: colors.text }]}>
-                          {item.category.name}
-                        </Text>
+
+                        {/* Badge de Variação */}
+                        {isHigher ? (
+                          <View
+                            style={[
+                              styles.trendBadge,
+                              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.1)' },
+                            ]}
+                          >
+                            <ArrowUpRight size={13} color={colors.danger} />
+                            <Text style={[styles.trendBadgeText, { color: colors.danger }]}>
+                              +{item.percentChange}% (+{privacyMode ? '••' : formatBRL(item.diff)})
+                            </Text>
+                          </View>
+                        ) : isLower ? (
+                          <View
+                            style={[
+                              styles.trendBadge,
+                              { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.1)' },
+                            ]}
+                          >
+                            <ArrowDownRight size={13} color={colors.success} />
+                            <Text style={[styles.trendBadgeText, { color: colors.success }]}>
+                              {item.percentChange}% ({privacyMode ? '••' : formatBRL(item.diff)})
+                            </Text>
+                          </View>
+                        ) : (
+                          <View
+                            style={[
+                              styles.trendBadge,
+                              { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
+                            ]}
+                          >
+                            <Minus size={13} color={colors.textSecondary} />
+                            <Text style={[styles.trendBadgeText, { color: colors.textSecondary }]}>
+                              Estável
+                            </Text>
+                          </View>
+                        )}
                       </View>
 
-                      {/* Badge de Variação */}
-                      {isHigher ? (
-                        <View
-                          style={[
-                            styles.trendBadge,
-                            { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.1)' },
-                          ]}
-                        >
-                          <ArrowUpRight size={13} color={colors.danger} />
-                          <Text style={[styles.trendBadgeText, { color: colors.danger }]}>
-                            +{item.percentChange}% (+{privacyMode ? '••' : formatBRL(item.diff)})
+                      {/* Barras Comparativas Lado a Lado Animadas */}
+                      <View style={styles.comparisonBars}>
+                        {/* Linha Mês Atual */}
+                        <View style={styles.barLine}>
+                          <Text style={[styles.barLabel, { color: colors.textSecondary }]}>
+                            Este mês
+                          </Text>
+                          <AnimatedCompareBar
+                            widthPct={curWidthPct}
+                            color={item.category.color || colors.primary}
+                            barTrackStyle={styles.barTrack}
+                            barFillStyle={styles.barFill}
+                          />
+                          <Text style={[styles.barValueText, { color: colors.text }]}>
+                            {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
                           </Text>
                         </View>
-                      ) : isLower ? (
-                        <View
-                          style={[
-                            styles.trendBadge,
-                            { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.1)' },
-                          ]}
-                        >
-                          <ArrowDownRight size={13} color={colors.success} />
-                          <Text style={[styles.trendBadgeText, { color: colors.success }]}>
-                            {item.percentChange}% ({privacyMode ? '••' : formatBRL(item.diff)})
+
+                        {/* Linha Mês Passado */}
+                        <View style={styles.barLine}>
+                          <Text style={[styles.barLabel, { color: colors.textMuted }]}>
+                            Mês passado
+                          </Text>
+                          <AnimatedCompareBar
+                            widthPct={prevWidthPct}
+                            color={isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)'}
+                            barTrackStyle={styles.barTrack}
+                            barFillStyle={styles.barFill}
+                          />
+                          <Text style={[styles.barValueText, { color: colors.textSecondary }]}>
+                            {privacyMode ? '••••••' : formatBRL(item.prevSpent)}
                           </Text>
                         </View>
-                      ) : (
-                        <View
-                          style={[
-                            styles.trendBadge,
-                            { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' },
-                          ]}
-                        >
-                          <Minus size={13} color={colors.textSecondary} />
-                          <Text style={[styles.trendBadgeText, { color: colors.textSecondary }]}>
-                            Estável
-                          </Text>
-                        </View>
-                      )}
+                      </View>
                     </View>
-
-                    {/* Barras Comparativas Lado a Lado Animadas */}
-                    <View style={styles.comparisonBars}>
-                      {/* Linha Mês Atual */}
-                      <View style={styles.barLine}>
-                        <Text style={[styles.barLabel, { color: colors.textSecondary }]}>
-                          Este mês
-                        </Text>
-                        <AnimatedCompareBar
-                          widthPct={curWidthPct}
-                          color={item.category.color || colors.primary}
-                          barTrackStyle={styles.barTrack}
-                          barFillStyle={styles.barFill}
-                        />
-                        <Text style={[styles.barValueText, { color: colors.text }]}>
-                          {privacyMode ? '••••••' : formatBRL(item.currentSpent)}
-                        </Text>
-                      </View>
-
-                      {/* Linha Mês Passado */}
-                      <View style={styles.barLine}>
-                        <Text style={[styles.barLabel, { color: colors.textMuted }]}>
-                          Mês passado
-                        </Text>
-                        <AnimatedCompareBar
-                          widthPct={prevWidthPct}
-                          color={isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)'}
-                          barTrackStyle={styles.barTrack}
-                          barFillStyle={styles.barFill}
-                        />
-                        <Text style={[styles.barValueText, { color: colors.textSecondary }]}>
-                          {privacyMode ? '••••••' : formatBRL(item.prevSpent)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                })}
+            </View>
           </View>
-        </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -1895,6 +2035,35 @@ const styles = StyleSheet.create({
   trendSubtext: {
     fontSize: 11,
     fontFamily: Typography.regular,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    marginBottom: 22,
+    gap: 4,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 4,
+    borderRadius: Radii.md,
+  },
+  segmentBtnActive: {
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+  },
+  segmentText: {
+    fontSize: 11.5,
+    letterSpacing: -0.2,
   },
   sectionBlock: {
     marginBottom: 28,

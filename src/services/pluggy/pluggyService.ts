@@ -392,6 +392,155 @@ function getInvestmentColor(type: InvestmentType): string {
   }
 }
 
+function extractPluggyAnnualRate(item: any): number | undefined {
+  if (typeof item.fixedAnnualRate === 'number' && Number.isFinite(item.fixedAnnualRate) && item.fixedAnnualRate > 0) {
+    return item.fixedAnnualRate > 1 ? item.fixedAnnualRate / 100 : item.fixedAnnualRate;
+  }
+  if (typeof item.annualRate === 'number' && Number.isFinite(item.annualRate) && item.annualRate > 0) {
+    return item.annualRate > 1 ? item.annualRate / 100 : item.annualRate;
+  }
+  if (typeof item.lastTwelveMonthsRate === 'number' && Number.isFinite(item.lastTwelveMonthsRate) && item.lastTwelveMonthsRate > 0) {
+    return item.lastTwelveMonthsRate > 1 ? item.lastTwelveMonthsRate / 100 : item.lastTwelveMonthsRate;
+  }
+
+  const rateType = String(item.rateType || '').toUpperCase();
+  const rawRate = typeof item.rate === 'number' && Number.isFinite(item.rate) ? item.rate : undefined;
+
+  const CDI_BENCHMARK = 0.1065;
+  const SELIC_BENCHMARK = 0.1075;
+  const IPCA_BENCHMARK = 0.042;
+
+  if (rateType.includes('CDI')) {
+    const pct = rawRate && rawRate > 0 ? rawRate / 100 : 1;
+    return Number((pct * CDI_BENCHMARK).toFixed(4));
+  }
+  if (rateType.includes('SELIC')) {
+    const pct = rawRate && rawRate > 0 ? rawRate / 100 : 1;
+    return Number((pct * SELIC_BENCHMARK).toFixed(4));
+  }
+  if (rateType.includes('IPCA')) {
+    const spread = rawRate && rawRate > 0 ? (rawRate > 1 ? rawRate / 100 : rawRate) : 0.06;
+    return Number((IPCA_BENCHMARK + spread).toFixed(4));
+  }
+  if (rateType.includes('PRE') || rateType.includes('FIXED')) {
+    if (rawRate && rawRate > 0) {
+      return rawRate > 1 ? rawRate / 100 : rawRate;
+    }
+  }
+
+  if (rawRate && rawRate > 0) {
+    if (rawRate > 30) {
+      return Number(((rawRate / 100) * CDI_BENCHMARK).toFixed(4));
+    }
+    return rawRate > 1 ? rawRate / 100 : rawRate;
+  }
+
+  return undefined;
+}
+
+function calculateInvestmentValues(item: any): { currentVal: number; initialVal: number; annualRate?: number } {
+  const rawOriginal = typeof item.amountOriginal === 'number' && Number.isFinite(item.amountOriginal)
+    ? item.amountOriginal
+    : (typeof item.originalAmount === 'number' && Number.isFinite(item.originalAmount)
+      ? item.originalAmount
+      : (typeof item.investedAmount === 'number' && Number.isFinite(item.investedAmount) ? item.investedAmount : null));
+
+  const rawProfit = typeof item.amountProfit === 'number' && Number.isFinite(item.amountProfit)
+    ? item.amountProfit
+    : (typeof item.profit === 'number' && Number.isFinite(item.profit)
+      ? item.profit
+      : (typeof item.yield === 'number' && Number.isFinite(item.yield) ? item.yield : null));
+
+  const rawBalance = typeof item.balance === 'number' && Number.isFinite(item.balance)
+    ? item.balance
+    : null;
+
+  const rawGross = typeof item.amount === 'number' && Number.isFinite(item.amount)
+    ? item.amount
+    : null;
+
+  const rawUnitPrice = typeof item.value === 'number' && Number.isFinite(item.value)
+    ? item.value
+    : null;
+
+  const rawQty = typeof item.quantity === 'number' && Number.isFinite(item.quantity)
+    ? item.quantity
+    : null;
+
+  const quoteValuation = (rawUnitPrice !== null && rawQty !== null && rawQty > 0)
+    ? rawUnitPrice * rawQty
+    : null;
+
+  let initialBRL = rawOriginal !== null && rawOriginal > 0 ? rawOriginal : 0;
+  const candidateCurrent = rawBalance ?? rawGross ?? quoteValuation ?? initialBRL;
+  let currentBRL = 0;
+
+  if (rawProfit !== null) {
+    if (initialBRL > 0) {
+      // Se candidateCurrent for muito próximo a initialBRL e houver lucro significativo,
+      // a instituição informou apenas o principal em balance/amount!
+      if (candidateCurrent > 0 && Math.abs(candidateCurrent - initialBRL) < Math.abs(rawProfit * 0.4) && Math.abs(rawProfit) > 0.01) {
+        currentBRL = initialBRL + rawProfit;
+      } else if (candidateCurrent > 0 && candidateCurrent >= initialBRL + rawProfit - 0.5) {
+        currentBRL = candidateCurrent;
+      } else {
+        currentBRL = initialBRL + rawProfit;
+      }
+    } else {
+      currentBRL = candidateCurrent > 0 ? candidateCurrent : rawProfit;
+      initialBRL = Math.max(0, currentBRL - rawProfit);
+    }
+  } else {
+    // Sem amountProfit explícito
+    if (initialBRL > 0) {
+      if (candidateCurrent > initialBRL) {
+        currentBRL = candidateCurrent;
+      } else if (rawGross !== null && rawGross > initialBRL) {
+        currentBRL = rawGross;
+      } else {
+        currentBRL = candidateCurrent > 0 ? candidateCurrent : initialBRL;
+      }
+    } else {
+      currentBRL = candidateCurrent > 0 ? candidateCurrent : 0;
+      initialBRL = currentBRL;
+    }
+  }
+
+  let rate = extractPluggyAnnualRate(item);
+
+  // Se o rendimento acumulado ainda não estiver aparente (currentBRL <= initialBRL),
+  // mas o ativo tiver taxa anual e data de aquisição:
+  if (currentBRL <= initialBRL && initialBRL > 0 && rate && rate > 0 && item.date) {
+    try {
+      const pDate = new Date(String(item.date).slice(0, 10) + 'T12:00:00');
+      const diffDays = Math.floor((Date.now() - pDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        const businessDays = Math.max(1, Math.round(diffDays * (252 / 365)));
+        const estimatedGain = initialBRL * ((rate / 252) * businessDays);
+        if (estimatedGain > 0) {
+          currentBRL = Number((initialBRL + estimatedGain).toFixed(2));
+        }
+      }
+    } catch {}
+  }
+
+  // Se não foi informada taxa mas temos ganho e data de compra, calcula taxa anualizada implícita
+  if (!rate && initialBRL > 0 && currentBRL > initialBRL && item.date) {
+    try {
+      const pDate = new Date(String(item.date).slice(0, 10) + 'T12:00:00');
+      const diffDays = Math.max(1, Math.floor((Date.now() - pDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const gainPct = (currentBRL - initialBRL) / initialBRL;
+      rate = Number((gainPct * (365 / diffDays)).toFixed(4));
+    } catch {}
+  }
+
+  const currentVal = Math.round(currentBRL * 100);
+  let initialVal = Math.round(initialBRL * 100);
+  if (initialVal <= 0) initialVal = currentVal;
+
+  return { currentVal, initialVal, annualRate: rate };
+}
+
 async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
   const apiKey = await getValidApiKey();
 
@@ -805,15 +954,7 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
       }
       for (const item of rawInvestments) {
         const invType = mapPluggyInvestmentType(item.type, item.subtype, item.name);
-        const currentVal = typeof item.balance === 'number' && Number.isFinite(item.balance)
-          ? Math.round(item.balance * 100)
-          : (typeof item.value === 'number' && Number.isFinite(item.value) ? Math.round(item.value * 100) : 0);
-
-        let initialVal = typeof item.amount === 'number' && Number.isFinite(item.amount) && item.amount > 0
-          ? Math.round(item.amount * 100)
-          : (typeof item.originalAmount === 'number' && Number.isFinite(item.originalAmount) ? Math.round(item.originalAmount * 100) : currentVal);
-
-        if (initialVal <= 0) initialVal = currentVal;
+        const { currentVal, initialVal, annualRate } = calculateInvestmentValues(item);
 
         const investment: Investment = {
           id: `pluggy_inv_${item.id}`,
@@ -824,7 +965,7 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
           initialValue: initialVal,
           purchaseDate: item.date ? String(item.date).slice(0, 10) : new Date().toISOString().slice(0, 10),
           maturityDate: item.dueDate ? String(item.dueDate).slice(0, 10) : undefined,
-          annualRate: typeof item.annualRate === 'number' ? item.annualRate : (typeof item.rate === 'number' ? item.rate / 100 : undefined),
+          annualRate,
           color: getInvestmentColor(invType),
         };
         persistInvestment(investment, itemId);

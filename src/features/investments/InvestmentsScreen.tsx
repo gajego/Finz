@@ -41,11 +41,41 @@ function gainPercent(current: number, initial: number): number {
   return ((current - initial) / initial) * 100;
 }
 
+export function getEffectiveCurrentValue(inv: Investment): number {
+  if (inv.currentValue > inv.initialValue) {
+    return inv.currentValue;
+  }
+  // Se o valor salvo ainda for igual ao investido mas houver taxa anual e data de compra:
+  if (inv.initialValue > 0 && inv.annualRate && inv.annualRate > 0 && inv.purchaseDate) {
+    try {
+      const pDate = new Date(inv.purchaseDate.slice(0, 10) + 'T12:00:00');
+      const diffDays = Math.floor((Date.now() - pDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays > 0) {
+        const businessDays = Math.max(1, Math.round(diffDays * (252 / 365)));
+        const gain = Math.round(inv.initialValue * ((inv.annualRate / 252) * businessDays));
+        return inv.initialValue + gain;
+      }
+    } catch {}
+  }
+  return inv.currentValue;
+}
+
 /** Estimativa de ganho diário linear simples */
 function dailyGain(inv: Investment): number {
-  if (!inv.annualRate) return 0;
-  // ganho diário ≈ (currentValue * annualRate) / 252 (dias úteis)
-  return Math.round((inv.currentValue * inv.annualRate) / 252);
+  const effCurrent = getEffectiveCurrentValue(inv);
+  if (inv.annualRate && inv.annualRate > 0) {
+    return Math.round((effCurrent * inv.annualRate) / 252);
+  }
+  const gain = effCurrent - inv.initialValue;
+  if (gain > 0 && inv.purchaseDate) {
+    try {
+      const pDate = new Date(inv.purchaseDate.slice(0, 10) + 'T12:00:00');
+      const diffDays = Math.max(1, Math.floor((Date.now() - pDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const businessDays = Math.max(1, Math.round(diffDays * (252 / 365)));
+      return Math.round(gain / businessDays);
+    } catch {}
+  }
+  return 0;
 }
 
 /** Estimativa de ganho semanal (5 dias úteis) */
@@ -189,8 +219,9 @@ const InvestmentCard: React.FC<{
   isDark: boolean;
 }> = ({ investment, shareOfTotal, privacyMode, colors, isDark }) => {
   const [expanded, setExpanded] = useState(false);
-  const gain = investment.currentValue - investment.initialValue;
-  const pct = gainPercent(investment.currentValue, investment.initialValue);
+  const effectiveCurrent = getEffectiveCurrentValue(investment);
+  const gain = effectiveCurrent - investment.initialValue;
+  const pct = gainPercent(effectiveCurrent, investment.initialValue);
   const isPositive = gain >= 0;
   const TypeIcon = typeIcon(investment.type);
 
@@ -230,7 +261,7 @@ const InvestmentCard: React.FC<{
           </View>
           <View style={{ alignItems: 'flex-end', gap: 4 }}>
             <Text style={[styles.investValue, { color: colors.text }]}>
-              {privacyMode ? '••••••' : formatBRL(investment.currentValue)}
+              {privacyMode ? '••••••' : formatBRL(effectiveCurrent)}
             </Text>
             <View
               style={[
@@ -355,8 +386,12 @@ export const InvestmentsScreen: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    syncAllPluggyItems().catch(() => {});
+  }, []);
+
   const { totalValue, totalInitial, totalDayGain, totalWeekGain, totalMonthGain } = useMemo(() => {
-    const tv = investments.reduce((s, i) => s + i.currentValue, 0);
+    const tv = investments.reduce((s, i) => s + getEffectiveCurrentValue(i), 0);
     const ti = investments.reduce((s, i) => s + i.initialValue, 0);
     const tdg = investments.reduce((s, i) => s + dailyGain(i), 0);
     const twg = investments.reduce((s, i) => s + weeklyGain(i), 0);
@@ -434,7 +469,7 @@ export const InvestmentsScreen: React.FC = () => {
 
           <View style={styles.investList}>
             {investments.map((inv) => {
-              const share = totalValue > 0 ? (inv.currentValue / totalValue) * 100 : 0;
+              const share = totalValue > 0 ? (getEffectiveCurrentValue(inv) / totalValue) * 100 : 0;
               return (
                 <InvestmentCard
                   key={inv.id}

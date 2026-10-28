@@ -29,7 +29,7 @@ const IndicatorBar: React.FC<{
 }> = ({ isActive, onPress, label, colors }) => {
   const animatedBarStyle = useAnimatedStyle(() => {
     return {
-      width: withTiming(isActive ? 24 : 6, {
+      width: withTiming(isActive ? 28 : 8, {
         duration: 220,
         easing: Easing.bezier(0.25, 0.1, 0.25, 1),
       }),
@@ -46,7 +46,7 @@ const IndicatorBar: React.FC<{
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={12}
+      hitSlop={10}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected: isActive }}
@@ -79,8 +79,8 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           styles.dockPill,
           {
             backgroundColor: isDark
-              ? 'rgba(13, 14, 18, 0.82)'
-              : 'rgba(255, 255, 255, 0.88)',
+              ? 'rgba(14, 15, 20, 0.88)'
+              : 'rgba(255, 255, 255, 0.92)',
             borderColor: colors.borderSubtle,
             shadowColor: '#000000',
           },
@@ -113,25 +113,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
     elevation: 8,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.20,
     shadowRadius: 10,
-    gap: 6,
+    gap: 8,
   },
   touchArea: {
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+    minHeight: 28,
+    minWidth: 32,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   bar: {
-    height: 4,
-    borderRadius: 2,
+    height: 4.5,
+    borderRadius: 2.25,
     borderWidth: 0.5,
   },
 });

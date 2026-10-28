@@ -73,24 +73,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     <View style={styles.container}>
       {/* Cabeçalho Limpo: Contagem Total e Título Editorial */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          HISTÓRICO DE TRANSAÇÕES
-        </Text>
-        <View
-          style={[
-            styles.countPill,
-            {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.borderSubtle,
-            },
-          ]}
-        >
-          <Text style={[styles.countBadge, { color: colors.textSecondary }]}>
-            {hasMore
-              ? `${visibleTransactions.length} de ${transactions.length} movimentações`
-              : `${transactions.length} ${
-                  transactions.length === 1 ? 'movimentação' : 'movimentações'
-                }`}
+        <View>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Transações
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            {transactions.length === 1 ? '1 movimentação' : `${transactions.length} movimentações`}
           </Text>
         </View>
       </View>
@@ -101,7 +89,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           style={[
             styles.emptyContainer,
             {
-              backgroundColor: colors.surfaceElevated,
+              backgroundColor: colors.surface,
               borderColor: colors.borderSubtle,
             },
           ]}
@@ -110,19 +98,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             style={[
               styles.emptyIconSquircle,
               {
-                backgroundColor: colors.surfaceSubtle,
+                backgroundColor: colors.surfaceElevated,
                 borderColor: colors.borderSubtle,
               },
             ]}
           >
-            <ArrowLeftRight size={20} color={colors.textMuted} strokeWidth={2} />
+            <ArrowLeftRight size={20} color={colors.textSecondary} strokeWidth={2} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            NENHUMA MOVIMENTAÇÃO
+            Nenhuma movimentação ainda
           </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-            Conecte seu banco via Open Finance ou toque em sincronizar para
-            importar suas transações e compras.
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            Conecte sua conta via Open Finance para visualizar suas compras e transferências em tempo real.
           </Text>
         </View>
       ) : (
@@ -234,27 +221,21 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-end',
+    marginBottom: 14,
   },
   title: {
     fontFamily: Typography.bold,
+    fontSize: 18,
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    fontFamily: Typography.regular,
     fontSize: 12,
-    letterSpacing: 1.5,
-  },
-  countPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  countBadge: {
-    fontFamily: Typography.medium,
-    fontSize: 10,
-    letterSpacing: 0.3,
+    marginTop: 2,
   },
   list: {
-    gap: 8,
+    gap: 4,
   },
   dateGroup: {
     marginBottom: 10,

@@ -244,11 +244,11 @@ export const GoalsScreen: React.FC = () => {
 
         {/* Lista de Categorias */}
         <View style={styles.categoryListHeader}>
-          <Text style={[styles.categoryListTitle, { color: colors.textSecondary }]}>
-            TODAS AS CATEGORIAS ({categories.length})
+          <Text style={[styles.categoryListTitle, { color: colors.text }]}>
+            Categorias e orçamentos ({categories.length})
           </Text>
           <Text style={[styles.categoryListSubtitle, { color: colors.textMuted }]}>
-            Toque para editar ícone, cor ou teto
+            Toque em uma categoria para ajustar seu teto de gastos
           </Text>
         </View>
 
@@ -269,12 +269,12 @@ export const GoalsScreen: React.FC = () => {
                 style={({ pressed }) => [
                   styles.categoryCard,
                   {
-                    backgroundColor: isDark ? colors.surfaceElevated : colors.surface,
+                    backgroundColor: colors.surface,
                     borderColor: isCritical
                       ? colors.danger
                       : isWarning
                       ? colors.warning
-                      : colors.border,
+                      : colors.borderSubtle,
                     transform: [{ scale: pressed ? 0.985 : 1 }],
                     opacity: pressed ? 0.9 : 1,
                   },

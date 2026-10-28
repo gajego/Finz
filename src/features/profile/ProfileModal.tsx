@@ -276,7 +276,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
           {/* Header do Menu de Perfil com Gesto de Arraste */}
           <View {...headerPanResponder.panHandlers} style={styles.header}>
             <View style={styles.headerTextGroup}>
-              <Text style={[styles.title, { color: colors.text }]}>MENU DE PERFIL</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Perfil e Ajustes</Text>
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Informações pessoais, preferências e ajustes
               </Text>
@@ -1073,9 +1073,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',

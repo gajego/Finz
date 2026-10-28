@@ -29,33 +29,36 @@ export const BalanceHero: React.FC<BalanceHeroProps> = () => {
   };
 
   const currentBalance = currentCard?.balance || 0;
+  const bankTitle = currentCard ? currentCard.bankName : 'Nenhum cartão';
 
   return (
     <View style={styles.container}>
       {/* Topo do Hero: Identificador do Cartão Ativo & Toggle de Privacidade */}
       <View style={styles.topRow}>
         <View style={styles.bankLabelGroup}>
-          <Text style={[styles.metaLabel, { color: colors.textMuted }]}>
-            FATURA ATUAL • {currentCard ? currentCard.bankName.toUpperCase() : 'NENHUM CARTÃO'}
+          <Text style={[styles.metaLabel, { color: colors.textSecondary }]}>
+            Fatura atual · {bankTitle}
           </Text>
         </View>
 
         <Pressable
           onPress={togglePrivacyMode}
-          hitSlop={12}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={privacyMode ? 'Mostrar valores' : 'Ocultar valores'}
           style={({ pressed }) => [
             styles.eyeBtn,
             {
               backgroundColor: mode === 'dark' ? colors.surfaceElevated : colors.surface,
-              borderColor: colors.borderStrong,
-              transform: [{ scale: pressed ? 0.92 : 1 }],
+              borderColor: colors.border,
+              transform: [{ scale: pressed ? 0.94 : 1 }],
             },
           ]}
         >
           {privacyMode ? (
-            <EyeOff size={14} color={colors.textSecondary} />
+            <EyeOff size={16} color={colors.textSecondary} />
           ) : (
-            <Eye size={14} color={colors.textSecondary} />
+            <Eye size={16} color={colors.textSecondary} />
           )}
         </Pressable>
       </View>
@@ -80,7 +83,7 @@ export const BalanceHero: React.FC<BalanceHeroProps> = () => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 6,
   },
   topRow: {
@@ -92,17 +95,16 @@ const styles = StyleSheet.create({
   bankLabelGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
   },
   metaLabel: {
-    fontFamily: Typography.bold,
-    fontSize: 10,
-    letterSpacing: 1.6,
+    fontFamily: Typography.medium,
+    fontSize: 13,
+    letterSpacing: -0.2,
   },
   eyeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -112,8 +114,8 @@ const styles = StyleSheet.create({
   },
   balanceText: {
     fontFamily: Typography.bold,
-    fontSize: 40,
-    letterSpacing: -1.4,
+    fontSize: 38,
+    letterSpacing: -1.2,
     fontVariant: ['tabular-nums'],
   },
 });

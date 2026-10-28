@@ -32,9 +32,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'BOM DIA';
-    if (hour >= 12 && hour < 18) return 'BOA TARDE';
-    return 'BOA NOITE';
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
   }, []);
 
   const initials = useMemo(() => {
@@ -46,8 +46,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
   }, [profile.fullName]);
 
   const displayName = useMemo(() => {
-    return (profile.fullName?.trim() || 'WESLEY SOUZA').toUpperCase();
-  }, [profile.fullName]);
+    const raw = profile.fullName?.trim() || profile.nickname?.trim() || 'Wesley';
+    return raw.split(/\s+/)[0];
+  }, [profile.fullName, profile.nickname]);
 
   const hasActiveSync = cards.length > 0;
 
@@ -67,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
         ]}
         hitSlop={{ top: 6, bottom: 6, left: 8, right: 4 }}
         accessibilityRole="button"
-        accessibilityLabel={`Perfil de ${profile.fullName?.trim() || 'Usuário'}, toque para abrir configurações`}
+        accessibilityLabel={`Perfil de ${displayName}, toque para abrir configurações`}
         accessibilityHint="Abre o menu de configurações da conta e preferências"
       >
         {/* Avatar Squircle de Alta Precisão com Status Dot */}
@@ -85,22 +86,16 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
           </View>
           {hasActiveSync && (
             <View style={[styles.statusDotRing, { backgroundColor: colors.surfaceElevated }]}>
-              <View style={[styles.statusDot, { backgroundColor: '#00D09E' }]} />
+              <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
             </View>
           )}
         </View>
 
-        {/* Hierarquia Tipográfica de Prestígio */}
+        {/* Hierarquia Tipográfica Humana e Editorial */}
         <View style={styles.userTextCol}>
-          <View style={styles.microLabelRow}>
-            <Text style={[styles.greetingLabel, { color: colors.textMuted }]}>
-              {greeting}
-            </Text>
-            <View style={[styles.microStatusDot, { backgroundColor: colors.textMuted }]} />
-            <Text style={[styles.statusLabel, { color: colors.primary }]}>
-              PORTFÓLIO
-            </Text>
-          </View>
+          <Text style={[styles.greetingLabel, { color: colors.textSecondary }]}>
+            {greeting},
+          </Text>
           <Text
             style={[styles.userName, { color: colors.text }]}
             numberOfLines={1}
@@ -256,34 +251,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
     justifyContent: 'center',
   },
-  microLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 2,
-  },
   greetingLabel: {
-    fontFamily: Typography.bold,
-    fontSize: 8.5,
-    letterSpacing: LetterSpacing.wider,
-    textTransform: 'uppercase',
-  },
-  microStatusDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    opacity: 0.6,
-  },
-  statusLabel: {
-    fontFamily: Typography.bold,
-    fontSize: 8,
-    letterSpacing: LetterSpacing.wide,
-    textTransform: 'uppercase',
+    fontFamily: Typography.medium,
+    fontSize: 11,
+    letterSpacing: -0.1,
+    marginBottom: 1,
   },
   userName: {
     fontFamily: Typography.bold,
-    fontSize: 13,
-    letterSpacing: LetterSpacing.normal,
+    fontSize: 14,
+    letterSpacing: -0.3,
   },
   chevron: {
     opacity: 0.7,

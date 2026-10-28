@@ -157,18 +157,14 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
     // Despesas: Coral/vermelho sutil (- R$ 30,48)
     // Recebimentos: Verde menta (+ R$ 150,00)
     // Estornos: Âmbar/Verde menta com badge ESTORNO
-    const coralRed = isDark ? '#F87171' : '#E11D48';
-    const mintGreen = isDark ? '#34D399' : '#059669';
-    const amberWarning = isDark ? '#F59E0B' : '#D97706';
-
-    let amountColor = coralRed;
+    let amountColor = colors.text;
     let signPrefix = '- ';
 
     if (isRefund) {
-      amountColor = amberWarning;
+      amountColor = colors.warning;
       signPrefix = '+ ';
     } else if (isIncome) {
-      amountColor = mintGreen;
+      amountColor = colors.success;
       signPrefix = '+ ';
     }
 
@@ -226,111 +222,74 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
           </Text>
 
           <View style={styles.metaRow}>
-            {card?.bankName && (
-              <>
-                <Text style={[styles.bankTag, { color: colors.textMuted }]}>
-                  {card.bankName}
-                </Text>
-                <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
-              </>
-            )}
-
-            {!isIncome && !isPixOut && paymentModality.shortLabel && (
-              <>
-                <Text style={[styles.bankTag, { color: colors.textMuted }]}>
-                  {paymentModality.shortLabel}
-                </Text>
-                <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
-              </>
-            )}
-
             {category?.name && (
+              <Text
+                style={[styles.categoryTag, { color: colors.textSecondary }]}
+                numberOfLines={1}
+              >
+                {category.name}
+              </Text>
+            )}
+
+            {(card?.bankName || paymentModality.shortLabel) && (
               <>
-                <Text
-                  style={[styles.categoryTag, { color: colors.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {category.name}
+                <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
+                <Text style={[styles.bankTag, { color: colors.textMuted }]}>
+                  {card?.bankName || paymentModality.shortLabel}
                 </Text>
-                <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
               </>
             )}
 
-            {/* Badge de Parcela se houver */}
-            {installment && (
+            {isPixOut && (
               <>
-                <View
-                  style={[
-                    styles.installmentBadge,
-                    {
-                      backgroundColor: colors.surfaceElevated,
-                      borderColor: colors.borderSubtle,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.installmentText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    PARC {installment.text}
-                  </Text>
-                </View>
-                <Text style={[styles.dot, { color: colors.textMuted }]}>•</Text>
+                <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
+                <Text style={[styles.bankTag, { color: colors.textMuted }]}>
+                  Pix
+                </Text>
               </>
             )}
-
-            <Text style={[styles.timeTag, { color: colors.textMuted }]}>
-              {formatTime(transaction.timestamp)}
-            </Text>
           </View>
         </View>
 
-        {/* Valor com Sinal e Pill de Status Temático */}
+        {/* Valor com Sinal e Status Apenas Por Exceção (Sem Pill Clichê de Concluído) */}
         <View style={styles.rightColumn}>
           <Text style={[styles.amountText, { color: amountColor }]}>
             {signPrefix}
             {formatBRL(transaction.amount, privacyMode)}
           </Text>
 
-          <View
-            style={[
-              styles.statusPill,
-              {
-                backgroundColor: isRefund
-                  ? isDark
-                    ? 'rgba(245, 158, 11, 0.12)'
-                    : 'rgba(217, 119, 6, 0.10)'
-                  : isIncome
-                  ? isDark
-                    ? 'rgba(52, 211, 153, 0.14)'
-                    : 'rgba(5, 150, 105, 0.10)'
-                  : colors.pillBackground,
-              },
-            ]}
-          >
-            <Text
+          {isRefund ? (
+            <View
               style={[
-                styles.statusText,
+                styles.statusPill,
                 {
-                  color: isRefund
-                    ? amberWarning
-                    : isIncome
-                    ? mintGreen
-                    : colors.textSecondary,
+                  backgroundColor: colors.warningSubtle,
                 },
               ]}
             >
-              {isRefund
-                ? 'ESTORNO'
-                : isIncome
-                ? 'RECEBIDO'
-                : isPixOut
-                ? 'PIX OUT'
-                : 'CONCLUÍDO'}
+              <Text style={[styles.statusText, { color: colors.warning }]}>
+                ESTORNO
+              </Text>
+            </View>
+          ) : installment ? (
+            <View
+              style={[
+                styles.installmentBadge,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.borderSubtle,
+                },
+              ]}
+            >
+              <Text style={[styles.installmentText, { color: colors.textSecondary }]}>
+                PARC {installment.text}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.timeTag, { color: colors.textMuted }]}>
+              {formatTime(transaction.timestamp)}
             </Text>
-          </View>
+          )}
         </View>
       </Pressable>
     );

@@ -576,7 +576,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                 </View>
                 <View>
                   <Text style={[styles.sectionTitle, { color: colors.danger }]}>
-                    TETOS ULTRAPASSADOS
+                    Tetos ultrapassados
                   </Text>
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
                     Categorias que excederam o orçamento estipulado
@@ -617,7 +617,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
               </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  DISTRIBUIÇÃO DE GASTOS
+                  Distribuição de despesas
                 </Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
                   Divisão percentual das categorias no mês atual
@@ -764,7 +764,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
               </View>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  COMPARATIVO MÊS A MÊS
+                  Comparativo mensal
                 </Text>
                 <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
                   {currentMonthLabel} vs {prevMonthLabel}

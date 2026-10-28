@@ -114,9 +114,9 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
       {/* Cabeçalho da Seção */}
       <View style={styles.sectionHeader}>
         <View style={styles.headerTitleGroup}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>METAS & TETOS MENSAIS</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Orçamentos do mês</Text>
           <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-            Gastos de {currentMonthName}
+            Gastos acumulados em {currentMonthName}
           </Text>
         </View>
       </View>

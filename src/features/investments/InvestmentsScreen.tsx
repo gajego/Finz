@@ -98,7 +98,7 @@ function typeIcon(type: InvestmentType): React.ComponentType<{ size: number; col
     case 'Cripto':
       return Bitcoin;
     case 'Tesouro Direto':
-      return Sparkles;
+      return Landmark;
     default:
       return BarChart2;
   }
@@ -143,15 +143,15 @@ const SummaryCard: React.FC<{
       style={[
         styles.summaryCard,
         {
-          backgroundColor: isDark ? 'rgba(22, 163, 74, 0.10)' : 'rgba(22, 163, 74, 0.06)',
-          borderColor: isDark ? 'rgba(22, 163, 74, 0.30)' : 'rgba(22, 163, 74, 0.20)',
+          backgroundColor: colors.surface,
+          borderColor: colors.borderSubtle,
         },
       ]}
     >
       <View style={styles.summaryTop}>
         <View>
           <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>
-            PATRIMÔNIO TOTAL
+            Patrimônio investido
           </Text>
           <Text style={[styles.summaryValue, { color: colors.text }]}>
             {privacyMode ? '••••••' : formatBRL(totalValue)}
@@ -162,8 +162,8 @@ const SummaryCard: React.FC<{
             styles.gainBadge,
             {
               backgroundColor: isPositive
-                ? isDark ? 'rgba(22, 163, 74, 0.20)' : 'rgba(22, 163, 74, 0.12)'
-                : isDark ? 'rgba(239, 68, 68, 0.20)' : 'rgba(239, 68, 68, 0.12)',
+                ? isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.10)'
+                : isDark ? 'rgba(244, 63, 94, 0.15)' : 'rgba(244, 63, 94, 0.10)',
             },
           ]}
         >
@@ -431,22 +431,16 @@ export const InvestmentsScreen: React.FC = () => {
 
       {investments.length === 0 ? (
         /* ── Empty State ── */
-        <View style={[styles.emptyBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)' }]}>
-          <View style={[styles.emptyIconRing, { backgroundColor: isDark ? 'rgba(22,163,74,0.10)' : 'rgba(22,163,74,0.07)', borderColor: isDark ? 'rgba(22,163,74,0.25)' : 'rgba(22,163,74,0.18)' }]}>
-            <PackageOpen size={32} color={colors.success} strokeWidth={1.5} />
+        <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+          <View style={[styles.emptyIconRing, { backgroundColor: isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)', borderColor: isDark ? 'rgba(16,185,129,0.22)' : 'rgba(16,185,129,0.15)' }]}>
+            <PackageOpen size={30} color={colors.success} strokeWidth={1.8} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>
-            Carteira vazia
+            Nenhum investimento sincronizado
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Seus investimentos aparecerão aqui quando a integração com a Pluggy incluir contas do tipo investimento.
+            Conecte sua conta ou corretora via Open Finance para acompanhar sua carteira e rendimentos diários.
           </Text>
-          <View style={[styles.emptyHint, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)' }]}>
-            <Link size={13} color={colors.textSecondary} />
-            <Text style={[styles.emptyHintText, { color: colors.textSecondary }]}>
-              Conecte sua corretora via Open Finance para ver ganhos diários, semanais e mensais de cada ativo.
-            </Text>
-          </View>
         </View>
       ) : (
         <>
@@ -463,8 +457,8 @@ export const InvestmentsScreen: React.FC = () => {
           />
 
           {/* Lista de investimentos */}
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            CARTEIRA
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Carteira de ativos
           </Text>
 
           <View style={styles.investList}>

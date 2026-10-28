@@ -43,42 +43,42 @@ export interface ThemeColors {
 
 export const DarkTheme: ThemeColors = {
   mode: 'dark',
-  background: '#040405',         // OLED Deep Black
-  surface: '#0D0E12',            // Titanium Graphite
-  surfaceElevated: '#15171E',
-  surfaceSubtle: '#1C1F28',
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderSubtle: 'rgba(255, 255, 255, 0.05)',
-  borderStrong: 'rgba(255, 255, 255, 0.14)',
-  borderHighlight: 'rgba(217, 249, 32, 0.28)',
-  pillBackground: 'rgba(255, 255, 255, 0.06)',
+  background: '#050507',         // Deep Space Obsidian
+  surface: '#0E0F14',            // Refined Charcoal
+  surfaceElevated: '#161820',    // Elevated Surface
+  surfaceSubtle: '#1F222C',      // Subtle Surface
+  border: 'rgba(255, 255, 255, 0.06)',
+  borderSubtle: 'rgba(255, 255, 255, 0.04)',
+  borderStrong: 'rgba(255, 255, 255, 0.10)',
+  borderHighlight: 'rgba(217, 249, 32, 0.22)',
+  pillBackground: 'rgba(255, 255, 255, 0.05)',
   
-  primary: '#D9F920',            // Acid Volt (Estilo Cash App / Linear / Off-White)
-  primaryForeground: '#040405',
+  primary: '#D9F920',            // Acid Volt (Acento Cirúrgico)
+  primaryForeground: '#050507',
   secondary: '#3B82F6',
   
-  success: '#10B981',
-  successSubtle: 'rgba(16, 185, 129, 0.14)',
-  danger: '#FF3B30',
-  dangerSubtle: 'rgba(255, 59, 48, 0.14)',
-  warning: '#F59E0B',
-  warningSubtle: 'rgba(245, 158, 11, 0.14)',
+  success: '#10B981',            // Emerald Green
+  successSubtle: 'rgba(16, 185, 129, 0.12)',
+  danger: '#F43F5E',             // Crimson Coral
+  dangerSubtle: 'rgba(244, 63, 94, 0.12)',
+  warning: '#F59E0B',            // Warm Amber
+  warningSubtle: 'rgba(245, 158, 11, 0.12)',
   
-  text: '#F3F4F6',
-  textSecondary: '#8B93A5',
-  textMuted: '#525866',
+  text: '#FFFFFF',               // High Emphasis Titanium
+  textSecondary: '#94A3B8',      // Slate 400 Balanced Secondary
+  textMuted: '#64748B',          // Slate 500 Subtitle/Timestamp
   
-  cardShadow: 'rgba(0, 0, 0, 0.55)',
+  cardShadow: 'rgba(0, 0, 0, 0.35)',
 
   // Luxo e Cartões
-  cardSpecularLight: 'rgba(255, 255, 255, 0.15)',
+  cardSpecularLight: 'rgba(255, 255, 255, 0.12)',
   chipGoldPrimary: '#D4AF37',
   chipGoldSecondary: '#EAD385',
   chipGoldBorder: '#8A6D1E',
   chipSilverPrimary: '#CBD5E1',
   chipSilverSecondary: '#F1F5F9',
   chipSilverBorder: '#64748B',
-  badgeBackground: 'rgba(217, 249, 32, 0.12)',
+  badgeBackground: 'rgba(217, 249, 32, 0.10)',
 };
 
 export const LightTheme: ThemeColors = {

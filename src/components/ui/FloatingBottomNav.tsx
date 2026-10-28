@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@/theme/useTheme';
 
-export type MainTab = 'home' | 'performance' | 'goals' | 'investments';
+export type MainTab = 'home' | 'performance' | 'insights' | 'goals' | 'investments';
 
 interface FloatingBottomNavProps {
   activeTab: MainTab;
@@ -17,6 +17,7 @@ interface FloatingBottomNavProps {
 const TABS: { id: MainTab; label: string }[] = [
   { id: 'home', label: 'Início' },
   { id: 'performance', label: 'Desempenho' },
+  { id: 'insights', label: 'Inteligência' },
   { id: 'goals', label: 'Metas' },
   { id: 'investments', label: 'Ativos' },
 ];

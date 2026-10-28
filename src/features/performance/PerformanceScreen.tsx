@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -107,6 +108,7 @@ const AnimatedCompareBar: React.FC<{
 
 interface PerformanceScreenProps {
   onPressTransaction?: (transaction: Transaction) => void;
+  onSetScrollEnabled?: (enabled: boolean) => void;
 }
 
 interface OverBudgetCategoryCardProps {
@@ -339,7 +341,10 @@ const OverBudgetCategoryCard: React.FC<OverBudgetCategoryCardProps> = ({
   );
 };
 
-export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTransaction }) => {
+export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
+  onPressTransaction,
+  onSetScrollEnabled,
+}) => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
 
@@ -486,7 +491,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
   }, [categoryStats, totalCurrentSpent, circumference, colors.primary]);
 
   // Estados para o Gráfico de Linha Diário e Detalhamento de Transações
-  const chartScrollRef = useRef<any>(null);
+  const categoryScrollRef = useRef<any>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number>(() => getBrazilDateParts(Date.now()).day);
   const [showDrilldown, setShowDrilldown] = useState<boolean>(true);
@@ -504,6 +509,10 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
     }
   };
 
+  // Largura do gráfico ajustada à tela sem necessidade de scroll aninhado
+  const screenWidth = Dimensions.get('window').width;
+  const svgWidth = Math.max(280, screenWidth - 76);
+
   // Dias do mês atual e dados diários consolidados
   const {
     daysInMonth,
@@ -515,11 +524,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
     activeDayTotal,
     daysWithSpendForActiveCat,
     dailyPoints,
-    stepX,
     chartHeight,
     paddingBottom,
     plotHeight,
-    svgWidth,
+    plotWidth,
+    paddingLeft,
     selectedPoint,
   } = useMemo(() => {
     const nowParts = getBrazilDateParts(Date.now());
@@ -580,13 +589,13 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
 
     const dayTotal = dayTxs.reduce((sum, t) => sum + t.amount, 0);
 
-    // Configurações do SVG do gráfico de linha
-    const stepX = 38;
+    // Dimensões do gráfico ajustado à largura do card
     const chartHeight = 150;
-    const paddingBottom = 32;
+    const paddingBottom = 30;
     const paddingTop = 20;
     const plotHeight = chartHeight - paddingBottom - paddingTop;
-    const svgWidth = Math.max(Dimensions.get('window').width - 72, 24 + daysInMonth * stepX);
+    const plotWidth = svgWidth - 28;
+    const paddingLeft = 14;
 
     let maxAmount = 10;
     if (chosenCatId && catDayMap[chosenCatId]) {
@@ -599,7 +608,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
     const points: { x: number; y: number; amount: number; day: number }[] = [];
     for (let d = 1; d <= daysInMonth; d++) {
       const amt = (chosenCatId && catDayMap[chosenCatId] ? catDayMap[chosenCatId][d] : 0) || 0;
-      const x = 20 + (d - 1) * stepX;
+      const x = paddingLeft + ((d - 1) / Math.max(daysInMonth - 1, 1)) * plotWidth;
       const y = chartHeight - paddingBottom - (amt / (maxAmount * 1.18)) * plotHeight;
       points.push({ x, y, amount: amt, day: d });
     }
@@ -616,11 +625,11 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
       activeDayTotal: dayTotal,
       daysWithSpendForActiveCat: daysWithSpend,
       dailyPoints: points,
-      stepX,
       chartHeight,
       paddingBottom,
       plotHeight,
-      svgWidth,
+      plotWidth,
+      paddingLeft,
       selectedPoint,
     };
   }, [
@@ -630,6 +639,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
     currentMonthEnd,
     selectedCategoryId,
     selectedDay,
+    svgWidth,
   ]);
 
   // Caminho da linha e área SVG
@@ -645,33 +655,85 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
     return `${linePath} L ${last.x.toFixed(1)} ${baseline} L ${first.x.toFixed(1)} ${baseline} Z`;
   }, [dailyPoints, linePath, chartHeight, paddingBottom]);
 
-  // Ao selecionar uma categoria, ajusta o dia para um dia com gastos se o atual estiver zerado
-  const handleSelectCategory = (catId: string) => {
-    setSelectedCategoryId(catId);
-    setShowDrilldown(true);
+  // Índice da categoria ativa na lista de categorias com gasto
+  const activeCategoryIndex = useMemo(() => {
+    if (!activeCategory) return 0;
+    const idx = categoriesWithSpend.findIndex((c) => c.id === activeCategory.id);
+    return idx >= 0 ? idx : 0;
+  }, [categoriesWithSpend, activeCategory]);
 
-    const catDays = categoryDayMap[catId] || {};
-    if (!catDays[selectedDay] || catDays[selectedDay] <= 0) {
-      let latestDay = 0;
-      for (let d = daysInMonth; d >= 1; d--) {
-        if ((catDays[d] || 0) > 0) {
-          latestDay = d;
-          break;
+  // Ao selecionar uma categoria, ajusta o dia para um dia com gastos se o atual estiver zerado
+  const handleSelectCategory = useCallback(
+    (catId: string) => {
+      setSelectedCategoryId(catId);
+      setShowDrilldown(true);
+
+      const catDays = categoryDayMap[catId] || {};
+      if (!catDays[selectedDay] || catDays[selectedDay] <= 0) {
+        let latestDay = 0;
+        for (let d = daysInMonth; d >= 1; d--) {
+          if ((catDays[d] || 0) > 0) {
+            latestDay = d;
+            break;
+          }
+        }
+        if (latestDay > 0) {
+          setSelectedDay(latestDay);
         }
       }
-      if (latestDay > 0) {
-        setSelectedDay(latestDay);
-      }
-    }
-  };
 
-  // Auto-scroll do gráfico de linha para o dia selecionado
-  useEffect(() => {
-    if (chartScrollRef.current && selectedDay > 0) {
-      const targetX = Math.max(0, (selectedDay - 3) * stepX);
-      chartScrollRef.current.scrollTo({ x: targetX, animated: true });
-    }
-  }, [selectedDay, stepX]);
+      // Auto-scroll para centralizar a pílula da categoria selecionada
+      const catIdx = categoriesWithSpend.findIndex((c) => c.id === catId);
+      if (categoryScrollRef.current && catIdx >= 0) {
+        categoryScrollRef.current.scrollTo({
+          x: Math.max(0, catIdx * 115 - 40),
+          animated: true,
+        });
+      }
+    },
+    [categoryDayMap, selectedDay, daysInMonth, categoriesWithSpend]
+  );
+
+  const goToNextCategory = useCallback(() => {
+    if (categoriesWithSpend.length <= 1) return;
+    const nextIdx = (activeCategoryIndex + 1) % categoriesWithSpend.length;
+    handleSelectCategory(categoriesWithSpend[nextIdx].id);
+  }, [activeCategoryIndex, categoriesWithSpend, handleSelectCategory]);
+
+  const goToPrevCategory = useCallback(() => {
+    if (categoriesWithSpend.length <= 1) return;
+    const prevIdx =
+      (activeCategoryIndex - 1 + categoriesWithSpend.length) % categoriesWithSpend.length;
+    handleSelectCategory(categoriesWithSpend[prevIdx].id);
+  }, [activeCategoryIndex, categoriesWithSpend, handleSelectCategory]);
+
+  // Gesto de Arraste Horizontal para alternar categorias no card do gráfico
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Detecta gesto horizontal intencional
+        const isHorizontal =
+          Math.abs(gestureState.dx) > 12 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.1;
+        return isHorizontal;
+      },
+      onPanResponderGrant: () => {
+        onSetScrollEnabled?.(false);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        onSetScrollEnabled?.(true);
+        if (gestureState.dx < -30) {
+          goToNextCategory();
+        } else if (gestureState.dx > 30) {
+          goToPrevCategory();
+        }
+      },
+      onPanResponderTerminate: () => {
+        onSetScrollEnabled?.(true);
+      },
+    });
+  }, [goToNextCategory, goToPrevCategory, onSetScrollEnabled]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -861,9 +923,16 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
           {categoriesWithSpend.length > 0 ? (
             <>
               <ScrollView
+                ref={categoryScrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.categoryChipsScroll}
+                onTouchStart={() => onSetScrollEnabled?.(false)}
+                onTouchEnd={() => onSetScrollEnabled?.(true)}
+                onTouchCancel={() => onSetScrollEnabled?.(true)}
+                onScrollBeginDrag={() => onSetScrollEnabled?.(false)}
+                onScrollEndDrag={() => onSetScrollEnabled?.(true)}
+                onMomentumScrollEnd={() => onSetScrollEnabled?.(true)}
               >
                 {categoriesWithSpend.map((cat) => {
                   const IconComp = getCategoryIconComponent(cat.icon);
@@ -924,8 +993,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                 })}
               </ScrollView>
 
-              {/* Card do Gráfico de Linha Diário */}
+              {/* Card do Gráfico de Linha Diário com Suporte a Deslize Lateral */}
               <View
+                {...panResponder.panHandlers}
                 style={[
                   styles.chartContainerCard,
                   {
@@ -935,32 +1005,64 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                   },
                 ]}
               >
-                {/* Cabeçalho do Card */}
+                {/* Cabeçalho do Card com Navegação Rápida de Categorias */}
                 <View style={styles.dailyChartCardHeader}>
                   <View style={styles.dailyChartHeaderLeft}>
                     {activeCategory && (
-                      <View
-                        style={[
-                          styles.dailyCatBadge,
-                          { backgroundColor: `${activeCategory.color}20` },
-                        ]}
-                      >
+                      <View style={styles.dailyCatBadgeRow}>
+                        <Pressable
+                          onPress={goToPrevCategory}
+                          style={({ pressed }) => [
+                            styles.catNavArrowBtn,
+                            {
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                              opacity: pressed ? 0.6 : 1,
+                            },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Categoria anterior"
+                        >
+                          <ChevronLeft size={14} color={colors.text} />
+                        </Pressable>
+
                         <View
                           style={[
-                            styles.legendColorDot,
-                            { backgroundColor: activeCategory.color, marginRight: 6 },
+                            styles.dailyCatBadge,
+                            { backgroundColor: `${activeCategory.color}20` },
                           ]}
-                        />
-                        <Text
-                          style={[styles.dailyCatBadgeText, { color: activeCategory.color }]}
-                          numberOfLines={1}
                         >
-                          {activeCategory.name}
-                        </Text>
+                          <View
+                            style={[
+                              styles.legendColorDot,
+                              { backgroundColor: activeCategory.color, marginRight: 6 },
+                            ]}
+                          />
+                          <Text
+                            style={[styles.dailyCatBadgeText, { color: activeCategory.color }]}
+                            numberOfLines={1}
+                          >
+                            {activeCategory.name}
+                          </Text>
+                        </View>
+
+                        <Pressable
+                          onPress={goToNextCategory}
+                          style={({ pressed }) => [
+                            styles.catNavArrowBtn,
+                            {
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                              opacity: pressed ? 0.6 : 1,
+                            },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Próxima categoria"
+                        >
+                          <ChevronRight size={14} color={colors.text} />
+                        </Pressable>
                       </View>
                     )}
                     <Text style={[styles.dailyChartHint, { color: colors.textSecondary }]}>
-                      Toque em um dia para abrir as transações
+                      Deslize para o lado para trocar de categoria
                     </Text>
                   </View>
 
@@ -974,13 +1076,8 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                   </View>
                 </View>
 
-                {/* SVG Scrollável com a Linha Diária */}
-                <ScrollView
-                  ref={chartScrollRef}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 4 }}
-                >
+                {/* SVG Integrado à Largura do Card */}
+                <View style={{ alignItems: 'center', marginVertical: 4 }}>
                   <Svg width={svgWidth} height={chartHeight}>
                     <Defs>
                       <LinearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1050,6 +1147,17 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                       const isSel = pt.day === selectedDay;
                       const hasSpend = pt.amount > 0;
                       const isToday = pt.day === todayDay;
+                      const showLabel =
+                        isSel ||
+                        pt.day === 1 ||
+                        pt.day === 5 ||
+                        pt.day === 10 ||
+                        pt.day === 15 ||
+                        pt.day === 20 ||
+                        pt.day === 25 ||
+                        pt.day === daysInMonth;
+
+                      const colWidth = plotWidth / Math.max(daysInMonth, 1);
 
                       return (
                         <G key={pt.day}>
@@ -1058,10 +1166,10 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                             <Circle
                               cx={pt.x}
                               cy={pt.y}
-                              r={isSel ? 6 : 4}
+                              r={isSel ? 6 : 3.5}
                               fill={isSel ? '#FFFFFF' : (activeCategory?.color || colors.primary)}
                               stroke={activeCategory?.color || colors.primary}
-                              strokeWidth={isSel ? 3 : 1.5}
+                              strokeWidth={isSel ? 2.5 : 1}
                             />
                           )}
 
@@ -1070,34 +1178,36 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                             <Circle
                               cx={pt.x}
                               cy={chartHeight - paddingBottom}
-                              r={4}
+                              r={3.5}
                               fill={activeCategory?.color || colors.primary}
                             />
                           )}
 
                           {/* Rótulo do Dia no Eixo X */}
-                          <SvgText
-                            x={pt.x}
-                            y={chartHeight - 12}
-                            textAnchor="middle"
-                            fontSize={isSel ? '12' : '10'}
-                            fontWeight={isSel ? 'bold' : 'normal'}
-                            fill={
-                              isSel
-                                ? (activeCategory?.color || colors.primary)
-                                : isToday
-                                ? colors.text
-                                : colors.textMuted
-                            }
-                          >
-                            {String(pt.day).padStart(2, '0')}
-                          </SvgText>
+                          {showLabel && (
+                            <SvgText
+                              x={pt.x}
+                              y={chartHeight - 10}
+                              textAnchor="middle"
+                              fontSize={isSel ? '11' : '9'}
+                              fontWeight={isSel ? 'bold' : 'normal'}
+                              fill={
+                                isSel
+                                  ? (activeCategory?.color || colors.primary)
+                                  : isToday
+                                  ? colors.text
+                                  : colors.textMuted
+                              }
+                            >
+                              {String(pt.day).padStart(2, '0')}
+                            </SvgText>
+                          )}
 
-                          {/* Coluna Invisível para Captura de Toque Generosa */}
+                          {/* Coluna Invisível para Captura de Toque */}
                           <Rect
-                            x={pt.x - stepX / 2}
+                            x={pt.x - colWidth / 2}
                             y={0}
-                            width={stepX}
+                            width={colWidth}
                             height={chartHeight}
                             fill="transparent"
                             onPress={() => {
@@ -1109,7 +1219,35 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({ onPressTra
                       );
                     })}
                   </Svg>
-                </ScrollView>
+                </View>
+
+                {/* Indicadores de Paginação das Categorias */}
+                {categoriesWithSpend.length > 1 && (
+                  <View style={styles.catPaginationDots}>
+                    {categoriesWithSpend.map((cat, idx) => {
+                      const isAct = idx === activeCategoryIndex;
+                      return (
+                        <Pressable
+                          key={cat.id}
+                          onPress={() => handleSelectCategory(cat.id)}
+                          style={[
+                            styles.catDot,
+                            {
+                              backgroundColor: isAct
+                                ? cat.color
+                                : isDark
+                                ? 'rgba(255, 255, 255, 0.2)'
+                                : 'rgba(0, 0, 0, 0.18)',
+                              width: isAct ? 16 : 6,
+                            },
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Ir para categoria ${cat.name}`}
+                        />
+                      );
+                    })}
+                  </View>
+                )}
               </View>
 
               {/* DETALHAMENTO EM GRÁFICO DE BARRAS DAS TRANSAÇÕES DO DIA */}
@@ -2116,6 +2254,31 @@ const styles = StyleSheet.create({
   dailyChartHeaderLeft: {
     flex: 1,
     marginRight: 12,
+  },
+  dailyCatBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  catNavArrowBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catPaginationDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 8,
+    marginBottom: 2,
+  },
+  catDot: {
+    height: 6,
+    borderRadius: 3,
   },
   dailyCatBadge: {
     flexDirection: 'row',

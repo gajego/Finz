@@ -87,6 +87,7 @@ export default function App() {
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
+  const [pagerScrollEnabled, setPagerScrollEnabled] = useState(true);
   const [splashMounted, setSplashMounted] = useState(true);
   const [minPresentationElapsed, setMinPresentationElapsed] = useState(false);
 
@@ -316,6 +317,7 @@ export default function App() {
           ref={horizontalScrollRef}
           horizontal
           pagingEnabled
+          scrollEnabled={pagerScrollEnabled}
           showsHorizontalScrollIndicator={false}
           bounces={false}
           overScrollMode="never"
@@ -380,6 +382,7 @@ export default function App() {
           <View style={{ width: screenWidth, flex: 1 }}>
             <PerformanceScreen
               onPressTransaction={(tx) => setSelectedTransactionForDetails(tx)}
+              onSetScrollEnabled={setPagerScrollEnabled}
             />
           </View>
 

@@ -163,7 +163,7 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
           styles.fab,
           {
             backgroundColor: colors.primary,
-            borderColor: 'rgba(255, 255, 255, 0.25)',
+            borderColor: isDark ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.25)',
             shadowColor: colors.primary,
             transform: [{ scale: pressed ? 0.92 : 1 }],
           },
@@ -173,9 +173,9 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         accessibilityHint="Abre o seletor rápido para navegar entre as telas do aplicativo"
       >
         {isOpen ? (
-          <X size={20} color="#FFFFFF" strokeWidth={2.4} />
+          <X size={20} color={colors.primaryForeground} strokeWidth={2.4} />
         ) : (
-          <Layers2 size={21} color="#FFFFFF" strokeWidth={2.2} />
+          <Layers2 size={21} color={colors.primaryForeground} strokeWidth={2.4} />
         )}
       </Pressable>
     </>

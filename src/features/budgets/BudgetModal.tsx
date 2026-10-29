@@ -148,8 +148,18 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   const activeCategory =
     categories.find((c) => c.id === selectedCatId) || categories[0];
 
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+
   const currentSpent = transactions
-    .filter((t) => t.categoryId === activeCategory?.id && t.type === 'EXPENSE')
+    .filter(
+      (t) =>
+        t.categoryId === activeCategory?.id &&
+        (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
+        t.timestamp >= startOfMonth &&
+        t.timestamp <= endOfMonth
+    )
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleSelectCategory = (cat: Category) => {

@@ -147,7 +147,7 @@ const OverBudgetCategoryCard: React.FC<OverBudgetCategoryCardProps> = ({
       .filter(
         (t) =>
           t.categoryId === item.category.id &&
-          t.type === 'EXPENSE' &&
+          (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
           t.timestamp >= currentMonthStart &&
           t.timestamp <= currentMonthEnd
       )
@@ -400,7 +400,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     let totalPrev = 0;
 
     for (const t of transactions) {
-      if (t.type !== 'EXPENSE') continue;
+      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
       if (!consideredCatIds.has(t.categoryId)) continue;
 
       if (t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd) {
@@ -550,7 +550,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     const catTotalMap: Record<string, number> = {};
 
     for (const t of transactions) {
-      if (t.type !== 'EXPENSE') continue;
+      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
       if (!consideredCatIds.has(t.categoryId)) continue;
       if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) continue;
 
@@ -591,7 +591,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     const dayTxs = chosenCatId
       ? transactions
           .filter((t) => {
-            if (t.type !== 'EXPENSE' || t.categoryId !== chosenCatId) return false;
+            if ((t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') || t.categoryId !== chosenCatId) return false;
             if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) return false;
             const parts = getBrazilDateParts(t.timestamp);
             return parts.day === selectedDay;

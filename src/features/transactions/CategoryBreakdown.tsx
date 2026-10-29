@@ -89,7 +89,7 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
   const getCategorySpent = (categoryId: string) => {
     return transactions
       .filter((t) => {
-        if (t.categoryId !== categoryId || t.type !== 'EXPENSE') return false;
+        if (t.categoryId !== categoryId || (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT')) return false;
         return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
       })
       .reduce((sum, t) => sum + t.amount, 0);

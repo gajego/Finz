@@ -92,7 +92,7 @@ export const GoalsScreen: React.FC = () => {
   const getCategorySpent = (categoryId: string) => {
     return transactions
       .filter((t) => {
-        if (t.categoryId !== categoryId || t.type !== 'EXPENSE') return false;
+        if (t.categoryId !== categoryId || (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT')) return false;
         return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
       })
       .reduce((sum, t) => sum + t.amount, 0);
@@ -106,7 +106,7 @@ export const GoalsScreen: React.FC = () => {
     const spent = transactions
       .filter(
         (t) =>
-          t.type === 'EXPENSE' &&
+          (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
           t.timestamp >= currentMonthStart &&
           t.timestamp <= currentMonthEnd &&
           consideredCatIds.has(t.categoryId)

@@ -159,9 +159,9 @@ export function calculateMonthSurplus(
     0
   );
 
-  // Se houver saldo em cartões registrados, utilizamos como o saldo em conta até 23:59.
+  // Se houver cartões/contas cadastrados, utilizamos o saldo em conta consolidado.
   // Caso contrário, a sobra líquida apurada das transações é o saldo da sobra.
-  const accountBalance = totalCardsBalance > 0 ? totalCardsBalance : Math.max(0, netSurplus);
+  const accountBalance = cards.length > 0 ? totalCardsBalance : Math.max(0, netSurplus);
 
   // Base para cálculo da taxa de poupança/sobra: salário ou total de receitas
   const baseRevenue = totalSalary > 0 ? totalSalary : totalIncome;

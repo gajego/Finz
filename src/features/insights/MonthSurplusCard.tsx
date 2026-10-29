@@ -61,8 +61,9 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
 
   if (!selectedRecord) return null;
 
-  const isPositive = selectedRecord.netSurplus >= 0;
-  const statusColor = isPositive ? '#10B981' : '#EF4444';
+  const isAccountPositive = selectedRecord.accountBalance >= 0;
+  const heroColor = isAccountPositive ? '#10B981' : '#EF4444';
+  const isNetPositive = selectedRecord.netSurplus >= 0;
 
   return (
     <View
@@ -186,23 +187,22 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
         </ScrollView>
       )}
 
-      {/* Valor em Destaque da Sobra */}
+      {/* Valor em Destaque da Sobra (Saldo em Conta) */}
       <View style={styles.surplusHero}>
         <Text style={[styles.surplusHeroLabel, { color: colors.textMuted }]}>
           {selectedRecord.isClosed
-            ? `SOBRA REGISTRADA EM ${selectedRecord.monthLabel.toUpperCase()}`
-            : 'SOBRA PARCIAL ACUMULADA NO MÊS'}
+            ? `SALDO EM CONTA EM ${selectedRecord.monthLabel.toUpperCase()} (SOBRA)`
+            : 'SALDO ATUAL EM CONTA (SOBRA DO MÊS)'}
         </Text>
 
         <View style={styles.amountRow}>
           <Text
-            style={[styles.surplusHeroValue, { color: statusColor }]}
+            style={[styles.surplusHeroValue, { color: heroColor }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
           >
-            {isPositive ? '+' : ''}
-            {formatBRL(selectedRecord.netSurplus, privacyMode)}
+            {formatBRL(selectedRecord.accountBalance, privacyMode)}
           </Text>
         </View>
 
@@ -210,8 +210,8 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
           <Clock size={11} color={colors.textMuted} style={{ marginRight: 4 }} />
           <Text style={[styles.timestampText, { color: colors.textMuted }]}>
             {selectedRecord.isClosed
-              ? 'Registrado até as 23:59 do último dia do mês'
-              : 'Calculado em tempo real com entradas e saídas do mês'}
+              ? 'Saldo que havia na conta até as 23:59 do último dia'
+              : 'Saldo atual consolidado disponível em conta'}
           </Text>
         </View>
       </View>
@@ -251,7 +251,7 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
           </Text>
         </View>
 
-        {/* Card 2: Saldo em Conta */}
+        {/* Card 2: Receitas Totais */}
         <View
           style={[
             styles.metricCard,
@@ -262,9 +262,9 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
           ]}
         >
           <View style={styles.metricCardHeader}>
-            <Landmark size={13} color="#10B981" />
+            <TrendingUp size={13} color="#10B981" />
             <Text style={[styles.metricCardLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-              Saldo em Conta
+              Receitas Totais
             </Text>
           </View>
           <Text
@@ -273,14 +273,14 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
             adjustsFontSizeToFit
             minimumFontScale={0.75}
           >
-            {formatBRL(selectedRecord.accountBalance, privacyMode)}
+            {formatBRL(selectedRecord.totalIncome, privacyMode)}
           </Text>
           <Text style={[styles.metricCardSub, { color: colors.textMuted }]} numberOfLines={1}>
-            {selectedRecord.isClosed ? 'Posição às 23:59' : 'Saldo atual consolidado'}
+            Entradas no mês
           </Text>
         </View>
 
-        {/* Card 3: Despesas Totais */}
+        {/* Card 3: Gastos do Mês */}
         <View
           style={[
             styles.metricCard,
@@ -293,7 +293,7 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
           <View style={styles.metricCardHeader}>
             <TrendingDown size={13} color="#EF4444" />
             <Text style={[styles.metricCardLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-              Despesas
+              Gastos do Mês
             </Text>
           </View>
           <Text
@@ -305,11 +305,11 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
             {formatBRL(selectedRecord.totalExpense, privacyMode)}
           </Text>
           <Text style={[styles.metricCardSub, { color: colors.textMuted }]} numberOfLines={1}>
-            Gastos considerados
+            Despesas e Pix Débito
           </Text>
         </View>
 
-        {/* Card 4: Taxa de Retenção / Poupança */}
+        {/* Card 4: Balanço Líquido */}
         <View
           style={[
             styles.metricCard,
@@ -320,24 +320,25 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
           ]}
         >
           <View style={styles.metricCardHeader}>
-            <TrendingUp size={13} color="#8B5CF6" />
+            <Landmark size={13} color="#8B5CF6" />
             <Text style={[styles.metricCardLabel, { color: colors.textSecondary }]} numberOfLines={1}>
-              Retenção
+              Balanço Líquido
             </Text>
           </View>
           <Text
             style={[
               styles.metricCardValue,
-              { color: selectedRecord.savingsRate > 0 ? '#10B981' : colors.text },
+              { color: isNetPositive ? '#10B981' : '#EF4444' },
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.75}
           >
-            {selectedRecord.savingsRate}%
+            {isNetPositive ? '+' : ''}
+            {formatBRL(selectedRecord.netSurplus, privacyMode)}
           </Text>
           <Text style={[styles.metricCardSub, { color: colors.textMuted }]} numberOfLines={1}>
-            Da renda retida no mês
+            Receitas − Gastos
           </Text>
         </View>
       </View>

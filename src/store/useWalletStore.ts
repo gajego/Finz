@@ -318,7 +318,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const updatedTransactions = [newTx, ...state.transactions];
 
     let triggeredAlert: SmartAlert | null = null;
-    if (tx.type === 'EXPENSE') {
+    if (tx.type === 'EXPENSE' || tx.type === 'PIX_OUT') {
       const category = state.categories.find((c) => c.id === tx.categoryId);
       if (category && category.considerar !== false && category.budgetLimit > 0) {
         const now = new Date();
@@ -327,7 +327,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
           .filter(
             (t) =>
               t.categoryId === category.id &&
-              t.type === 'EXPENSE' &&
+              (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
               t.timestamp >= startOfMonth
           )
           .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);

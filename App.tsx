@@ -37,6 +37,7 @@ import { NotificationCenterModal } from './src/features/notifications/Notificati
 import { ProfileModal } from './src/features/profile/ProfileModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
+import { FloatingTabsQuickMenu } from './src/components/ui/FloatingTabsQuickMenu';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
 import { PerformanceScreen } from './src/features/performance/PerformanceScreen';
 import { InsightsScreen } from './src/features/insights/InsightsScreen';
@@ -411,6 +412,12 @@ export default function App() {
         <FloatingBottomNav
           activeTab={activeMainTab}
           onTabChange={handleTabChange}
+        />
+
+        {/* Círculo Flutuante no Canto Inferior Direito para Seleção Rápida de Telas/Abas */}
+        <FloatingTabsQuickMenu
+          activeTab={activeMainTab}
+          onSelectTab={handleTabChange}
         />
 
         {/* Menu de Perfil e Ajustes */}

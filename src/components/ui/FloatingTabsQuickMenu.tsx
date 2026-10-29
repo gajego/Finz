@@ -11,7 +11,7 @@ import Animated, {
   FadeOutDown,
 } from 'react-native-reanimated';
 import {
-  SquareStack,
+  Layers2,
   X,
   Home,
   BarChart2,
@@ -156,14 +156,15 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         </Animated.View>
       )}
 
-      {/* Círculo Flutuante (FAB) no Canto Inferior Direito */}
+      {/* Círculo Flutuante (FAB) no Canto Inferior Direito na Cor Primária */}
       <Pressable
         onPress={() => setIsOpen((prev) => !prev)}
         style={({ pressed }) => [
           styles.fab,
           {
-            backgroundColor: isOpen ? colors.surface : colors.surfaceElevated,
-            borderColor: isOpen ? colors.primary : colors.borderSubtle,
+            backgroundColor: colors.primary,
+            borderColor: 'rgba(255, 255, 255, 0.25)',
+            shadowColor: colors.primary,
             transform: [{ scale: pressed ? 0.92 : 1 }],
           },
         ]}
@@ -172,9 +173,9 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         accessibilityHint="Abre o seletor rápido para navegar entre as telas do aplicativo"
       >
         {isOpen ? (
-          <X size={20} color={colors.primary} />
+          <X size={20} color="#FFFFFF" strokeWidth={2.4} />
         ) : (
-          <SquareStack size={20} color={colors.text} />
+          <Layers2 size={21} color="#FFFFFF" strokeWidth={2.2} />
         )}
       </Pressable>
     </>
@@ -194,13 +195,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 8,
   },
   menuCard: {

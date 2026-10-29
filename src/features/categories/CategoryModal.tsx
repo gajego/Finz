@@ -604,7 +604,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 <View style={styles.toggleTitleRow}>
                   <TrendingUp size={15} color={isInvestimento ? '#10B981' : colors.textMuted} style={{ marginRight: 6 }} />
                   <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                    Categoria de investimento? (isInvestimento)
+                    Categoria de investimento
                   </Text>
                 </View>
                 <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
@@ -640,7 +640,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 <View style={styles.toggleTitleRow}>
                   <Coins size={15} color={isSalario ? '#3B82F6' : colors.textMuted} style={{ marginRight: 6 }} />
                   <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                    Categoria de salário? (isSalario)
+                    Categoria de salário
                   </Text>
                 </View>
                 <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>

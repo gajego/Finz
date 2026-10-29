@@ -34,8 +34,10 @@ import {
   ShoppingBag,
   Zap,
   Coins,
+  ArrowDownCircle,
+  ArrowUpCircle,
 } from 'lucide-react-native';
-import { Category, CategoryPilar } from '@/types';
+import { Category, CategoryPilar, CategoryType, IncomeType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
@@ -72,7 +74,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
   const [considerar, setConsiderar] = useState(true);
   const [isInvestimento, setIsInvestimento] = useState(false);
-  const [isSalario, setIsSalario] = useState(false);
+  const [catType, setCatType] = useState<CategoryType>('expense');
+  const [incomeType, setIncomeType] = useState<IncomeType>('salary');
   const [pilar, setPilar] = useState<CategoryPilar>('lifestyle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -90,7 +93,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         setConsiderar(categoryToEdit.considerar !== false);
         const isInv = !!categoryToEdit.isInvestimento || categoryToEdit.id === 'cat_investments' || categoryToEdit.pilar === 'investment';
         setIsInvestimento(isInv);
-        setIsSalario(Boolean(categoryToEdit.isSalario));
+        const existingType = categoryToEdit.type || (categoryToEdit.isSalario ? 'income' : 'expense');
+        setCatType(existingType);
+        setIncomeType(categoryToEdit.incomeType || (categoryToEdit.isSalario ? 'salary' : 'salary'));
         setPilar(categoryToEdit.pilar || (isInv ? 'investment' : 'lifestyle'));
       } else {
         setName('');
@@ -99,7 +104,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         setBudgetLimitStr('');
         setConsiderar(true);
         setIsInvestimento(false);
-        setIsSalario(false);
+        setCatType('expense');
+        setIncomeType('salary');
         setPilar('lifestyle');
       }
       setErrorMessage(null);
@@ -124,27 +130,34 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
       ? Math.round(parsedReais * 100)
       : 0;
 
+    const isIncome = catType === 'income';
+    const isSalario = isIncome && incomeType === 'salary';
+
     if (isEditing && categoryToEdit) {
       updateCategory(categoryToEdit.id, {
         name: trimmed,
         icon: selectedIcon,
         color: selectedColor,
-        budgetLimit: budgetLimitCents,
+        budgetLimit: isIncome ? 0 : budgetLimitCents,
         considerar,
-        isInvestimento,
+        isInvestimento: isIncome ? false : isInvestimento,
         isSalario,
-        pilar,
+        type: catType,
+        incomeType: isIncome ? incomeType : undefined,
+        pilar: isIncome ? undefined : pilar,
       });
     } else {
       createCategory({
         name: trimmed,
         icon: selectedIcon,
         color: selectedColor,
-        budgetLimit: budgetLimitCents,
+        budgetLimit: isIncome ? 0 : budgetLimitCents,
         considerar,
-        isInvestimento,
+        isInvestimento: isIncome ? false : isInvestimento,
         isSalario,
-        pilar,
+        type: catType,
+        incomeType: isIncome ? incomeType : undefined,
+        pilar: isIncome ? undefined : pilar,
       });
     }
 
@@ -361,6 +374,112 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
               </ScrollView>
             </View>
 
+            {/* Seletor de Tipo (Despesa vs Receita) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Sliders size={13} color={colors.textSecondary} style={{ marginRight: 6 }} />
+                <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                  TIPO DE CATEGORIA
+                </Text>
+              </View>
+
+              <View style={styles.typeSelectorRow}>
+                <Pressable
+                  onPress={() => !isProtected && setCatType('expense')}
+                  disabled={isProtected}
+                  style={[
+                    styles.typeChoiceCard,
+                    {
+                      backgroundColor: catType === 'expense'
+                        ? (isDark ? 'rgba(239, 68, 68, 0.18)' : 'rgba(239, 68, 68, 0.1)')
+                        : (isDark ? colors.surface : colors.surfaceElevated),
+                      borderColor: catType === 'expense' ? '#EF4444' : colors.border,
+                    },
+                  ]}
+                >
+                  <ArrowDownCircle size={16} color={catType === 'expense' ? '#EF4444' : colors.textSecondary} />
+                  <Text style={[styles.typeChoiceTitle, { color: catType === 'expense' ? '#EF4444' : colors.text }]}>
+                    Despesa
+                  </Text>
+                  <Text style={[styles.typeChoiceSub, { color: colors.textMuted }]}>
+                    Centro de custo / Saída
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => !isProtected && setCatType('income')}
+                  disabled={isProtected}
+                  style={[
+                    styles.typeChoiceCard,
+                    {
+                      backgroundColor: catType === 'income'
+                        ? (isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.1)')
+                        : (isDark ? colors.surface : colors.surfaceElevated),
+                      borderColor: catType === 'income' ? '#10B981' : colors.border,
+                    },
+                  ]}
+                >
+                  <ArrowUpCircle size={16} color={catType === 'income' ? '#10B981' : colors.textSecondary} />
+                  <Text style={[styles.typeChoiceTitle, { color: catType === 'income' ? '#10B981' : colors.text }]}>
+                    Receita
+                  </Text>
+                  <Text style={[styles.typeChoiceSub, { color: colors.textMuted }]}>
+                    Fonte de renda / Entrada
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {catType === 'income' ? (
+              /* Origem da Receita (Salário / Extra / Rendimentos / Outros) */
+              <View style={styles.section}>
+                <View style={styles.sectionHeaderRow}>
+                  <Coins size={13} color="#10B981" style={{ marginRight: 6 }} />
+                  <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>
+                    ORIGEM DA RECEITA / RENDA
+                  </Text>
+                </View>
+
+                <View style={styles.incomeTypeGrid}>
+                  {[
+                    { id: 'salary', label: 'Salário Principal', desc: 'Holerite ou provento formal principal', icon: Coins, color: '#3B82F6' },
+                    { id: 'extra', label: 'Renda Extra', desc: 'Freelance, consultoria ou vendas', icon: Zap, color: '#F59E0B' },
+                    { id: 'investment_yield', label: 'Rendimentos', desc: 'Dividendos, FIIs ou juros de aplicação', icon: TrendingUp, color: '#10B981' },
+                    { id: 'other', label: 'Outras Entradas', desc: 'Transferências diversas e depósitos', icon: Layers, color: '#8B5CF6' },
+                  ].map((item) => {
+                    const isSelected = incomeType === item.id;
+                    const IconComp = item.icon;
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => !isProtected && setIncomeType(item.id as IncomeType)}
+                        disabled={isProtected}
+                        style={[
+                          styles.incomeTypeCard,
+                          {
+                            backgroundColor: isSelected
+                              ? (isDark ? 'rgba(59, 130, 246, 0.16)' : 'rgba(59, 130, 246, 0.08)')
+                              : (isDark ? colors.surface : colors.surfaceElevated),
+                            borderColor: isSelected ? item.color : colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                          <IconComp size={14} color={isSelected ? item.color : colors.textSecondary} style={{ marginRight: 6 }} />
+                          <Text style={[styles.incomeTypeTitle, { color: isSelected ? item.color : colors.text }]}>
+                            {item.label}
+                          </Text>
+                        </View>
+                        <Text style={[styles.incomeTypeSub, { color: colors.textMuted }]}>
+                          {item.desc}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : (
+              <>
             {/* Campo 3: Teto Orçamentário Mensal (Opcional) */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
@@ -625,38 +744,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 disabled={isProtected}
               />
             </View>
-
-            {/* Campo 7: Flag isSalario (Salário & Renda Real) */}
-            <View
-              style={[
-                styles.toggleCard,
-                {
-                  backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
-                  borderColor: isSalario ? '#3B82F6' : colors.border,
-                },
-              ]}
-            >
-              <View style={styles.toggleCardText}>
-                <View style={styles.toggleTitleRow}>
-                  <Coins size={15} color={isSalario ? '#3B82F6' : colors.textMuted} style={{ marginRight: 6 }} />
-                  <Text style={[styles.toggleTitle, { color: colors.text }]}>
-                    Categoria de salário
-                  </Text>
-                </View>
-                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
-                  {isSalario
-                    ? 'Identificada como fonte de renda/salário. As entradas vinculadas a ela definem seu salário real e a sobra do mês.'
-                    : 'Entradas nesta categoria não serão computadas como salário principal formal.'}
-                </Text>
-              </View>
-              <Switch
-                value={isSalario}
-                onValueChange={setIsSalario}
-                trackColor={{ false: colors.border, true: '#3B82F6' }}
-                thumbColor={Platform.OS === 'android' ? (isSalario ? '#FFFFFF' : '#F4F3F4') : undefined}
-                disabled={isProtected}
-              />
-            </View>
+          </>
+        )}
 
             {/* Campo 7: Seletor de Ícones (40 Ícones Lucide) */}
             <View style={styles.section}>
@@ -1054,6 +1143,48 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     textAlign: 'center',
     width: '100%',
+  },
+  typeSelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typeChoiceCard: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    gap: 3,
+  },
+  typeChoiceTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 12,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  typeChoiceSub: {
+    fontFamily: Typography.medium,
+    fontSize: 9,
+    textAlign: 'center',
+  },
+  incomeTypeGrid: {
+    gap: 8,
+  },
+  incomeTypeCard: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  incomeTypeTitle: {
+    fontFamily: Typography.bold,
+    fontSize: 12,
+  },
+  incomeTypeSub: {
+    fontFamily: Typography.regular,
+    fontSize: 10,
+    lineHeight: 14,
   },
   pinnedFooter: {
     paddingHorizontal: 20,

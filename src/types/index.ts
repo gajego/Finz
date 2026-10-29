@@ -25,7 +25,8 @@ export interface BankCard {
   bankBalance?: number;
 }
 
-export type TransactionType = 'EXPENSE' | 'REFUND' | 'PIX_OUT' | 'PIX_IN';
+export type TransactionType = 'EXPENSE' | 'REFUND' | 'PIX_OUT' | 'PIX_IN' | 'INCOME' | 'TRANSFER';
+export type IncomeType = 'salary' | 'extra' | 'investment_yield' | 'transfer_in' | 'other';
 
 export interface Transaction {
   id: string;
@@ -36,19 +37,23 @@ export interface Transaction {
   categoryId: string;
   timestamp: number;
   rawText?: string;
+  incomeType?: IncomeType;
 }
 
 export type CategoryPilar = 'essential' | 'lifestyle' | 'investment';
+export type CategoryType = 'expense' | 'income';
 
 export interface Category {
   id: string;
   name: string;
   icon: string;
   color: string;
-  budgetLimit: number; // Centavos
+  budgetLimit: number; // Centavos (aplicável a categorias de despesa)
   considerar?: boolean;
   isInvestimento?: boolean;
-  isSalario?: boolean;
+  isSalario?: boolean; // Mantido para retrocompatibilidade
+  type?: CategoryType; // 'expense' | 'income' (padrão: 'expense')
+  incomeType?: IncomeType; // 'salary' | 'extra' | 'investment_yield' | 'transfer_in' | 'other'
   pilar?: CategoryPilar;
 }
 

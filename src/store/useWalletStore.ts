@@ -241,13 +241,18 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   createCategory: (catData) => {
+    const isSalario = Boolean(catData.isSalario || catData.incomeType === 'salary');
+    const type = catData.type || (isSalario ? 'income' : 'expense');
+    const incomeType = catData.incomeType || (isSalario ? 'salary' : undefined);
     const newCat: Category = {
       ...catData,
       id: `cat_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      budgetLimit: catData.budgetLimit ?? 0,
+      budgetLimit: type === 'income' ? 0 : (catData.budgetLimit ?? 0),
       considerar: catData.considerar !== false,
       isInvestimento: Boolean(catData.isInvestimento),
-      isSalario: Boolean(catData.isSalario),
+      isSalario,
+      type,
+      incomeType,
       pilar: catData.pilar || (catData.isInvestimento ? 'investment' : 'lifestyle'),
     };
     if (!get().presentationMode) {
@@ -267,7 +272,17 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const state = get();
     const existing = state.categories.find((c) => c.id === id);
     if (!existing) return;
-    const updated: Category = { ...existing, ...updates };
+    const isSalario = updates.isSalario !== undefined
+      ? Boolean(updates.isSalario)
+      : updates.incomeType === 'salary'
+      ? true
+      : existing.isSalario;
+    const type = updates.type || existing.type || (isSalario ? 'income' : 'expense');
+    const incomeType = updates.incomeType !== undefined
+      ? updates.incomeType
+      : (isSalario ? 'salary' : existing.incomeType);
+    const budgetLimit = type === 'income' ? 0 : (updates.budgetLimit !== undefined ? updates.budgetLimit : existing.budgetLimit);
+    const updated: Category = { ...existing, ...updates, isSalario, type, incomeType, budgetLimit };
     if (!state.presentationMode) {
       persistCategory(updated);
     }
@@ -320,7 +335,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     let triggeredAlert: SmartAlert | null = null;
     if (tx.type === 'EXPENSE' || tx.type === 'PIX_OUT') {
       const category = state.categories.find((c) => c.id === tx.categoryId);
-      if (category && category.considerar !== false && category.budgetLimit > 0) {
+      if (category && category.type !== 'income' && category.considerar !== false && category.budgetLimit > 0) {
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         const totalSpent = updatedTransactions

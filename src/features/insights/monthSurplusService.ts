@@ -36,7 +36,7 @@ function getBrazilDate(ts: number): { day: number; month: number; year: number }
 }
 
 /**
- * Calcula o salário real da pessoa baseado nas categorias marcadas como isSalario
+ * Calcula o salário real da pessoa baseado nas categorias ou marcações de salário
  */
 export function calculateRealSalary(
   transactions: Transaction[],
@@ -49,44 +49,44 @@ export function calculateRealSalary(
   salaryCategoryNames: string[];
   hasSalaryCategory: boolean;
 } {
-  const salaryCategories = categories.filter((c) => c.isSalario);
+  const salaryCategories = categories.filter(
+    (c) => (c.type === 'income' && c.incomeType === 'salary') || c.isSalario || c.incomeType === 'salary'
+  );
   const salaryCatIds = new Set(salaryCategories.map((c) => c.id));
   const hasSalaryCategory = salaryCategories.length > 0;
-
-  if (!hasSalaryCategory) {
-    return {
-      totalSalary: 0,
-      salaryTransactions: [],
-      salaryCategoryNames: [],
-      hasSalaryCategory: false,
-    };
-  }
 
   const salaryTransactions: Transaction[] = [];
   let totalSalary = 0;
 
   for (const t of transactions) {
     if (t.timestamp < startTs || t.timestamp > endTs) continue;
-    if (!salaryCatIds.has(t.categoryId)) continue;
+    // Exclui estornos e transferências internas
+    if (t.type === 'REFUND' || t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
-    // Entradas financeiras na categoria de salário
-    if (t.type === 'PIX_IN' || t.type === 'REFUND') {
-      totalSalary += t.amount;
-      salaryTransactions.push(t);
-    } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
-      // Caso haja estorno ou ajuste negativo lançado como saída
-      // Se for a única transação da categoria, consideramos o valor absoluto
-      // Para manter a segurança contábil, entradas compõem o salário
+    const isExplicitSalaryTx = t.incomeType === 'salary';
+    const isCatSalary = salaryCatIds.has(t.categoryId);
+
+    if (isExplicitSalaryTx || isCatSalary) {
+      // Entradas financeiras legítimas (PIX, TED, depósitos, income geral)
+      if (t.type === 'PIX_IN' || t.type === 'INCOME') {
+        totalSalary += t.amount;
+        salaryTransactions.push(t);
+      } else if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') {
+        totalSalary += t.amount;
+        salaryTransactions.push(t);
+      }
     }
   }
 
-  // Fallback pragmático: se o usuário marcou a categoria de salário e lançou
-  // movimentações nela (mesmo como transação geral), computamos como receita de salário
-  if (totalSalary === 0) {
+  // Fallback pragmático: se nenhuma entrada com tipo explícito foi encontrada, mas o usuário
+  // tem movimentações vinculadas à categoria de salário no período, computa entradas
+  if (totalSalary === 0 && hasSalaryCategory) {
     for (const t of transactions) {
       if (t.timestamp >= startTs && t.timestamp <= endTs && salaryCatIds.has(t.categoryId)) {
-        totalSalary += t.amount;
-        salaryTransactions.push(t);
+        if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT' && t.type !== 'REFUND' && t.type !== 'TRANSFER') {
+          totalSalary += t.amount;
+          salaryTransactions.push(t);
+        }
       }
     }
   }
@@ -95,7 +95,7 @@ export function calculateRealSalary(
     totalSalary,
     salaryTransactions,
     salaryCategoryNames: salaryCategories.map((c) => c.name),
-    hasSalaryCategory: true,
+    hasSalaryCategory: hasSalaryCategory || salaryTransactions.length > 0,
   };
 }
 
@@ -126,14 +126,22 @@ export function calculateMonthSurplus(
   const consideredCatIds = new Set(
     categories.filter((c) => c.considerar !== false).map((c) => c.id)
   );
+  const incomeCatIds = new Set(
+    categories.filter((c) => c.type === 'income').map((c) => c.id)
+  );
 
   let totalIncome = 0;
   let totalExpense = 0;
+  let totalRefunds = 0;
 
   for (const t of transactions) {
     if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
-    if (t.type === 'PIX_IN' || t.type === 'REFUND') {
+    if (t.type === 'REFUND') {
+      // Regra contábil CFO: estornos não inflam receita bruta, abatem gastos
+      totalRefunds += t.amount;
+    } else if (t.type === 'PIX_IN' || t.type === 'INCOME' || incomeCatIds.has(t.categoryId)) {
       totalIncome += t.amount;
     } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
       if (consideredCatIds.has(t.categoryId)) {
@@ -141,6 +149,9 @@ export function calculateMonthSurplus(
       }
     }
   }
+
+  // Abatimento de estornos das despesas apuradas
+  totalExpense = Math.max(0, totalExpense - totalRefunds);
 
   // Apuração do salário real no período
   const { totalSalary } = calculateRealSalary(

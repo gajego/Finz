@@ -33,7 +33,9 @@ export function initDatabase() {
       considerar INTEGER DEFAULT 1,
       is_investimento INTEGER DEFAULT 0,
       is_salario INTEGER DEFAULT 0,
-      pilar TEXT DEFAULT 'lifestyle'
+      pilar TEXT DEFAULT 'lifestyle',
+      type TEXT DEFAULT 'expense',
+      income_type TEXT
     );
 
     CREATE TABLE IF NOT EXISTS transactions (
@@ -44,7 +46,8 @@ export function initDatabase() {
       merchant TEXT NOT NULL,
       category_id TEXT NOT NULL,
       timestamp INTEGER NOT NULL,
-      raw_text TEXT
+      raw_text TEXT,
+      income_type TEXT
     );
 
     CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions (timestamp DESC);
@@ -105,6 +108,27 @@ export function initDatabase() {
     db.execSync("ALTER TABLE categories ADD COLUMN pilar TEXT DEFAULT 'lifestyle';");
   } catch {
     // Coluna já existe
+  }
+  try {
+    db.execSync("ALTER TABLE categories ADD COLUMN type TEXT DEFAULT 'expense';");
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE categories ADD COLUMN income_type TEXT;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE transactions ADD COLUMN income_type TEXT;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    // Migração suave: categorias legadas com is_salario = 1 migram para type = 'income' e income_type = 'salary'
+    db.runSync("UPDATE categories SET type = 'income', income_type = 'salary' WHERE is_salario = 1 AND (type IS NULL OR type = 'expense');");
+  } catch {
+    // Ignora se tabela estiver vazia ou já atualizada
   }
 
   // Higienização de cartões com nome genérico ou incorreto (ex: 'GOLD' ou 'PLUGGY') para NUBANK e cores oficiais
@@ -284,6 +308,9 @@ export function loadAllDataFromSQLite(): {
       ? Boolean(r.is_salario)
       : /sal[aá]rio|renda|remunera[cç]|pro.?labore|ordenado/i.test(r.name);
 
+    const type = (r.type as any) || (isSalario ? 'income' : 'expense');
+    const incomeType = (r.income_type as any) || (isSalario ? 'salary' : undefined);
+
     const defaultPilar = isInvest
       ? 'investment'
       : ['cat_food', 'cat_transport'].includes(r.id) || /aliment|mercado|transport/i.test(r.name)
@@ -295,10 +322,12 @@ export function loadAllDataFromSQLite(): {
       name: String(r.name),
       icon: String(r.icon),
       color: String(r.color),
-      budgetLimit: Number(r.budget_limit) || 0,
+      budgetLimit: type === 'income' ? 0 : Number(r.budget_limit) || 0,
       considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
       isInvestimento: isInvest,
-      isSalario,
+      isSalario: isSalario || incomeType === 'salary',
+      type,
+      incomeType,
       pilar: (r.pilar as any) || defaultPilar,
     };
   });
@@ -312,6 +341,7 @@ export function loadAllDataFromSQLite(): {
     categoryId: String(r.category_id || 'cat_food'),
     timestamp: Number(r.timestamp) || 0,
     rawText: r.raw_text || undefined,
+    incomeType: (r.income_type as any) || undefined,
   }));
 
   const investments: Investment[] = invRows.map((r) => ({
@@ -426,11 +456,13 @@ export function persistCategory(cat: Category) {
   try {
     const considerarVal = cat.considerar === false ? 0 : 1;
     const isInvestVal = cat.isInvestimento ? 1 : 0;
-    const isSalarioVal = cat.isSalario ? 1 : 0;
+    const isSalarioVal = cat.isSalario || cat.incomeType === 'salary' ? 1 : 0;
     const pilarVal = cat.pilar || (cat.isInvestimento ? 'investment' : 'lifestyle');
+    const typeVal = cat.type || (isSalarioVal ? 'income' : 'expense');
+    const incomeTypeVal = cat.incomeType || (isSalarioVal ? 'salary' : null);
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar, type, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal, typeVal, incomeTypeVal]
     );
   } catch (e) {
     console.warn('[db] Falha ao persistir categoria:', e);
@@ -517,10 +549,17 @@ export function deleteCategory(categoryId: string) {
 }
 
 export function persistTransaction(tx: Transaction) {
-  db.runSync(
-    'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
-  );
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null, tx.incomeType || null]
+    );
+  } catch {
+    db.runSync(
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
+    );
+  }
 }
 
 export function persistTransactionCategory(transactionId: string, categoryId: string) {

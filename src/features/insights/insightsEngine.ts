@@ -36,6 +36,7 @@ export interface BudgetPilarData {
 
 export interface Budget503020Result {
   totalConsideredSpent: number;
+  availableIncome?: number;
   pilares: {
     essential: BudgetPilarData;
     lifestyle: BudgetPilarData;
@@ -103,14 +104,28 @@ export function calculateDailyBurnRate(
   const startOfToday = new Date(year, month, currentDay).getTime();
   const endOfToday = new Date(year, month, currentDay, 23, 59, 59, 999).getTime();
 
-  const consideredCats = categories.filter((c) => c.considerar !== false);
+  const consideredCats = categories.filter((c) => c.considerar !== false && c.type !== 'income');
   const consideredIds = new Set(consideredCats.map((c) => c.id));
   const totalMonthlyBudget = consideredCats.reduce((sum, c) => sum + (c.budgetLimit || 0), 0);
 
   let currentMonthSpent = 0;
   let todaySpent = 0;
+  let currentMonthRefunds = 0;
+  let todayRefunds = 0;
 
   for (const t of transactions) {
+    if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
+
+    if (t.type === 'REFUND') {
+      if (t.timestamp >= startOfMonth && t.timestamp <= endOfMonth) {
+        currentMonthRefunds += t.amount;
+      }
+      if (t.timestamp >= startOfToday && t.timestamp <= endOfToday) {
+        todayRefunds += t.amount;
+      }
+      continue;
+    }
+
     if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
     if (!consideredIds.has(t.categoryId)) continue;
 
@@ -121,6 +136,9 @@ export function calculateDailyBurnRate(
       todaySpent += t.amount;
     }
   }
+
+  currentMonthSpent = Math.max(0, currentMonthSpent - currentMonthRefunds);
+  todaySpent = Math.max(0, todaySpent - todayRefunds);
 
   const remainingBudget = Math.max(0, totalMonthlyBudget - currentMonthSpent);
   const daysRemaining = Math.max(1, daysInMonth - currentDay + 1);
@@ -175,17 +193,23 @@ export function calculateFinancialHealthScore(
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const endOfMonth = new Date(year, month, daysInMonth, 23, 59, 59, 999).getTime();
 
-  const consideredCats = categories.filter((c) => c.considerar !== false);
+  const consideredCats = categories.filter((c) => c.considerar !== false && c.type !== 'income');
   const consideredIds = new Set(consideredCats.map((c) => c.id));
+  const incomeCatIds = new Set(categories.filter((c) => c.type === 'income').map((c) => c.id));
 
   let totalIncome = 0;
   let totalExpense = 0;
+  let totalRefunds = 0;
   const catSpentMap: Record<string, number> = {};
 
   for (const t of transactions) {
     if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
-    if (t.type === 'PIX_IN' || t.type === 'REFUND') {
+    if (t.type === 'REFUND') {
+      // Regra CFO: estorno abate despesa e não infla renda bruta
+      totalRefunds += t.amount;
+    } else if (t.type === 'PIX_IN' || t.type === 'INCOME' || incomeCatIds.has(t.categoryId) || t.incomeType === 'salary' || t.incomeType === 'extra') {
       totalIncome += t.amount;
     } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
       if (consideredIds.has(t.categoryId)) {
@@ -194,6 +218,8 @@ export function calculateFinancialHealthScore(
       }
     }
   }
+
+  totalExpense = Math.max(0, totalExpense - totalRefunds);
 
   // 1. Pilar Poupança (40 pts)
   let savingsScore = 0;
@@ -365,7 +391,8 @@ export function calculateBudget503020(
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const endOfMonth = new Date(year, month, daysInMonth, 23, 59, 59, 999).getTime();
 
-  const consideredCats = categories.filter((c) => c.considerar !== false);
+  const consideredCats = categories.filter((c) => c.considerar !== false && c.type !== 'income');
+  const incomeCatIds = new Set(categories.filter((c) => c.type === 'income').map((c) => c.id));
   const catPilarMap = new Map<string, BudgetPilar>();
   for (const c of consideredCats) {
     catPilarMap.set(c.id, classifyCategoryPilar(c));
@@ -374,10 +401,24 @@ export function calculateBudget503020(
   let essentialSpent = 0;
   let lifestyleSpent = 0;
   let futureSpent = 0;
+  let availableIncome = 0;
 
   for (const t of transactions) {
-    if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
     if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in' || t.type === 'REFUND') continue;
+
+    // Renda disponível (Salário, Freelance, Entradas)
+    if (
+      t.type === 'PIX_IN' ||
+      t.type === 'INCOME' ||
+      incomeCatIds.has(t.categoryId) ||
+      t.incomeType === 'salary' ||
+      t.incomeType === 'extra'
+    ) {
+      availableIncome += t.amount;
+    }
+
+    if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
 
     const pilar = catPilarMap.get(t.categoryId);
     if (!pilar) continue;
@@ -388,22 +429,25 @@ export function calculateBudget503020(
   }
 
   const totalConsideredSpent = essentialSpent + lifestyleSpent + futureSpent;
+  // A base para a regra 50/30/20 é a renda líquida/disponível; se não houver receita registrada, usa o gasto total
+  const baseAmount = availableIncome > 0 ? availableIncome : totalConsideredSpent;
 
-  const essentialPercent = totalConsideredSpent > 0 ? Math.round((essentialSpent / totalConsideredSpent) * 100) : 0;
-  const lifestylePercent = totalConsideredSpent > 0 ? Math.round((lifestyleSpent / totalConsideredSpent) * 100) : 0;
-  const futurePercent = totalConsideredSpent > 0 ? Math.max(0, 100 - essentialPercent - lifestylePercent) : 0;
+  const essentialPercent = baseAmount > 0 ? Math.round((essentialSpent / baseAmount) * 100) : 0;
+  const lifestylePercent = baseAmount > 0 ? Math.round((lifestyleSpent / baseAmount) * 100) : 0;
+  const futurePercent = baseAmount > 0 ? Math.round((futureSpent / baseAmount) * 100) : 0;
 
   let diagnostic = 'Distribuição estrutural equilibrada.';
-  if (essentialPercent > 65) {
-    diagnostic = 'Custos essenciais altos comprimindo sua capacidade de poupança.';
-  } else if (lifestylePercent > 45) {
-    diagnostic = 'Estilo de vida acima de 45%: grande oportunidade de corte em lazer/delivery.';
+  if (essentialPercent > 50) {
+    diagnostic = 'Necessidades consomem mais de 50% da sua renda disponível.';
+  } else if (lifestylePercent > 30) {
+    diagnostic = 'Estilo de vida acima de 30%: oportunidade de contenção em lazer e compras.';
   } else if (futurePercent >= 20) {
-    diagnostic = 'Excelente! Você atinge ou supera a meta de 20% em aportes futuros.';
+    diagnostic = 'Excelente! Você atinge ou supera a meta de 20% da renda em investimentos.';
   }
 
   return {
     totalConsideredSpent,
+    availableIncome,
     pilares: {
       essential: {
         pilar: 'essential',

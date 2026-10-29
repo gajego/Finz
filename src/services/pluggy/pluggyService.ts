@@ -859,13 +859,19 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
         const isCredit = t.type === 'CREDIT' || safeAmount > 0;
         const descForPix = `${t.description || ''} ${t.operationType || ''} ${cleanDescription}`;
         const isPix = /pix/i.test(descForPix);
+        const isRefund = /estorno|reembolso|devolu[cç]|cancelamento/i.test(descForPix);
+        const isSalary = /sal[aá]rio|folha|pro.?labore|remunera[cç]|ordenado|pagamento recebi/i.test(descForPix);
 
         let txType: TransactionType;
         if (isPix) {
           txType = isCredit ? 'PIX_IN' : 'PIX_OUT';
+        } else if (isCredit) {
+          txType = isRefund ? 'REFUND' : 'INCOME';
         } else {
-          txType = isCredit ? 'REFUND' : 'EXPENSE';
+          txType = 'EXPENSE';
         }
+
+        const incomeType = isCredit ? (isSalary ? 'salary' : isRefund ? undefined : 'other') : undefined;
 
         const transaction: Transaction = {
           id: txId,
@@ -876,6 +882,7 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
           categoryId: categoryId,
           timestamp: timestamp,
           rawText: `Pluggy: ${t.description || cleanDescription}`,
+          incomeType,
         };
 
         transactionsToPersist.push(transaction);
@@ -892,20 +899,38 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
       if (transactionsToPersist.length > 0) {
         const insertBatch = () => {
           for (const tx of transactionsToPersist) {
-            db.runSync(
-              `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [
-                tx.id,
-                tx.cardId,
-                tx.amount,
-                tx.type,
-                tx.merchant,
-                tx.categoryId,
-                tx.timestamp,
-                tx.rawText || null,
-              ]
-            );
+            try {
+              db.runSync(
+                `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  tx.id,
+                  tx.cardId,
+                  tx.amount,
+                  tx.type,
+                  tx.merchant,
+                  tx.categoryId,
+                  tx.timestamp,
+                  tx.rawText || null,
+                  tx.incomeType || null,
+                ]
+              );
+            } catch {
+              db.runSync(
+                `INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  tx.id,
+                  tx.cardId,
+                  tx.amount,
+                  tx.type,
+                  tx.merchant,
+                  tx.categoryId,
+                  tx.timestamp,
+                  tx.rawText || null,
+                ]
+              );
+            }
           }
         };
 

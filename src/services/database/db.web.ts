@@ -402,6 +402,9 @@ export function loadAllDataFromSQLite(): {
       ? Boolean(r.is_salario)
       : /sal[aá]rio|renda|remunera[cç]|pro.?labore|ordenado/i.test(r.name);
 
+    const type = (r.type as any) || (isSalario ? 'income' : 'expense');
+    const incomeType = (r.income_type as any) || (isSalario ? 'salary' : undefined);
+
     const defaultPilar = isInvest
       ? 'investment'
       : ['cat_food', 'cat_transport'].includes(r.id) || /aliment|mercado|transport/i.test(r.name)
@@ -413,10 +416,12 @@ export function loadAllDataFromSQLite(): {
       name: String(r.name),
       icon: String(r.icon),
       color: String(r.color),
-      budgetLimit: Number(r.budget_limit) || 0,
+      budgetLimit: type === 'income' ? 0 : Number(r.budget_limit) || 0,
       considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
       isInvestimento: isInvest,
-      isSalario,
+      isSalario: isSalario || incomeType === 'salary',
+      type,
+      incomeType,
       pilar: (r.pilar as any) || defaultPilar,
     };
   });
@@ -430,6 +435,7 @@ export function loadAllDataFromSQLite(): {
     categoryId: String(r.category_id || 'cat_food'),
     timestamp: Number(r.timestamp) || 0,
     rawText: r.raw_text || undefined,
+    incomeType: (r.income_type as any) || undefined,
   }));
 
   let profile: UserProfile | undefined = undefined;
@@ -499,11 +505,13 @@ export function persistCategory(cat: Category) {
   try {
     const considerarVal = cat.considerar === false ? 0 : 1;
     const isInvestVal = cat.isInvestimento ? 1 : 0;
-    const isSalarioVal = cat.isSalario ? 1 : 0;
+    const isSalarioVal = cat.isSalario || cat.incomeType === 'salary' ? 1 : 0;
     const pilarVal = cat.pilar || (cat.isInvestimento ? 'investment' : 'lifestyle');
+    const typeVal = cat.type || (isSalarioVal ? 'income' : 'expense');
+    const incomeTypeVal = cat.incomeType || (isSalarioVal ? 'salary' : null);
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar, type, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal, typeVal, incomeTypeVal]
     );
   } catch (e) {
     console.warn('[db.web] Falha ao persistir categoria:', e);
@@ -547,10 +555,17 @@ export function deleteCategory(categoryId: string) {
 }
 
 export function persistTransaction(tx: Transaction) {
-  db.runSync(
-    'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
-  );
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null, tx.incomeType || null]
+    );
+  } catch {
+    db.runSync(
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
+    );
+  }
 }
 
 export function persistTransactionCategory(transactionId: string, categoryId: string) {

@@ -56,7 +56,9 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
   }, []);
 
   const hasSalaryCategory = useMemo(() => {
-    return categories.some((c) => c.isSalario);
+    return categories.some(
+      (c) => (c.type === 'income' && c.incomeType === 'salary') || c.isSalario || c.incomeType === 'salary'
+    );
   }, [categories]);
 
   if (!selectedRecord) return null;

@@ -88,7 +88,7 @@ export const GoalsScreen: React.FC = () => {
     return name.charAt(0).toUpperCase() + name.slice(1);
   }, []);
 
-  // Gasto por categoria
+  // Gasto por categoria de despesa
   const getCategorySpent = (categoryId: string) => {
     return transactions
       .filter((t) => {
@@ -98,9 +98,20 @@ export const GoalsScreen: React.FC = () => {
       .reduce((sum, t) => sum + t.amount, 0);
   };
 
-  // Estatísticas globais do mês (considerando apenas categorias ativas nos totais)
+  // Entradas recebidas por categoria de receita
+  const getCategoryIncome = (categoryId: string) => {
+    return transactions
+      .filter((t) => {
+        if (t.categoryId !== categoryId) return false;
+        if (t.type !== 'PIX_IN' && t.type !== 'INCOME' && t.type !== 'REFUND') return false;
+        return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
+      })
+      .reduce((sum, t) => sum + t.amount, 0);
+  };
+
+  // Estatísticas globais do mês (considerando apenas categorias ativas de despesa nos totais)
   const { totalSpent, totalBudget, overallPercent } = useMemo(() => {
-    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCategories = categories.filter((c) => c.considerar !== false && c.type !== 'income');
     const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
 
     const spent = transactions
@@ -279,8 +290,10 @@ export const GoalsScreen: React.FC = () => {
 
         <View style={styles.categoryList}>
           {categories.map((cat) => {
-            const spent = getCategorySpent(cat.id);
-            const hasLimit = cat.budgetLimit > 0;
+            const isIncome = cat.type === 'income' || cat.isSalario;
+            const spent = isIncome ? 0 : getCategorySpent(cat.id);
+            const incomeTotal = isIncome ? getCategoryIncome(cat.id) : 0;
+            const hasLimit = !isIncome && cat.budgetLimit > 0;
             const percent = hasLimit ? Math.round((spent / cat.budgetLimit) * 100) : 0;
             const isCritical = hasLimit && percent > 90;
             const isWarning = hasLimit && percent >= 70 && percent <= 90;
@@ -372,7 +385,7 @@ export const GoalsScreen: React.FC = () => {
                           </Text>
                         </View>
                       )}
-                      {cat.isSalario && (
+                      {isIncome && (
                         <View
                           style={[
                             styles.salarioPill,
@@ -384,15 +397,22 @@ export const GoalsScreen: React.FC = () => {
                         >
                           <Coins size={10} color="#3B82F6" style={{ marginRight: 3 }} />
                           <Text style={[styles.salarioPillText, { color: '#3B82F6' }]}>
-                            SALÁRIO
+                            {cat.incomeType === 'extra'
+                              ? 'RENDA EXTRA'
+                              : cat.incomeType === 'investment_yield'
+                              ? 'RENDIMENTOS'
+                              : cat.incomeType === 'other'
+                              ? 'RECEITA'
+                              : 'SALÁRIO'}
                           </Text>
                         </View>
                       )}
                     </View>
 
                     <Text style={[styles.categorySpentText, { color: colors.textSecondary }]}>
-                      Gasto: {formatBRL(spent, privacyMode)}
-                      {hasLimit ? ` / ${formatBRL(cat.budgetLimit, privacyMode)}` : ' • Sem teto'}
+                      {isIncome
+                        ? `Recebido no mês: ${formatBRL(incomeTotal, privacyMode)}`
+                        : `Gasto: ${formatBRL(spent, privacyMode)}${hasLimit ? ` / ${formatBRL(cat.budgetLimit, privacyMode)}` : ' • Sem teto'}`}
                     </Text>
                   </View>
 

@@ -488,10 +488,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   ]}
                 >
                   <Zap size={15} color={pilar === 'essential' ? '#3B82F6' : colors.textSecondary} />
-                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'essential' ? '#3B82F6' : colors.text }]}>
+                  <Text
+                    style={[styles.pilarChoiceTitle, { color: pilar === 'essential' ? '#3B82F6' : colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     Necessidades
                   </Text>
-                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.pilarChoiceSub, { color: colors.textMuted }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     50% • Essenciais
                   </Text>
                 </Pressable>
@@ -516,10 +526,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   ]}
                 >
                   <ShoppingBag size={15} color={pilar === 'lifestyle' ? '#EC4899' : colors.textSecondary} />
-                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'lifestyle' ? '#EC4899' : colors.text }]}>
+                  <Text
+                    style={[styles.pilarChoiceTitle, { color: pilar === 'lifestyle' ? '#EC4899' : colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     Estilo de Vida
                   </Text>
-                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.pilarChoiceSub, { color: colors.textMuted }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     30% • Desejos
                   </Text>
                 </Pressable>
@@ -544,10 +564,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                   ]}
                 >
                   <TrendingUp size={15} color={pilar === 'investment' ? '#10B981' : colors.textSecondary} />
-                  <Text style={[styles.pilarChoiceTitle, { color: pilar === 'investment' ? '#10B981' : colors.text }]}>
+                  <Text
+                    style={[styles.pilarChoiceTitle, { color: pilar === 'investment' ? '#10B981' : colors.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     Investimento
                   </Text>
-                  <Text style={[styles.pilarChoiceSub, { color: colors.textMuted }]}>
+                  <Text
+                    style={[styles.pilarChoiceSub, { color: colors.textMuted }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
                     20% • Futuro
                   </Text>
                 </Pressable>
@@ -943,11 +973,13 @@ const styles = StyleSheet.create({
   },
   toggleCardText: {
     flex: 1,
+    minWidth: 0,
   },
   toggleTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   toggleTitle: {
     fontFamily: Typography.bold,
@@ -964,7 +996,9 @@ const styles = StyleSheet.create({
   },
   pilarChoiceCard: {
     flex: 1,
-    padding: 10,
+    minWidth: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
@@ -975,11 +1009,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
     textAlign: 'center',
+    width: '100%',
   },
   pilarChoiceSub: {
     fontFamily: Typography.medium,
     fontSize: 8.5,
     textAlign: 'center',
+    width: '100%',
   },
   pinnedFooter: {
     paddingHorizontal: 20,

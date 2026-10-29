@@ -104,7 +104,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
 const styles = StyleSheet.create({
   outerContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 24 : 16,
+    bottom: Platform.OS === 'ios' ? 32 : 16,
     left: 0,
     right: 0,
     alignItems: 'center',

@@ -785,10 +785,15 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Ver comparativo mensal detalhado"
           >
-            <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.kpiLabel, { color: colors.textSecondary }]} numberOfLines={1}>
               GASTO NO MÊS
             </Text>
-            <Text style={[styles.kpiValue, { color: colors.text }]}>
+            <Text
+              style={[styles.kpiValue, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {privacyMode ? '••••••' : formatBRL(totalCurrentSpent)}
             </Text>
             <View style={styles.kpiBadgeRow}>
@@ -800,7 +805,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   ]}
                 >
                   <ArrowUpRight size={13} color={colors.danger} />
-                  <Text style={[styles.trendBadgeText, { color: colors.danger }]}>
+                  <Text style={[styles.trendBadgeText, { color: colors.danger }]} numberOfLines={1}>
                     +{overallPercentChange}%
                   </Text>
                 </View>
@@ -812,7 +817,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   ]}
                 >
                   <ArrowDownRight size={13} color={colors.success} />
-                  <Text style={[styles.trendBadgeText, { color: colors.success }]}>
+                  <Text style={[styles.trendBadgeText, { color: colors.success }]} numberOfLines={1}>
                     {overallPercentChange}%
                   </Text>
                 </View>
@@ -824,12 +829,17 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   ]}
                 >
                   <Minus size={13} color={colors.textSecondary} />
-                  <Text style={[styles.trendBadgeText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.trendBadgeText, { color: colors.textSecondary }]} numberOfLines={1}>
                     0%
                   </Text>
                 </View>
               )}
-              <Text style={[styles.trendSubtext, { color: colors.textMuted }]}>
+              <Text
+                style={[styles.trendSubtext, { color: colors.textMuted }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
                 vs mês anterior
               </Text>
             </View>
@@ -854,7 +864,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             accessibilityRole="button"
             accessibilityLabel="Ver status de tetos e distribuição"
           >
-            <Text style={[styles.kpiLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.kpiLabel, { color: colors.textSecondary }]} numberOfLines={1}>
               STATUS DOS TETOS
             </Text>
             <Text
@@ -862,6 +872,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                 styles.kpiValue,
                 { color: overBudgetCategories.length > 0 ? colors.danger : colors.success },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
             >
               {overBudgetCategories.length > 0
                 ? `${overBudgetCategories.length} estourado${overBudgetCategories.length > 1 ? 's' : ''}`
@@ -869,11 +882,21 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             </Text>
             <View style={styles.kpiBadgeRow}>
               {overBudgetCategories.length > 0 ? (
-                <Text style={[styles.trendSubtext, { color: colors.danger }]}>
+                <Text
+                  style={[styles.trendSubtext, { color: colors.danger }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
                   {privacyMode ? '••••••' : `+${formatBRL(totalOverBudgetDiff)} excedidos`}
                 </Text>
               ) : (
-                <Text style={[styles.trendSubtext, { color: colors.success }]}>
+                <Text
+                  style={[styles.trendSubtext, { color: colors.success }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
                   Nenhum limite ultrapassado
                 </Text>
               )}
@@ -909,7 +932,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             <PieIcon
               size={13}
               color={activeTab === 'overview' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4, flexShrink: 0 }}
             />
             <Text
               style={[
@@ -919,6 +942,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   fontFamily: activeTab === 'overview' ? Typography.bold : Typography.medium,
                 },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
             >
               Visão Geral
             </Text>
@@ -942,7 +968,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             <Activity
               size={13}
               color={activeTab === 'daily' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4, flexShrink: 0 }}
             />
             <Text
               style={[
@@ -952,6 +978,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   fontFamily: activeTab === 'daily' ? Typography.bold : Typography.medium,
                 },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
             >
               Evolução Diária
             </Text>
@@ -975,7 +1004,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
             <BarChart2
               size={13}
               color={activeTab === 'comparative' ? (isDark ? colors.primary : colors.text) : colors.textSecondary}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4, flexShrink: 0 }}
             />
             <Text
               style={[
@@ -985,6 +1014,9 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
                   fontFamily: activeTab === 'comparative' ? Typography.bold : Typography.medium,
                 },
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.78}
             >
               Comparativo
             </Text>
@@ -2006,6 +2038,7 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     flex: 1,
+    minWidth: 0,
     padding: 16,
     borderRadius: Radii.lg,
     borderWidth: 1,
@@ -2055,11 +2088,12 @@ const styles = StyleSheet.create({
   },
   segmentBtn: {
     flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 9,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     borderRadius: Radii.md,
   },
   segmentBtnActive: {

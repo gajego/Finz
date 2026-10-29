@@ -229,12 +229,16 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
                     { color: isCritical ? colors.danger : colors.text },
                   ]}
                   numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.75}
                 >
                   {formatBRL(spent)}
                 </Text>
                 <Text
                   style={[styles.limitAmount, { color: colors.textMuted }]}
                   numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.75}
                 >
                   / {hasLimit ? formatBRL(cat.budgetLimit) : 'Livre'}
                 </Text>
@@ -390,8 +394,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bentoCard: {
-    width: '48.5%',
-    padding: 14,
+    width: '48%',
+    flexGrow: 1,
+    padding: 12,
     borderRadius: 22,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 4 },

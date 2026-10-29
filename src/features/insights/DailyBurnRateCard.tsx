@@ -87,11 +87,11 @@ export const DailyBurnRateCard: React.FC<DailyBurnRateCardProps> = ({ onPressDet
           >
             <Flame size={16} color={statusConfig.color} />
           </View>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
               RITMO DE GASTO DIÁRIO
             </Text>
-            <Text style={[styles.headline, { color: colors.text }]}>
+            <Text style={[styles.headline, { color: colors.text }]} numberOfLines={1}>
               {burnRate.headline}
             </Text>
           </View>
@@ -115,7 +115,12 @@ export const DailyBurnRateCard: React.FC<DailyBurnRateCardProps> = ({ onPressDet
 
       {/* Valor Central da Cota */}
       <View style={styles.quotaRow}>
-        <Text style={[styles.quotaValue, { color: colors.text }]}>
+        <Text
+          style={[styles.quotaValue, { color: colors.text }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+        >
           {formatBRL(burnRate.safeDailyQuota, privacyMode)}
         </Text>
         <Text style={[styles.quotaUnit, { color: colors.textSecondary }]}>
@@ -178,9 +183,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleGroup: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginRight: 8,
   },
   iconSquircle: {
     width: 34,
@@ -189,6 +197,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   eyebrow: {
     fontFamily: Typography.bold,
@@ -207,6 +216,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
+    flexShrink: 0,
   },
   statusText: {
     fontFamily: Typography.bold,
@@ -216,6 +226,7 @@ const styles = StyleSheet.create({
   quotaRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 14,
   },

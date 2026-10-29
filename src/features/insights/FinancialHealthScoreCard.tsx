@@ -45,11 +45,11 @@ export const FinancialHealthScoreCard: React.FC<FinancialHealthScoreCardProps> =
           >
             <ShieldCheck size={18} color={health.color} />
           </View>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
               SAÚDE FINANCEIRA
             </Text>
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
               Diagnóstico do Mês
             </Text>
           </View>
@@ -168,9 +168,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleGroup: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginRight: 8,
   },
   iconSquircle: {
     width: 36,
@@ -179,6 +182,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   eyebrow: {
     fontFamily: Typography.bold,
@@ -197,6 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 14,
     borderWidth: 1,
+    flexShrink: 0,
   },
   scoreValue: {
     fontFamily: Typography.bold,

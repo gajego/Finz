@@ -174,11 +174,16 @@ export const GoalsScreen: React.FC = () => {
           ]}
         >
           <View style={styles.summaryTopRow}>
-            <View>
-              <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]}>
+            <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+              <Text style={[styles.summaryCardLabel, { color: colors.textMuted }]} numberOfLines={1}>
                 CONSUMO GLOBAL DO MÊS
               </Text>
-              <Text style={[styles.summarySpent, { color: colors.text }]}>
+              <Text
+                style={[styles.summarySpent, { color: colors.text }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {formatBRL(totalSpent, privacyMode)}
               </Text>
             </View>
@@ -187,6 +192,7 @@ export const GoalsScreen: React.FC = () => {
               style={[
                 styles.summaryPill,
                 {
+                  flexShrink: 0,
                   backgroundColor:
                     overallPercent > 100
                       ? colors.dangerSubtle
@@ -566,15 +572,19 @@ const styles = StyleSheet.create({
   },
   cardInfo: {
     flex: 1,
+    minWidth: 0,
+    marginRight: 8,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   categoryName: {
     fontFamily: Typography.bold,
     fontSize: 15,
+    flexShrink: 1,
   },
   protectedPill: {
     flexDirection: 'row',
@@ -623,6 +633,7 @@ const styles = StyleSheet.create({
   cardRightAction: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 0,
   },
   percentBadge: {
     paddingHorizontal: 8,

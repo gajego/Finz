@@ -51,11 +51,16 @@ export const RecurringSubscriptionsCard: React.FC<RecurringSubscriptionsCardProp
           >
             <RefreshCw size={18} color="#EC4899" />
           </View>
-          <View>
-            <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.eyebrow, { color: colors.textSecondary }]} numberOfLines={1}>
               DRENOS SILENCIOSOS
             </Text>
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text
+              style={[styles.title, { color: colors.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+            >
               Assinaturas & Recorrências
             </Text>
           </View>
@@ -86,11 +91,16 @@ export const RecurringSubscriptionsCard: React.FC<RecurringSubscriptionsCardProp
           },
         ]}
       >
-        <View>
-          <Text style={[styles.impactLabel, { color: colors.textMuted }]}>
+        <View style={{ flex: 1, minWidth: 0, paddingRight: 6 }}>
+          <Text style={[styles.impactLabel, { color: colors.textMuted }]} numberOfLines={1}>
             Impacto Mensal
           </Text>
-          <Text style={[styles.impactValue, { color: colors.text }]}>
+          <Text
+            style={[styles.impactValue, { color: colors.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
             {formatBRL(recurring.totalMonthly, privacyMode)}
             <Text style={[styles.impactUnit, { color: colors.textSecondary }]}> /mês</Text>
           </Text>
@@ -98,11 +108,16 @@ export const RecurringSubscriptionsCard: React.FC<RecurringSubscriptionsCardProp
 
         <View style={styles.verticalDivider} />
 
-        <View>
-          <Text style={[styles.impactLabel, { color: colors.textMuted }]}>
+        <View style={{ flex: 1, minWidth: 0, paddingLeft: 6 }}>
+          <Text style={[styles.impactLabel, { color: colors.textMuted }]} numberOfLines={1}>
             Projeção em 12 Meses
           </Text>
-          <Text style={[styles.impactValueAnnual, { color: '#EC4899' }]}>
+          <Text
+            style={[styles.impactValueAnnual, { color: '#EC4899' }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
             {formatBRL(recurring.totalAnnual, privacyMode)}
             <Text style={[styles.impactUnit, { color: colors.textSecondary }]}> /ano</Text>
           </Text>
@@ -173,6 +188,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleGroup: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -184,6 +202,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   eyebrow: {
     fontFamily: Typography.bold,
@@ -196,6 +215,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   countBadge: {
+    flexShrink: 0,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -249,6 +269,7 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
+    minWidth: 0,
     marginRight: 10,
   },
   itemName: {
@@ -260,6 +281,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     marginTop: 2,
+    flexWrap: 'wrap',
   },
   itemDate: {
     fontFamily: Typography.regular,
@@ -271,6 +293,7 @@ const styles = StyleSheet.create({
   },
   itemAmountBox: {
     alignItems: 'flex-end',
+    flexShrink: 0,
   },
   itemAmount: {
     fontFamily: Typography.bold,

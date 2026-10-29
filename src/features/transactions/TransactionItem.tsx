@@ -253,7 +253,12 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
 
         {/* Valor com Sinal e Status Apenas Por Exceção (Sem Pill Clichê de Concluído) */}
         <View style={styles.rightColumn}>
-          <Text style={[styles.amountText, { color: amountColor }]}>
+          <Text
+            style={[styles.amountText, { color: amountColor }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
             {signPrefix}
             {formatBRL(transaction.amount, privacyMode)}
           </Text>
@@ -316,6 +321,7 @@ const styles = StyleSheet.create({
   },
   centerColumn: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'center',
   },
   merchantName: {
@@ -329,12 +335,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'nowrap',
     gap: 5,
+    overflow: 'hidden',
   },
   bankTag: {
     fontFamily: Typography.bold,
     fontSize: 10,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    flexShrink: 1,
   },
   dot: {
     fontSize: 9,
@@ -363,6 +371,7 @@ const styles = StyleSheet.create({
   rightColumn: {
     alignItems: 'flex-end',
     gap: 4,
+    flexShrink: 0,
   },
   amountText: {
     fontFamily: Typography.bold,

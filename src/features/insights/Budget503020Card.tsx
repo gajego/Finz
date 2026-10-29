@@ -53,11 +53,11 @@ export const Budget503020Card: React.FC<Budget503020CardProps> = ({ noMargin }) 
           >
             <PieChart size={18} color="#3B82F6" />
           </View>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
               REGRA 50 / 30 / 20
             </Text>
-            <Text style={[styles.title, { color: colors.text }]}>
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
               Equilíbrio Estrutural
             </Text>
           </View>
@@ -73,7 +73,7 @@ export const Budget503020Card: React.FC<Budget503020CardProps> = ({ noMargin }) 
           ]}
         >
           <Text style={[styles.totalLabel, { color: colors.textMuted }]}>Total Mês</Text>
-          <Text style={[styles.totalValue, { color: colors.text }]}>
+          <Text style={[styles.totalValue, { color: colors.text }]} numberOfLines={1}>
             {formatBRL(data.totalConsideredSpent, privacyMode)}
           </Text>
         </View>
@@ -128,17 +128,22 @@ export const Budget503020Card: React.FC<Budget503020CardProps> = ({ noMargin }) 
         >
           <View style={styles.pillarHeader}>
             <View style={[styles.dot, { backgroundColor: essential.color }]} />
-            <Text style={[styles.pillarName, { color: colors.text }]}>
+            <Text style={[styles.pillarName, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {essential.label}
             </Text>
           </View>
           <Text style={[styles.pillarPercent, { color: essential.color }]}>
             {essential.actualPercent}%
           </Text>
-          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]}>
+          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]} numberOfLines={1}>
             Ideal: 50%
           </Text>
-          <Text style={[styles.pillarAmount, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.pillarAmount, { color: colors.textSecondary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
             {formatBRL(essential.actualSpent, privacyMode)}
           </Text>
         </View>
@@ -155,17 +160,22 @@ export const Budget503020Card: React.FC<Budget503020CardProps> = ({ noMargin }) 
         >
           <View style={styles.pillarHeader}>
             <View style={[styles.dot, { backgroundColor: lifestyle.color }]} />
-            <Text style={[styles.pillarName, { color: colors.text }]}>
+            <Text style={[styles.pillarName, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {lifestyle.label}
             </Text>
           </View>
           <Text style={[styles.pillarPercent, { color: lifestyle.color }]}>
             {lifestyle.actualPercent}%
           </Text>
-          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]}>
+          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]} numberOfLines={1}>
             Ideal: 30%
           </Text>
-          <Text style={[styles.pillarAmount, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.pillarAmount, { color: colors.textSecondary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
             {formatBRL(lifestyle.actualSpent, privacyMode)}
           </Text>
         </View>
@@ -182,17 +192,22 @@ export const Budget503020Card: React.FC<Budget503020CardProps> = ({ noMargin }) 
         >
           <View style={styles.pillarHeader}>
             <View style={[styles.dot, { backgroundColor: future.color }]} />
-            <Text style={[styles.pillarName, { color: colors.text }]}>
+            <Text style={[styles.pillarName, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {future.label}
             </Text>
           </View>
           <Text style={[styles.pillarPercent, { color: future.color }]}>
             {future.actualPercent}%
           </Text>
-          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]}>
+          <Text style={[styles.pillarIdeal, { color: colors.textMuted }]} numberOfLines={1}>
             Ideal: 20%
           </Text>
-          <Text style={[styles.pillarAmount, { color: colors.textSecondary }]}>
+          <Text
+            style={[styles.pillarAmount, { color: colors.textSecondary }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+          >
             {formatBRL(future.actualSpent, privacyMode)}
           </Text>
         </View>
@@ -223,9 +238,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleGroup: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginRight: 8,
   },
   iconSquircle: {
     width: 36,
@@ -234,6 +252,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   eyebrow: {
     fontFamily: Typography.bold,
@@ -251,6 +270,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
+    flexShrink: 0,
   },
   totalLabel: {
     fontFamily: Typography.medium,
@@ -273,12 +293,14 @@ const styles = StyleSheet.create({
   },
   pillarsGrid: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     marginTop: 12,
   },
   pillarCard: {
     flex: 1,
-    padding: 10,
+    minWidth: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
     borderRadius: 12,
     borderWidth: 1,
   },

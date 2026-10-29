@@ -226,8 +226,8 @@ export const GoalsScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Barra de Progresso Global Animada */}
-          {totalBudget > 0 && (
+          {/* Barra de Progresso Global Animada ou Guia quando Zerado */}
+          {totalBudget > 0 ? (
             <View style={styles.progressContainer}>
               <AnimatedGoalBar
                 percent={overallPercent}
@@ -255,6 +255,13 @@ export const GoalsScreen: React.FC = () => {
                   Teto: {formatBRL(totalBudget, privacyMode)}
                 </Text>
               </View>
+            </View>
+          ) : (
+            <View style={styles.emptyHelpBox}>
+              <Sparkles size={13} color={colors.primary} style={{ marginRight: 6, marginTop: 2, flexShrink: 0 }} />
+              <Text style={[styles.emptyHelpText, { color: colors.textSecondary }]}>
+                O orçamento mensal consolidado é a soma das metas de cada categoria. Toque em uma categoria abaixo para estipular seu teto de gastos.
+              </Text>
             </View>
           )}
         </View>
@@ -535,6 +542,20 @@ const styles = StyleSheet.create({
   progressMetaText: {
     fontFamily: Typography.medium,
     fontSize: 11,
+  },
+  emptyHelpBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(150, 150, 150, 0.2)',
+  },
+  emptyHelpText: {
+    flex: 1,
+    fontFamily: Typography.regular,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   categoryListHeader: {
     marginBottom: 12,

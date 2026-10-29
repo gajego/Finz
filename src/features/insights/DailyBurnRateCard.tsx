@@ -23,9 +23,64 @@ export const DailyBurnRateCard: React.FC<DailyBurnRateCardProps> = ({ onPressDet
     return calculateDailyBurnRate(transactions, categories);
   }, [transactions, categories]);
 
-  // Se não há orçamento mensal configurado
+  // Se não há orçamento mensal configurado em nenhuma categoria
   if (burnRate.totalMonthlyBudget <= 0) {
-    return null;
+    return (
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.borderSubtle,
+            marginHorizontal: noMargin ? 0 : 16,
+            borderStyle: 'dashed',
+          },
+        ]}
+      >
+        <View style={styles.headerRow}>
+          <View style={styles.titleGroup}>
+            <View
+              style={[
+                styles.iconSquircle,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: colors.borderSubtle,
+                },
+              ]}
+            >
+              <Flame size={18} color={colors.textMuted} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[styles.eyebrow, { color: colors.textSecondary }]}>
+                RITMO DIÁRIO & PACING
+              </Text>
+              <Text style={[styles.headline, { color: colors.text }]} numberOfLines={1}>
+                Cota Diária Segura
+              </Text>
+            </View>
+          </View>
+          <View
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: isDark ? colors.surfaceElevated : colors.background,
+                borderColor: colors.borderSubtle,
+              },
+            ]}
+          >
+            <Text style={[styles.statusText, { color: colors.textMuted }]}>
+              Sem Metas
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.emptyBurnRateContent}>
+          <Text style={[styles.emptyBurnRateText, { color: colors.textSecondary }]}>
+            O ritmo diário e a cota segura dependem do seu teto orçamentário. Defina limites de gastos nas suas categorias (na aba Metas) para ativar este cálculo.
+          </Text>
+        </View>
+      </View>
+    );
   }
 
   const statusConfig = {
@@ -276,5 +331,16 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: 8,
+  },
+  emptyBurnRateContent: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(150, 150, 150, 0.15)',
+  },
+  emptyBurnRateText: {
+    fontFamily: Typography.regular,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
 });

@@ -6,8 +6,13 @@ import { FinancialHealthScoreCard } from './FinancialHealthScoreCard';
 import { DailyBurnRateCard } from './DailyBurnRateCard';
 import { Budget503020Card } from './Budget503020Card';
 import { RecurringSubscriptionsCard } from './RecurringSubscriptionsCard';
+import { MonthSurplusCard } from './MonthSurplusCard';
 
-export const InsightsScreen: React.FC = () => {
+interface InsightsScreenProps {
+  onNavigateToGoals?: () => void;
+}
+
+export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onNavigateToGoals }) => {
   const { colors } = useTheme();
 
   return (
@@ -25,20 +30,23 @@ export const InsightsScreen: React.FC = () => {
             DIAGNÓSTICO
           </Text>
           <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>
-            Saúde financeira, ritmo de gastos e otimização estrutural
+            Saúde financeira, sobra do mês, ritmo de gastos e otimização
           </Text>
         </View>
 
-        {/* 1. Termômetro de Saúde Financeira (Score 0 a 100) */}
+        {/* 1. Sobra do Mês (Fechamento 23:59 & Salário Real) */}
+        <MonthSurplusCard noMargin onNavigateToGoals={onNavigateToGoals} />
+
+        {/* 2. Termômetro de Saúde Financeira (Score 0 a 100) */}
         <FinancialHealthScoreCard noMargin />
 
-        {/* 2. Cota Diária Segura (Burn Rate / Pacing) */}
+        {/* 3. Cota Diária Segura (Burn Rate / Pacing) */}
         <DailyBurnRateCard noMargin />
 
-        {/* 3. Diagnóstico Estrutural 50 / 30 / 20 */}
+        {/* 4. Diagnóstico Estrutural 50 / 30 / 20 */}
         <Budget503020Card noMargin />
 
-        {/* 4. Drenos Silenciosos & Assinaturas Recorrentes */}
+        {/* 5. Drenos Silenciosos & Assinaturas Recorrentes */}
         <RecurringSubscriptionsCard noMargin />
       </ScrollView>
     </View>

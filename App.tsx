@@ -394,7 +394,7 @@ export default function App() {
 
           {/* Tela 3: Inteligência Financeira */}
           <View style={{ width: screenWidth, flex: 1 }}>
-            <InsightsScreen />
+            <InsightsScreen onNavigateToGoals={() => handleTabChange('goals')} />
           </View>
 
           {/* Tela 4: Metas */}

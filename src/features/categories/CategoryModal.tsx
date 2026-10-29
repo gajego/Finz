@@ -33,6 +33,7 @@ import {
   TrendingUp,
   ShoppingBag,
   Zap,
+  Coins,
 } from 'lucide-react-native';
 import { Category, CategoryPilar } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
@@ -71,6 +72,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   const [budgetLimitStr, setBudgetLimitStr] = useState('');
   const [considerar, setConsiderar] = useState(true);
   const [isInvestimento, setIsInvestimento] = useState(false);
+  const [isSalario, setIsSalario] = useState(false);
   const [pilar, setPilar] = useState<CategoryPilar>('lifestyle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -88,6 +90,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         setConsiderar(categoryToEdit.considerar !== false);
         const isInv = !!categoryToEdit.isInvestimento || categoryToEdit.id === 'cat_investments' || categoryToEdit.pilar === 'investment';
         setIsInvestimento(isInv);
+        setIsSalario(Boolean(categoryToEdit.isSalario));
         setPilar(categoryToEdit.pilar || (isInv ? 'investment' : 'lifestyle'));
       } else {
         setName('');
@@ -96,6 +99,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         setBudgetLimitStr('');
         setConsiderar(true);
         setIsInvestimento(false);
+        setIsSalario(false);
         setPilar('lifestyle');
       }
       setErrorMessage(null);
@@ -128,6 +132,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         budgetLimit: budgetLimitCents,
         considerar,
         isInvestimento,
+        isSalario,
         pilar,
       });
     } else {
@@ -138,6 +143,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
         budgetLimit: budgetLimitCents,
         considerar,
         isInvestimento,
+        isSalario,
         pilar,
       });
     }
@@ -616,6 +622,38 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
                 }}
                 trackColor={{ false: colors.border, true: '#10B981' }}
                 thumbColor={Platform.OS === 'android' ? (isInvestimento ? '#FFFFFF' : '#F4F3F4') : undefined}
+                disabled={isProtected}
+              />
+            </View>
+
+            {/* Campo 7: Flag isSalario (Salário & Renda Real) */}
+            <View
+              style={[
+                styles.toggleCard,
+                {
+                  backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                  borderColor: isSalario ? '#3B82F6' : colors.border,
+                },
+              ]}
+            >
+              <View style={styles.toggleCardText}>
+                <View style={styles.toggleTitleRow}>
+                  <Coins size={15} color={isSalario ? '#3B82F6' : colors.textMuted} style={{ marginRight: 6 }} />
+                  <Text style={[styles.toggleTitle, { color: colors.text }]}>
+                    Categoria de salário? (isSalario)
+                  </Text>
+                </View>
+                <Text style={[styles.toggleDescription, { color: colors.textSecondary }]}>
+                  {isSalario
+                    ? 'Identificada como fonte de renda/salário. As entradas vinculadas a ela definem seu salário real e a sobra do mês.'
+                    : 'Entradas nesta categoria não serão computadas como salário principal formal.'}
+                </Text>
+              </View>
+              <Switch
+                value={isSalario}
+                onValueChange={setIsSalario}
+                trackColor={{ false: colors.border, true: '#3B82F6' }}
+                thumbColor={Platform.OS === 'android' ? (isSalario ? '#FFFFFF' : '#F4F3F4') : undefined}
                 disabled={isProtected}
               />
             </View>

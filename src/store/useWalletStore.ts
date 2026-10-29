@@ -247,6 +247,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       budgetLimit: catData.budgetLimit ?? 0,
       considerar: catData.considerar !== false,
       isInvestimento: Boolean(catData.isInvestimento),
+      isSalario: Boolean(catData.isSalario),
       pilar: catData.pilar || (catData.isInvestimento ? 'investment' : 'lifestyle'),
     };
     if (!get().presentationMode) {

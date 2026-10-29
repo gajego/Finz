@@ -48,7 +48,21 @@ export interface Category {
   budgetLimit: number; // Centavos
   considerar?: boolean;
   isInvestimento?: boolean;
+  isSalario?: boolean;
   pilar?: CategoryPilar;
+}
+
+export interface MonthClosingRecord {
+  monthKey: string; // "YYYY-MM"
+  monthLabel: string; // Ex: "Outubro/2026"
+  closedAt: number; // Timestamp registrado (23:59 do último dia ou data da virada)
+  accountBalance: number; // Saldo em conta até 23:59 (centavos)
+  netSurplus: number; // Sobra líquida (receitas - despesas) em centavos
+  totalIncome: number; // Total de receitas no mês (centavos)
+  totalExpense: number; // Total de despesas consideradas no mês (centavos)
+  salaryAmount: number; // Salário real apurado das categorias isSalario (centavos)
+  savingsRate: number; // Percentual da sobra em relação à receita/salário
+  isClosed: boolean; // Se o mês já encerrou ou se está em andamento
 }
 
 export interface SmartAlert {

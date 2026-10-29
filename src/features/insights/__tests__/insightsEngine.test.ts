@@ -4,7 +4,11 @@ import {
   calculateBudget503020,
   detectRecurringExpenses,
 } from '../insightsEngine';
-import type { Transaction, Category } from '@/types';
+import {
+  calculateRealSalary,
+  calculateMonthSurplus,
+} from '../monthSurplusService';
+import type { Transaction, Category, BankCard } from '@/types';
 
 // Self-check assert script
 function runSelfCheck() {
@@ -16,6 +20,7 @@ function runSelfCheck() {
     { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 50000, considerar: true, pilar: 'lifestyle', isInvestimento: false },
     { id: 'cat_investments', name: 'Investimentos', icon: 'trending-up', color: '#10B981', budgetLimit: 50000, considerar: true, pilar: 'investment', isInvestimento: true },
     { id: 'cat_ignored', name: 'Desconsiderada', icon: 'x', color: '#999999', budgetLimit: 100000, considerar: false, pilar: 'lifestyle', isInvestimento: false },
+    { id: 'cat_salary', name: 'Salário Formal', icon: 'coins', color: '#10B981', budgetLimit: 0, considerar: true, pilar: 'essential', isInvestimento: false, isSalario: true },
   ];
 
   const now = Date.now();
@@ -24,7 +29,7 @@ function runSelfCheck() {
     { id: 't2', cardId: 'c1', amount: 20000, type: 'EXPENSE', merchant: 'Uber Viagem', categoryId: 'cat_transport', timestamp: now },
     { id: 't3', cardId: 'c1', amount: 30000, type: 'EXPENSE', merchant: 'Cinema', categoryId: 'cat_leisure', timestamp: now },
     { id: 't4', cardId: 'c1', amount: 40000, type: 'EXPENSE', merchant: 'Aporte CDB', categoryId: 'cat_investments', timestamp: now },
-    { id: 't5', cardId: 'c1', amount: 500000, type: 'PIX_IN', merchant: 'Salário', categoryId: 'cat_food', timestamp: now },
+    { id: 't5', cardId: 'c1', amount: 550000, type: 'PIX_IN', merchant: 'Empresa XYZ Salário', categoryId: 'cat_salary', timestamp: now },
     // Transações recorrentes simuladas
     { id: 't6', cardId: 'c1', amount: 3990, type: 'EXPENSE', merchant: 'Netflix.com', categoryId: 'cat_leisure', timestamp: now },
     { id: 't7', cardId: 'c1', amount: 3990, type: 'EXPENSE', merchant: 'Netflix.com', categoryId: 'cat_leisure', timestamp: now - 30 * 86400000 },
@@ -76,7 +81,28 @@ function runSelfCheck() {
   }
   console.log(`✓ Squad 4 (Recurring Subscriptions: ${rec.items.length} ativas no mês atual, total R$ ${rec.totalMonthly / 100}/mês - HBO Max inativa ignorada com sucesso) validado.`);
 
-  console.log('🎉 Todos os 4 Squads Econômicos passaram com sucesso nos testes unitários!');
+  // Teste 5: Salário Real (isSalario)
+  const salaryData = calculateRealSalary(mockTransactions, mockCategories, now - 86400000, now + 86400000);
+  if (salaryData.totalSalary !== 550000) {
+    throw new Error(`Real salary mismatch. Expected 550000, got ${salaryData.totalSalary}`);
+  }
+  if (!salaryData.hasSalaryCategory) {
+    throw new Error('Should detect salary category');
+  }
+  console.log(`✓ Squad 5 (Salário Real: R$ ${salaryData.totalSalary / 100} detectado da categoria '${salaryData.salaryCategoryNames[0]}') validado.`);
+
+  // Teste 6: Sobra do Mês (Fechamento 23:59)
+  const d = new Date(now);
+  const surplus = calculateMonthSurplus(d.getFullYear(), d.getMonth(), mockTransactions, mockCategories, []);
+  if (surplus.salaryAmount !== 550000) {
+    throw new Error(`MonthSurplus salary mismatch. Expected 550000, got ${surplus.salaryAmount}`);
+  }
+  if (surplus.netSurplus <= 0) {
+    throw new Error(`MonthSurplus netSurplus should be positive. Got ${surplus.netSurplus}`);
+  }
+  console.log(`✓ Squad 6 (Sobra do Mês: R$ ${surplus.netSurplus / 100} calculada até 23:59 do fechamento) validado.`);
+
+  console.log('🎉 Todos os testes de Inteligência e Sobra do Mês passaram com sucesso!');
 }
 
 runSelfCheck();

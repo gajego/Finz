@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { BankCard, Category, Transaction, UserProfile, Investment } from '@/types';
+import { BankCard, Category, Transaction, UserProfile, Investment, MonthClosingRecord } from '@/types';
 
 const DB_NAME = 'finz.db';
 
@@ -32,6 +32,7 @@ export function initDatabase() {
       budget_limit INTEGER NOT NULL,
       considerar INTEGER DEFAULT 1,
       is_investimento INTEGER DEFAULT 0,
+      is_salario INTEGER DEFAULT 0,
       pilar TEXT DEFAULT 'lifestyle'
     );
 
@@ -67,6 +68,16 @@ export function initDatabase() {
       annual_rate REAL,
       color TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS month_closings (
+      month_key TEXT PRIMARY KEY,
+      closed_at INTEGER NOT NULL,
+      account_balance INTEGER NOT NULL,
+      net_surplus INTEGER NOT NULL,
+      total_income INTEGER NOT NULL,
+      total_expense INTEGER NOT NULL,
+      salary_amount INTEGER DEFAULT 0
+    );
   `);
 
   // Migração segura para colunas adicionadas posteriormente
@@ -82,6 +93,11 @@ export function initDatabase() {
   }
   try {
     db.execSync('ALTER TABLE categories ADD COLUMN is_investimento INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE categories ADD COLUMN is_salario INTEGER DEFAULT 0;');
   } catch {
     // Coluna já existe
   }
@@ -264,6 +280,10 @@ export function loadAllDataFromSQLite(): {
       ? Boolean(r.is_investimento)
       : r.id === 'cat_investments' || String(r.name).toLowerCase().includes('invest');
 
+    const isSalario = r.is_salario !== undefined && r.is_salario !== null
+      ? Boolean(r.is_salario)
+      : /sal[aá]rio|renda|remunera[cç]|pro.?labore|ordenado/i.test(r.name);
+
     const defaultPilar = isInvest
       ? 'investment'
       : ['cat_food', 'cat_transport'].includes(r.id) || /aliment|mercado|transport/i.test(r.name)
@@ -278,6 +298,7 @@ export function loadAllDataFromSQLite(): {
       budgetLimit: Number(r.budget_limit) || 0,
       considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
       isInvestimento: isInvest,
+      isSalario,
       pilar: (r.pilar as any) || defaultPilar,
     };
   });
@@ -405,13 +426,69 @@ export function persistCategory(cat: Category) {
   try {
     const considerarVal = cat.considerar === false ? 0 : 1;
     const isInvestVal = cat.isInvestimento ? 1 : 0;
+    const isSalarioVal = cat.isSalario ? 1 : 0;
     const pilarVal = cat.pilar || (cat.isInvestimento ? 'investment' : 'lifestyle');
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, pilarVal]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal]
     );
   } catch (e) {
     console.warn('[db] Falha ao persistir categoria:', e);
+  }
+}
+
+export function persistMonthClosingToSQLite(record: MonthClosingRecord) {
+  try {
+    db.runSync(
+      'INSERT OR REPLACE INTO month_closings (month_key, closed_at, account_balance, net_surplus, total_income, total_expense, salary_amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        record.monthKey,
+        record.closedAt,
+        record.accountBalance,
+        record.netSurplus,
+        record.totalIncome,
+        record.totalExpense,
+        record.salaryAmount,
+      ]
+    );
+  } catch (e) {
+    console.warn('[db] Falha ao persistir fechamento mensal:', e);
+  }
+}
+
+export function loadMonthClosingsFromSQLite(): MonthClosingRecord[] {
+  try {
+    const rows = db.getAllSync<any>('SELECT * FROM month_closings ORDER BY month_key DESC');
+    return rows.map((r) => {
+      const parts = String(r.month_key).split('-');
+      const year = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const monthDate = new Date(year, monthIdx, 1);
+      const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+      const netSurplus = Number(r.net_surplus) || 0;
+      const totalIncome = Number(r.total_income) || 0;
+      const salaryAmount = Number(r.salary_amount) || 0;
+      const baseForRate = salaryAmount > 0 ? salaryAmount : totalIncome;
+      const savingsRate = baseForRate > 0 ? Math.round((netSurplus / baseForRate) * 100) : 0;
+
+      return {
+        monthKey: String(r.month_key),
+        monthLabel,
+        closedAt: Number(r.closed_at) || 0,
+        accountBalance: Number(r.account_balance) || 0,
+        netSurplus,
+        totalIncome,
+        totalExpense: Number(r.total_expense) || 0,
+        salaryAmount,
+        savingsRate,
+        isClosed: true,
+      };
+    });
+  } catch (e) {
+    console.warn('[db] Falha ao carregar fechamentos mensais:', e);
+    return [];
   }
 }
 

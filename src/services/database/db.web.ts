@@ -1,4 +1,4 @@
-import { BankCard, Category, Transaction, UserProfile } from '@/types';
+import { BankCard, Category, Transaction, UserProfile, MonthClosingRecord } from '@/types';
 
 const STORAGE_KEY = 'finz_web_db_v1';
 
@@ -7,6 +7,7 @@ interface WebTables {
   categories: Record<string, any>;
   transactions: Record<string, any>;
   system_meta: Record<string, string>;
+  month_closings: Record<string, any>;
 }
 
 function loadTables(): WebTables {
@@ -14,7 +15,9 @@ function loadTables(): WebTables {
     if (typeof window !== 'undefined' && window.localStorage) {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!parsed.month_closings) parsed.month_closings = {};
+        return parsed;
       }
     }
   } catch {}
@@ -24,6 +27,7 @@ function loadTables(): WebTables {
     categories: {},
     transactions: {},
     system_meta: {},
+    month_closings: {},
   };
 }
 
@@ -394,6 +398,10 @@ export function loadAllDataFromSQLite(): {
       ? Boolean(r.is_investimento)
       : r.id === 'cat_investments' || String(r.name).toLowerCase().includes('invest');
 
+    const isSalario = r.is_salario !== undefined && r.is_salario !== null
+      ? Boolean(r.is_salario)
+      : /sal[aá]rio|renda|remunera[cç]|pro.?labore|ordenado/i.test(r.name);
+
     const defaultPilar = isInvest
       ? 'investment'
       : ['cat_food', 'cat_transport'].includes(r.id) || /aliment|mercado|transport/i.test(r.name)
@@ -408,6 +416,7 @@ export function loadAllDataFromSQLite(): {
       budgetLimit: Number(r.budget_limit) || 0,
       considerar: r.considerar !== undefined && r.considerar !== null ? Boolean(r.considerar) : true,
       isInvestimento: isInvest,
+      isSalario,
       pilar: (r.pilar as any) || defaultPilar,
     };
   });
@@ -490,13 +499,36 @@ export function persistCategory(cat: Category) {
   try {
     const considerarVal = cat.considerar === false ? 0 : 1;
     const isInvestVal = cat.isInvestimento ? 1 : 0;
+    const isSalarioVal = cat.isSalario ? 1 : 0;
     const pilarVal = cat.pilar || (cat.isInvestimento ? 'investment' : 'lifestyle');
     db.runSync(
-      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, pilarVal]
+      'INSERT OR REPLACE INTO categories (id, name, icon, color, budget_limit, considerar, is_investimento, is_salario, pilar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.icon, cat.color, cat.budgetLimit, considerarVal, isInvestVal, isSalarioVal, pilarVal]
     );
   } catch (e) {
     console.warn('[db.web] Falha ao persistir categoria:', e);
+  }
+}
+
+export function persistMonthClosingToSQLite(record: MonthClosingRecord) {
+  try {
+    if (!tables.month_closings) tables.month_closings = {};
+    tables.month_closings[record.monthKey] = { ...record };
+    saveTables();
+  } catch (e) {
+    console.warn('[db.web] Falha ao persistir fechamento mensal:', e);
+  }
+}
+
+export function loadMonthClosingsFromSQLite(): MonthClosingRecord[] {
+  try {
+    if (!tables.month_closings) return [];
+    return Object.values(tables.month_closings).sort(
+      (a: any, b: any) => String(b.monthKey || '').localeCompare(String(a.monthKey || ''))
+    );
+  } catch (e) {
+    console.warn('[db.web] Falha ao carregar fechamentos mensais:', e);
+    return [];
   }
 }
 

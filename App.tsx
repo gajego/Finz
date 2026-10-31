@@ -27,7 +27,6 @@ import { AlertBanner } from './src/components/ui/AlertBanner';
 import { CardCarousel } from './src/features/cards/CardCarousel';
 import { CardSkinModal } from './src/features/cards/CardSkinModal';
 import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown';
-import { DailyBurnRateCard } from './src/features/insights/DailyBurnRateCard';
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
@@ -367,9 +366,6 @@ export default function App() {
                 scrollY={homeScrollY}
                 pagerScrollX={pagerScrollX}
               />
-
-              {/* Ritmo de Gasto Diário (Cota Segura de Hoje) */}
-              <DailyBurnRateCard onPressDetails={() => handleTabChange('insights')} />
 
               {/* Metas em Grid Bento com Acento Acid Volt e Padrão Vermelho */}
               <CategoryBreakdown onOpenBudgetManager={() => handleTabChange('goals')} />

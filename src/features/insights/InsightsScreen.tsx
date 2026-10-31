@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { FinancialHealthScoreCard } from './FinancialHealthScoreCard';
-import { DailyBurnRateCard } from './DailyBurnRateCard';
 import { Budget503020Card } from './Budget503020Card';
 import { RecurringSubscriptionsCard } from './RecurringSubscriptionsCard';
 import { MonthSurplusCard } from './MonthSurplusCard';
@@ -30,7 +29,7 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onNavigateToGoal
             DIAGNÓSTICO
           </Text>
           <Text style={[styles.screenSubtitle, { color: colors.textSecondary }]}>
-            Saúde financeira, sobra do mês, ritmo de gastos e otimização
+            Saúde financeira, sobra do mês e otimização
           </Text>
         </View>
 
@@ -40,8 +39,6 @@ export const InsightsScreen: React.FC<InsightsScreenProps> = ({ onNavigateToGoal
         {/* 2. Termômetro de Saúde Financeira (Score 0 a 100) */}
         <FinancialHealthScoreCard noMargin />
 
-        {/* 3. Cota Diária Segura (Burn Rate / Pacing) */}
-        <DailyBurnRateCard noMargin />
 
         {/* 4. Diagnóstico Estrutural 50 / 30 / 20 */}
         <Budget503020Card noMargin />

@@ -200,7 +200,8 @@ export function getMonthSurplusHistory(
   transactions: Transaction[],
   categories: Category[],
   cards: BankCard[],
-  monthsCount: number = 6
+  monthsCount: number = 6,
+  skipPersist: boolean = false
 ): MonthClosingRecord[] {
   const now = Date.now();
   const { month: currentMonth, year: currentYear } = getBrazilDate(now);
@@ -238,7 +239,7 @@ export function getMonthSurplusHistory(
     const closing = calculateMonthSurplus(targetYear, targetMonth, transactions, categories, cards);
 
     // Se é um mês passado fechado e ainda não estava salvo, persiste para histórico indelével
-    if (closing.isClosed && !persistedMap.has(monthKey) && db && typeof db.persistMonthClosingToSQLite === 'function') {
+    if (!skipPersist && closing.isClosed && !persistedMap.has(monthKey) && db && typeof db.persistMonthClosingToSQLite === 'function') {
       db.persistMonthClosingToSQLite(closing);
       persistedMap.set(monthKey, closing);
     }

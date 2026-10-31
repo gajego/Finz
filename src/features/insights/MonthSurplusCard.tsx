@@ -40,11 +40,12 @@ export const MonthSurplusCard: React.FC<MonthSurplusCardProps> = ({
   const categories = useWalletStore((s) => s.categories);
   const cards = useWalletStore((s) => s.cards);
   const privacyMode = useWalletStore((s) => s.privacyMode);
+  const presentationMode = useWalletStore((s) => s.presentationMode);
 
   // Histórico de sobras dos últimos 5 meses
   const history = useMemo(() => {
-    return getMonthSurplusHistory(transactions, categories, cards, 5);
-  }, [transactions, categories, cards]);
+    return getMonthSurplusHistory(transactions, categories, cards, 5, presentationMode);
+  }, [transactions, categories, cards, presentationMode]);
 
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(0);
   const selectedRecord = history[selectedMonthIndex] || history[0];

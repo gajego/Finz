@@ -2,12 +2,12 @@ import { BankCard, Category, Transaction, UserProfile, Investment } from '@/type
 
 export const DEMO_PROFILE: UserProfile = {
   id: 'usr_demo_presentation',
-  fullName: 'Lucas Silveira',
-  nickname: 'Lucas',
-  birthDate: '14/08/1995',
-  document: '123.456.789-00',
-  email: 'lucas.silveira@finz.app',
-  phone: '(11) 98765-4321',
+  fullName: 'User Demo',
+  nickname: 'Demo',
+  birthDate: '01/01/1990',
+  document: '000.000.000-00',
+  email: 'demo@finz.app',
+  phone: '(11) 00000-0000',
   onboardingCompleted: true,
 };
 
@@ -113,6 +113,16 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export const DEMO_TRANSACTIONS: Transaction[] = [
   {
+    id: 'tx_demo_salary',
+    cardId: 'card_demo_itau',
+    amount: 1200000, // R$ 12.000,00
+    type: 'PIX_IN',
+    merchant: 'Empresa S.A. — Salário',
+    categoryId: 'cat_salary',
+    incomeType: 'salary',
+    timestamp: now - 5 * DAY - 8 * 3600 * 1000,
+  },
+  {
     id: 'tx_demo_1',
     cardId: 'card_demo_nu',
     amount: 4990,
@@ -214,6 +224,7 @@ export const DEMO_TRANSACTIONS: Transaction[] = [
 ];
 
 export const DEMO_CATEGORIES: Category[] = [
+  { id: 'cat_salary', name: 'Salário', icon: 'wallet', color: '#10B981', budgetLimit: 0, considerar: true, isInvestimento: false, isSalario: true, type: 'income', incomeType: 'salary', pilar: 'essential' },
   { id: 'cat_food', name: 'Alimentação', icon: 'utensils', color: '#F59E0B', budgetLimit: 250000, considerar: true, isInvestimento: false, pilar: 'essential' },
   { id: 'cat_transport', name: 'Transporte', icon: 'car', color: '#3B82F6', budgetLimit: 80000, considerar: true, isInvestimento: false, pilar: 'essential' },
   { id: 'cat_leisure', name: 'Lazer', icon: 'gamepad-2', color: '#EC4899', budgetLimit: 120000, considerar: true, isInvestimento: false, pilar: 'lifestyle' },

@@ -69,6 +69,7 @@ export default function App() {
   const activeCardIndex = useWalletStore((s) => s.activeCardIndex);
   const setActiveCardIndex = useWalletStore((s) => s.setActiveCardIndex);
   const profile = useWalletStore((s) => s.profile);
+  const presentationMode = useWalletStore((s) => s.presentationMode);
 
   // Monitoramento periódico contínuo da Pluggy a cada 10 segundos com requisições teste e diff de transações
   usePluggyMonitor(10000);
@@ -218,6 +219,7 @@ export default function App() {
 
   // Sincronização acionada pelo pull-to-refresh do usuário
   const handleSyncPluggy = async () => {
+    if (presentationMode) return;
     setIsSyncingPluggy(true);
     try {
       await syncAllPluggyItems();
@@ -239,6 +241,7 @@ export default function App() {
     };
 
     const handleUrl = async (event: { url: string }) => {
+      if (presentationMode) return;
       const url = event.url || getWebUrl();
       if (url && (url.includes('pluggy-callback') || /item_?id=/i.test(url))) {
         const match = url.match(/item_?id=([a-zA-Z0-9_-]+)/i);

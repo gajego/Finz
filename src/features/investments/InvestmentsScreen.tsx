@@ -373,9 +373,11 @@ export const InvestmentsScreen: React.FC = () => {
   const isDark = mode === 'dark';
   const privacyMode = useWalletStore((s) => s.privacyMode);
   const investments = useWalletStore((s) => s.investments);
+  const presentationMode = useWalletStore((s) => s.presentationMode);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
+    if (presentationMode) return;
     setRefreshing(true);
     try {
       await syncAllPluggyItems();
@@ -384,11 +386,13 @@ export const InvestmentsScreen: React.FC = () => {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [presentationMode]);
 
   useEffect(() => {
-    syncAllPluggyItems().catch(() => {});
-  }, []);
+    if (!presentationMode) {
+      syncAllPluggyItems().catch(() => {});
+    }
+  }, [presentationMode]);
 
   const { totalValue, totalInitial, totalDayGain, totalWeekGain, totalMonthGain } = useMemo(() => {
     const tv = investments.reduce((s, i) => s + getEffectiveCurrentValue(i), 0);

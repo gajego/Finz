@@ -1016,26 +1016,29 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
   }
 
   // Recarrega dados no Zustand Store evitando re-render que faz os cartões piscarem
-  const updatedData = loadAllDataFromSQLite();
-  const currentCards = useWalletStore.getState().cards;
-  const cardsChanged =
-    currentCards.length !== updatedData.cards.length ||
-    updatedData.cards.some((nc, i) => {
-      const oc = currentCards[i];
-      return (
-        !oc ||
-        oc.id !== nc.id ||
-        oc.balance !== nc.balance ||
-        oc.bankBalance !== nc.bankBalance ||
-        oc.limit !== nc.limit
-      );
-    });
+  // Em modo apresentação, nunca sobrescrevemos os dados demo com dados reais do SQLite
+  if (!useWalletStore.getState().presentationMode) {
+    const updatedData = loadAllDataFromSQLite();
+    const currentCards = useWalletStore.getState().cards;
+    const cardsChanged =
+      currentCards.length !== updatedData.cards.length ||
+      updatedData.cards.some((nc, i) => {
+        const oc = currentCards[i];
+        return (
+          !oc ||
+          oc.id !== nc.id ||
+          oc.balance !== nc.balance ||
+          oc.bankBalance !== nc.bankBalance ||
+          oc.limit !== nc.limit
+        );
+      });
 
-  useWalletStore.setState({
-    ...(cardsChanged ? { cards: updatedData.cards } : {}),
-    transactions: updatedData.transactions,
-    investments: updatedData.investments,
-  });
+    useWalletStore.setState({
+      ...(cardsChanged ? { cards: updatedData.cards } : {}),
+      transactions: updatedData.transactions,
+      investments: updatedData.investments,
+    });
+  }
 
   savePluggyItemId(itemId);
   return { cardsCount, txCount };
@@ -1070,26 +1073,29 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
   }
 
   // Recarrega todos os dados no Zustand Store após o ciclo completo de sincronização
-  const updatedData = loadAllDataFromSQLite();
-  const currentCards = useWalletStore.getState().cards;
-  const cardsChanged =
-    currentCards.length !== updatedData.cards.length ||
-    updatedData.cards.some((nc, i) => {
-      const oc = currentCards[i];
-      return (
-        !oc ||
-        oc.id !== nc.id ||
-        oc.balance !== nc.balance ||
-        oc.bankBalance !== nc.bankBalance ||
-        oc.limit !== nc.limit
-      );
-    });
+  // Em modo apresentação, nunca sobrescrevemos os dados demo com dados reais do SQLite
+  if (!useWalletStore.getState().presentationMode) {
+    const updatedData = loadAllDataFromSQLite();
+    const currentCards = useWalletStore.getState().cards;
+    const cardsChanged =
+      currentCards.length !== updatedData.cards.length ||
+      updatedData.cards.some((nc, i) => {
+        const oc = currentCards[i];
+        return (
+          !oc ||
+          oc.id !== nc.id ||
+          oc.balance !== nc.balance ||
+          oc.bankBalance !== nc.bankBalance ||
+          oc.limit !== nc.limit
+        );
+      });
 
-  useWalletStore.setState({
-    ...(cardsChanged ? { cards: updatedData.cards } : {}),
-    transactions: updatedData.transactions,
-    investments: updatedData.investments,
-  });
+    useWalletStore.setState({
+      ...(cardsChanged ? { cards: updatedData.cards } : {}),
+      transactions: updatedData.transactions,
+      investments: updatedData.investments,
+    });
+  }
 
   return { cardsTotal, txTotal };
 }

@@ -1041,7 +1041,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                       ESPELHAMENTO DESKTOP
                     </Text>
                     <Text style={[styles.presentationDesc, { color: colors.textSecondary }]}>
-                      Conecte este celular ao Finz via WebRTC P2P. Seus dados são transmitidos em tempo real para a tela do seu computador com zero persistência na nuvem.
+                      Conecte este celular ao Finz. Seus dados são transmitidos em tempo real para a tela do seu computador com zero persistência na nuvem.
                     </Text>
                   </View>
                 </View>

@@ -123,7 +123,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               <View>
                 <Text style={[styles.title, { color: colors.text }]}>Finz Sync</Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  Espelhamento P2P WebRTC Seguro
+                  Espelhamento em Tempo Real Seguro
                 </Text>
               </View>
             </View>
@@ -201,7 +201,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               ]}
             >
               {connectionState === 'connected'
-                ? 'Conectado ao Finz (Túnel P2P Ativo)'
+                ? 'Conectado ao Finz (Sincronizado)'
                 : connectionState === 'connecting'
                 ? 'Sincronizando com o Finz...'
                 : 'Aguardando Pareamento'}

@@ -90,6 +90,11 @@ export function initDatabase() {
     // Coluna já existe
   }
   try {
+    db.execSync('ALTER TABLE cards ADD COLUMN created_at INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
     db.execSync('ALTER TABLE categories ADD COLUMN considerar INTEGER DEFAULT 1;');
   } catch {
     // Coluna já existe
@@ -253,7 +258,9 @@ export function loadAllDataFromSQLite(): {
   investments: Investment[];
   profile?: UserProfile;
 } {
-  const cardRows = db.getAllSync<any>('SELECT * FROM cards');
+  const cardRows = db.getAllSync<any>(
+    'SELECT * FROM cards ORDER BY CASE WHEN created_at IS NULL OR created_at = 0 THEN 9999999999999 ELSE created_at END ASC, id ASC'
+  );
   const catRows = db.getAllSync<any>('SELECT * FROM categories');
   const txRows = db.getAllSync<any>(`
     SELECT 
@@ -411,9 +418,20 @@ export function persistProfile(profile: UserProfile) {
 }
 
 export function persistCard(card: BankCard) {
+  let createdAt = Date.now();
+  try {
+    const prev = db.getFirstSync<{ created_at: number }>(
+      'SELECT created_at FROM cards WHERE id = ?',
+      [card.id]
+    );
+    if (prev && prev.created_at && prev.created_at > 0) {
+      createdAt = prev.created_at;
+    }
+  } catch {}
+
   db.runSync(
-    `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       card.id,
       card.bankName,
@@ -427,6 +445,7 @@ export function persistCard(card: BankCard) {
       card.balance,
       card.limit,
       card.bankBalance || 0,
+      createdAt,
     ]
   );
 }

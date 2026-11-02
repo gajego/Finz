@@ -18,6 +18,7 @@ import {
   clearAllLocalData as dbClearAllLocalData,
 } from '@/services/database/db';
 import { notifyBalanceChange } from '@/services/notifications/notificationService';
+import { preserveCardsOrder } from '@/services/pluggy/pluggyService';
 import {
   DEMO_PROFILE,
   DEMO_CARDS,
@@ -92,8 +93,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       }
       const data = loadAllDataFromSQLite();
       const notifPref = loadNotificationPreference();
+      const stableCards = preserveCardsOrder(get().cards, data.cards);
       set({
-        cards: data.cards,
+        cards: stableCards,
         categories: data.categories,
         transactions: data.transactions,
         investments: data.investments || [],
@@ -110,8 +112,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     try {
       const data = loadAllDataFromSQLite();
       const notifPref = loadNotificationPreference();
+      const stableCards = preserveCardsOrder(get().cards, data.cards);
       set({
-        cards: data.cards,
+        cards: stableCards,
         categories: data.categories,
         transactions: data.transactions,
         investments: data.investments || [],

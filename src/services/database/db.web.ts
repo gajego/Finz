@@ -351,7 +351,9 @@ export function loadAllDataFromSQLite(): {
   transactions: Transaction[];
   profile?: UserProfile;
 } {
-  const cardRows = db.getAllSync<any>('SELECT * FROM cards');
+  const cardRows = db.getAllSync<any>(
+    'SELECT * FROM cards ORDER BY CASE WHEN created_at IS NULL OR created_at = 0 THEN 9999999999999 ELSE created_at END ASC, id ASC'
+  );
   const catRows = db.getAllSync<any>('SELECT * FROM categories');
   const txRows = db.getAllSync<any>(`
     SELECT 

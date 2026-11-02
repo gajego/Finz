@@ -346,15 +346,37 @@ export async function fetchTransactionsFromPluggy(
 const activeItemSyncs = new Map<string, Promise<{ cardsCount: number; txCount: number }>>();
 let activeSyncAllPromise: Promise<{ cardsTotal: number; txTotal: number }> | null = null;
 
+export function preserveCardsOrder(currentCards: BankCard[], incomingCards: BankCard[]): BankCard[] {
+  if (!currentCards || currentCards.length === 0) return incomingCards || [];
+  if (!incomingCards || incomingCards.length === 0) return currentCards;
+
+  const incomingMap = new Map(incomingCards.map((c) => [c.id, c]));
+  const result: BankCard[] = [];
+
+  for (const c of currentCards) {
+    const updated = incomingMap.get(c.id);
+    if (updated) {
+      result.push(updated);
+      incomingMap.delete(c.id);
+    }
+  }
+
+  for (const newCard of incomingMap.values()) {
+    result.push(newCard);
+  }
+
+  return result;
+}
+
 /**
  * Sincroniza contas e cartões de um ItemId conectado (com lock de concorrência)
  */
-export async function syncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
+export async function syncPluggyItem(itemId: string, shouldUpdateStore = true): Promise<{ cardsCount: number; txCount: number }> {
   const running = activeItemSyncs.get(itemId);
   if (running) {
     return running;
   }
-  const promise = doSyncPluggyItem(itemId).finally(() => {
+  const promise = doSyncPluggyItem(itemId, shouldUpdateStore).finally(() => {
     activeItemSyncs.delete(itemId);
   });
   activeItemSyncs.set(itemId, promise);
@@ -541,7 +563,7 @@ function calculateInvestmentValues(item: any): { currentVal: number; initialVal:
   return { currentVal, initialVal, annualRate: rate };
 }
 
-async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; txCount: number }> {
+async function doSyncPluggyItem(itemId: string, shouldUpdateStore = true): Promise<{ cardsCount: number; txCount: number }> {
   const apiKey = await getValidApiKey();
 
   // 1. Busca dados do conector (banco)
@@ -731,14 +753,15 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
 
   const saveCardsBatch = () => {
     for (const card of cardsToProcess) {
-      const previousRow = db.getFirstSync<{ bank_balance: number }>(
-        'SELECT bank_balance FROM cards WHERE id = ?',
+      const previousRow = db.getFirstSync<{ bank_balance: number; created_at: number }>(
+        'SELECT bank_balance, created_at FROM cards WHERE id = ?',
         [card.id]
       );
+      const createdAt = previousRow?.created_at && previousRow.created_at > 0 ? previousRow.created_at : Date.now();
 
       db.runSync(
-        `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           card.id,
           card.bankName,
@@ -752,6 +775,7 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
           card.balance,
           card.limit,
           card.bankBalance || 0,
+          createdAt,
         ]
       );
       cardsCount++;
@@ -1017,12 +1041,13 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
 
   // Recarrega dados no Zustand Store evitando re-render que faz os cartões piscarem
   // Em modo apresentação, nunca sobrescrevemos os dados demo com dados reais do SQLite
-  if (!useWalletStore.getState().presentationMode) {
+  if (shouldUpdateStore && !useWalletStore.getState().presentationMode) {
     const updatedData = loadAllDataFromSQLite();
     const currentCards = useWalletStore.getState().cards;
+    const stableCards = preserveCardsOrder(currentCards, updatedData.cards);
     const cardsChanged =
-      currentCards.length !== updatedData.cards.length ||
-      updatedData.cards.some((nc, i) => {
+      currentCards.length !== stableCards.length ||
+      stableCards.some((nc, i) => {
         const oc = currentCards[i];
         return (
           !oc ||
@@ -1034,7 +1059,7 @@ async function doSyncPluggyItem(itemId: string): Promise<{ cardsCount: number; t
       });
 
     useWalletStore.setState({
-      ...(cardsChanged ? { cards: updatedData.cards } : {}),
+      ...(cardsChanged ? { cards: stableCards } : {}),
       transactions: updatedData.transactions,
       investments: updatedData.investments,
     });
@@ -1064,7 +1089,7 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
 
   for (const itemId of itemIds) {
     try {
-      const res = await syncPluggyItem(itemId);
+      const res = await syncPluggyItem(itemId, false);
       cardsTotal += res.cardsCount;
       txTotal += res.txCount;
     } catch (e) {
@@ -1077,9 +1102,10 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
   if (!useWalletStore.getState().presentationMode) {
     const updatedData = loadAllDataFromSQLite();
     const currentCards = useWalletStore.getState().cards;
+    const stableCards = preserveCardsOrder(currentCards, updatedData.cards);
     const cardsChanged =
-      currentCards.length !== updatedData.cards.length ||
-      updatedData.cards.some((nc, i) => {
+      currentCards.length !== stableCards.length ||
+      stableCards.some((nc, i) => {
         const oc = currentCards[i];
         return (
           !oc ||
@@ -1091,7 +1117,7 @@ async function doSyncAllPluggyItems(): Promise<{ cardsTotal: number; txTotal: nu
       });
 
     useWalletStore.setState({
-      ...(cardsChanged ? { cards: updatedData.cards } : {}),
+      ...(cardsChanged ? { cards: stableCards } : {}),
       transactions: updatedData.transactions,
       investments: updatedData.investments,
     });

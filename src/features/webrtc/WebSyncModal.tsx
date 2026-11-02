@@ -83,7 +83,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   const handleConnect = () => {
     if (!code || code.trim().length < 4) {
-      Alert.alert('Código Inválido', 'Insira o código de sessão exibido na tela do Finz Web.');
+      Alert.alert('Código Inválido', 'Insira o código de sessão exibido na tela do Finz.');
       return;
     }
     webSyncHost.connect(serverUrl, code.trim());
@@ -95,7 +95,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   const handleForceSync = () => {
     webSyncHost.sendFullState();
-    Alert.alert('Sincronizado', 'Snapshot completo enviado ao Finz Web!');
+    Alert.alert('Sincronizado', 'Snapshot completo enviado ao Finz!');
   };
 
   return (
@@ -121,7 +121,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                 <Monitor size={20} color={colors.primary} />
               </View>
               <View>
-                <Text style={[styles.title, { color: colors.text }]}>Finz Web Sync</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Finz Sync</Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   Espelhamento P2P WebRTC Seguro
                 </Text>
@@ -201,9 +201,9 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               ]}
             >
               {connectionState === 'connected'
-                ? 'Conectado ao Finz Web (Túnel P2P Ativo)'
+                ? 'Conectado ao Finz (Túnel P2P Ativo)'
                 : connectionState === 'connecting'
-                ? 'Sincronizando com o Finz Web...'
+                ? 'Sincronizando com o Finz...'
                 : 'Aguardando Pareamento'}
             </Text>
           </View>
@@ -217,7 +217,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               <View style={styles.securityNotice}>
                 <ShieldCheck size={18} color={colors.primary} />
                 <Text style={[styles.securityText, { color: colors.textSecondary }]}>
-                  Sincronização em tempo real ativa. Qualquer transação ou alteração de saldo no celular é espelhada instantaneamente para a versão Web em memória.
+                  Sincronização em tempo real ativa. Qualquer transação ou alteração de saldo no celular é espelhada instantaneamente para o computador em memória.
                 </Text>
               </View>
 
@@ -246,7 +246,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
           ) : (
             <View style={styles.formContainer}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                CÓDIGO DE PAREAMENTO (6 DÍGITOS DO FINZ WEB)
+                CÓDIGO DE PAREAMENTO (6 DÍGITOS DO FINZ)
               </Text>
               <TextInput
                 style={[

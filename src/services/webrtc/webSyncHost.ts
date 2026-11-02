@@ -38,7 +38,7 @@ class WebSyncHost {
         this.disconnect();
         this.notifyState(
           'error',
-          'Tempo limite esgotado. Verifique se o Finz Web está aberto no PC e se ambos estão na mesma rede Wi-Fi.'
+          'Tempo limite esgotado. Verifique se o Finz está aberto no PC e se ambos estão na mesma rede Wi-Fi.'
         );
       }
     }, 6000);

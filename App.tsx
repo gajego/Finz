@@ -35,6 +35,7 @@ import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
 import { ProfileModal } from './src/features/profile/ProfileModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
+import { WebSyncModal } from './src/features/webrtc/WebSyncModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
 import { FloatingTabsQuickMenu } from './src/components/ui/FloatingTabsQuickMenu';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
@@ -83,6 +84,7 @@ export default function App() {
   // Modais de Controle
   const [selectedCardForSkin, setSelectedCardForSkin] = useState<BankCard | null>(null);
   const [pluggyModalVisible, setPluggyModalVisible] = useState(false);
+  const [webSyncVisible, setWebSyncVisible] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
   const [budgetModalVisible, setBudgetModalVisible] = useState(false);
   const [selectedCategoryForBudget, setSelectedCategoryForBudget] = useState<string | undefined>();
@@ -317,6 +319,7 @@ export default function App() {
           onOpenNotifications={() => setNotificationsVisible(true)}
           onOpenPluggy={() => setPluggyModalVisible(true)}
           onOpenProfile={() => setProfileVisible(true)}
+          onOpenWebSync={() => setWebSyncVisible(true)}
         />
 
         {/* Pager Horizontal com Navegação por Gesto de Arrastar para o Lado */}
@@ -451,6 +454,12 @@ export default function App() {
         <OnboardingModal
           visible={onboardingVisible}
           onClose={() => setOnboardingVisible(false)}
+        />
+
+        {/* Modal de Conexão com o Finz Desktop */}
+        <WebSyncModal
+          visible={webSyncVisible}
+          onClose={() => setWebSyncVisible(false)}
         />
 
         {/* Central de Notificações em Tempo Real (Zero Mocks) */}

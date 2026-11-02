@@ -1,18 +1,35 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Moon, Sun, Bell, Landmark, ChevronRight } from 'lucide-react-native';
+import { Moon, Sun, Bell, Landmark, ChevronRight, Monitor } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, LetterSpacing } from '@/theme/typography';
+import { webSyncHost } from '@/services/webrtc/webSyncHost';
 
 interface HeaderProps {
   onOpenNotifications?: () => void;
   onOpenPluggy?: () => void;
   onOpenProfile?: () => void;
+  onOpenWebSync?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPluggy, onOpenProfile }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOpenNotifications,
+  onOpenPluggy,
+  onOpenProfile,
+  onOpenWebSync,
+}) => {
   const { colors, mode, toggleTheme } = useTheme();
+  const [isWebConnected, setIsWebConnected] = useState(webSyncHost.getState() === 'connected');
+
+  useEffect(() => {
+    const unsub = webSyncHost.addListener((state) => {
+      setIsWebConnected(state === 'connected');
+    });
+    return () => {
+      unsub();
+    };
+  }, []);
   const profile = useWalletStore((s) => s.profile);
   const cards = useWalletStore((s) => s.cards);
   const categories = useWalletStore((s) => s.categories);
@@ -109,8 +126,33 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenPlugg
         <ChevronRight size={13} color={colors.textMuted} strokeWidth={2.4} style={styles.chevron} />
       </Pressable>
 
-      {/* Ações: Open Finance Pluggy, Alternar Tema e Notificações (Pills de Precisão) */}
+      {/* Ações: Conexão Web, Open Finance Pluggy, Alternar Tema e Notificações (Pills de Precisão) */}
       <View style={styles.actionButtons}>
+        {/* Botão Conectar ao Finz Web / Desktop */}
+        {onOpenWebSync && (
+          <Pressable
+            onPress={onOpenWebSync}
+            style={({ pressed }) => [
+              styles.actionPill,
+              {
+                backgroundColor: isWebConnected ? `${colors.primary}20` : colors.surfaceElevated,
+                borderColor: isWebConnected ? colors.primary : colors.borderSubtle,
+                transform: [{ scale: pressed ? 0.90 : 1 }],
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+            hitSlop={8}
+            accessibilityLabel={isWebConnected ? "Finz Web Conectado" : "Conectar ao Finz Web"}
+          >
+            <Monitor size={17} color={isWebConnected ? colors.primary : colors.text} strokeWidth={2.2} />
+            {isWebConnected && (
+              <View style={[styles.alertIndicatorContainer, { top: -2, right: -2 }]}>
+                <View style={[styles.alertDot, { backgroundColor: '#10B981' }]} />
+              </View>
+            )}
+          </Pressable>
+        )}
+
         {/* Botão Conectar Conta / Open Finance (Pluggy) */}
         {onOpenPluggy && (
           <Pressable

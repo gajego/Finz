@@ -1056,12 +1056,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                       borderColor: colors.primary,
                       borderWidth: 1,
                       opacity: pressed ? 0.85 : 1,
+                      paddingHorizontal: 12,
                     },
                   ]}
                 >
-                  <Monitor size={15} color={colors.primary} style={{ marginRight: 6 }} />
-                  <Text style={[styles.presentationButtonText, { color: colors.primary }]}>
-                    CONECTAR AO FINZ WEB (QR CODE / CÓDIGO)
+                  <Monitor size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.presentationButtonText,
+                      { color: colors.primary, fontSize: 11.5, letterSpacing: 0.3 },
+                    ]}
+                  >
+                    CONECTAR AO FINZ WEB
                   </Text>
                 </Pressable>
               </View>

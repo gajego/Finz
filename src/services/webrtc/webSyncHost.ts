@@ -18,6 +18,7 @@ class WebSyncHost {
   private currentServerUrl = '';
   private stateListeners: Set<(state: HostConnectionState, error?: string | null) => void> = new Set();
   private connectionState: HostConnectionState = 'idle';
+  private connectTimeout: any = null;
 
   public addListener(cb: (state: HostConnectionState, error?: string | null) => void) {
     this.stateListeners.add(cb);
@@ -38,10 +39,26 @@ class WebSyncHost {
     this.currentServerUrl = serverUrl.trim();
     this.notifyState('connecting');
 
+    // Timeout de segurança para evitar loading infinito caso a porta/IP não responda
+    this.connectTimeout = setTimeout(() => {
+      if (this.connectionState === 'connecting') {
+        console.warn('[WebSyncHost] Timeout ao tentar conectar em:', this.currentServerUrl);
+        this.disconnect();
+        this.notifyState(
+          'error',
+          'Tempo limite esgotado. Verifique se o Finz Web está aberto no PC e se ambos estão na mesma rede Wi-Fi.'
+        );
+      }
+    }, 6000);
+
     try {
       this.ws = new WebSocket(this.currentServerUrl);
 
       this.ws.onopen = () => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         console.log('[WebSyncHost] Conectado ao Signaling Server. Ingressando na sala:', this.currentRoomId);
         this.ws?.send(
           JSON.stringify({
@@ -79,16 +96,30 @@ class WebSyncHost {
       };
 
       this.ws.onerror = (e) => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         console.error('[WebSyncHost] Erro no WebSocket de Sinalização:', e);
-        this.notifyState('error', 'Falha ao conectar ao servidor de sincronização.');
+        this.notifyState('error', 'Não foi possível conectar ao IP especificado. Verifique a porta e o Wi-Fi.');
       };
 
       this.ws.onclose = () => {
+        if (this.connectTimeout) {
+          clearTimeout(this.connectTimeout);
+          this.connectTimeout = null;
+        }
         console.log('[WebSyncHost] WebSocket de Sinalização encerrado.');
-        this.notifyState('disconnected');
+        if (this.connectionState !== 'error') {
+          this.notifyState('disconnected');
+        }
         this.cleanupSubscription();
       };
     } catch (err: any) {
+      if (this.connectTimeout) {
+        clearTimeout(this.connectTimeout);
+        this.connectTimeout = null;
+      }
       this.notifyState('error', err?.message || 'Erro ao inicializar conexão.');
     }
   }
@@ -261,6 +292,10 @@ class WebSyncHost {
   }
 
   public disconnect() {
+    if (this.connectTimeout) {
+      clearTimeout(this.connectTimeout);
+      this.connectTimeout = null;
+    }
     this.cleanupSubscription();
     if (this.dataChannel) {
       try { this.dataChannel.close(); } catch {}

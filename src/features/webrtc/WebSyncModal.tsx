@@ -205,9 +205,11 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                 maxLength={8}
               />
 
-              <Text style={[styles.label, { color: colors.textSecondary, marginTop: 14 }]}>
-                SERVIDOR DE SINALIZAÇÃO WEBSOCKET
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  SERVIDOR DE SINALIZAÇÃO WEBSOCKET
+                </Text>
+              </View>
               <TextInput
                 style={[
                   styles.serverInput,
@@ -217,7 +219,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                     borderColor: colors.borderSubtle,
                   },
                 ]}
-                placeholder="ws://10.0.2.2:8080 ou ws://IP:8080"
+                placeholder="ws://192.168.15.12:8080"
                 placeholderTextColor={colors.textMuted}
                 value={serverUrl}
                 onChangeText={setServerUrl}
@@ -228,21 +230,34 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                 style={[
                   styles.connectButton,
                   {
-                    backgroundColor: colors.primary,
-                    opacity: connectionState === 'connecting' ? 0.7 : 1,
+                    backgroundColor: connectionState === 'connecting' ? colors.surfaceSubtle : colors.primary,
+                    borderWidth: connectionState === 'connecting' ? 1 : 0,
+                    borderColor: connectionState === 'connecting' ? colors.borderStrong : 'transparent',
                   },
                 ]}
-                onPress={handleConnect}
-                disabled={connectionState === 'connecting'}
+                onPress={() => {
+                  if (connectionState === 'connecting') {
+                    handleDisconnect();
+                  } else {
+                    handleConnect();
+                  }
+                }}
               >
                 {connectionState === 'connecting' ? (
-                  <ActivityIndicator size="small" color={colors.primaryForeground} />
+                  <>
+                    <ActivityIndicator size="small" color={colors.danger} />
+                    <Text style={[styles.connectButtonText, { color: colors.danger }]}>
+                      Cancelar Tentativa
+                    </Text>
+                  </>
                 ) : (
-                  <Wifi size={18} color={colors.primaryForeground} />
+                  <>
+                    <Wifi size={18} color={colors.primaryForeground} />
+                    <Text style={[styles.connectButtonText, { color: colors.primaryForeground }]}>
+                      Iniciar Pareamento Web
+                    </Text>
+                  </>
                 )}
-                <Text style={[styles.connectButtonText, { color: colors.primaryForeground }]}>
-                  {connectionState === 'connecting' ? 'Conectando...' : 'Iniciar Pareamento Web'}
-                </Text>
               </Pressable>
             </View>
           )}

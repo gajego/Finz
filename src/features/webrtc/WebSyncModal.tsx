@@ -21,12 +21,12 @@ import {
   ShieldCheck,
   QrCode,
   Keyboard,
-  Sparkles,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { webSyncHost, HostConnectionState } from '@/services/webrtc/webSyncHost';
 import { loadWebSyncSession } from '@/services/database/db';
+import { QrScannerView } from './QrScannerView';
 
 interface WebSyncModalProps {
   visible: boolean;
@@ -42,6 +42,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [scanned, setScanned] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0.7)).current;
@@ -80,6 +81,9 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     const unsub = webSyncHost.addListener((state, err) => {
       setConnectionState(state);
       setErrorMessage(err || null);
+      if (state === 'error' || state === 'idle') {
+        setScanned(false);
+      }
     });
     return () => {
       unsub();
@@ -88,6 +92,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   useEffect(() => {
     if (visible) {
+      setScanned(false);
       const saved = loadWebSyncSession();
       if (saved) {
         if (saved.roomId && !code) setCode(saved.roomId);
@@ -96,16 +101,42 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     }
   }, [visible]);
 
-  const handleConnect = (overrideCode?: string) => {
+  const handleConnect = (overrideCode?: string, overrideUrl?: string) => {
     const targetCode = (overrideCode || code).trim().toUpperCase();
+    const targetUrl = (overrideUrl || serverUrl).trim();
     if (!targetCode || targetCode.length < 4) {
       Alert.alert('Código Inválido', 'Insira o código de sessão de 6 dígitos exibido na tela do computador.');
       return;
     }
-    webSyncHost.connect(serverUrl.trim(), targetCode);
+    webSyncHost.connect(targetUrl, targetCode);
+  };
+
+  const handleBarcodeScanned = (data: string) => {
+    if (scanned || connectionState === 'connecting' || connectionState === 'connected') return;
+    setScanned(true);
+
+    let targetCode = data.trim();
+    let targetUrl = serverUrl;
+
+    try {
+      const parsed = JSON.parse(data);
+      if (parsed.sessionId) {
+        targetCode = String(parsed.sessionId).trim();
+      }
+      if (parsed.serverUrl) {
+        targetUrl = String(parsed.serverUrl).trim();
+        setServerUrl(targetUrl);
+      }
+    } catch {
+      // Valor direto sem formatação JSON
+    }
+
+    setCode(targetCode.toUpperCase());
+    handleConnect(targetCode, targetUrl);
   };
 
   const handleDisconnect = () => {
+    setScanned(false);
     webSyncHost.disconnect(true);
   };
 
@@ -407,44 +438,13 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                   </Pressable>
                 </View>
               ) : (
-                <View style={styles.qrInfoSection}>
-                  <View
-                    style={[
-                      styles.qrInfoCard,
-                      {
-                        backgroundColor: colors.surfaceElevated,
-                        borderColor: colors.borderSubtle,
-                      },
-                    ]}
-                  >
-                    <QrCode size={40} color={colors.primary} strokeWidth={1.8} />
-                    <Text style={[styles.qrInfoTitle, { color: colors.text }]}>
-                      Pareamento Rápido por Código
-                    </Text>
-                    <Text style={[styles.qrInfoDesc, { color: colors.textSecondary }]}>
-                      O QR Code exibido na tela web contém o código de 6 dígitos da sua sessão logo abaixo da imagem.
-                    </Text>
-                    <View
-                      style={[
-                        styles.quickStepBox,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' },
-                      ]}
-                    >
-                      <Sparkles size={16} color={colors.primary} />
-                      <Text style={[styles.quickStepText, { color: colors.text }]}>
-                        Basta digitar os 6 caracteres na aba anterior para conectar imediatamente sem precisar de permissões.
-                      </Text>
-                    </View>
-                    <Pressable
-                      style={[styles.switchTabBtn, { backgroundColor: colors.primary }]}
-                      onPress={() => setSyncMode('code')}
-                    >
-                      <Keyboard size={16} color={colors.primaryForeground} />
-                      <Text style={[styles.switchTabBtnText, { color: colors.primaryForeground }]}>
-                        Inserir Código de 6 Dígitos
-                      </Text>
-                    </Pressable>
-                  </View>
+                <View style={styles.qrSectionWrapper}>
+                  <QrScannerView
+                    onScan={handleBarcodeScanned}
+                    onSwitchToCode={() => setSyncMode('code')}
+                    scanned={scanned}
+                    onResetScan={() => setScanned(false)}
+                  />
                 </View>
               )}
             </View>
@@ -548,52 +548,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Typography.medium,
   },
-  qrInfoSection: {
+  qrSectionWrapper: {
     width: '100%',
-  },
-  qrInfoCard: {
-    padding: 20,
-    borderRadius: Radii.lg,
-    borderWidth: 1,
-    alignItems: 'center',
-    gap: 10,
-  },
-  qrInfoTitle: {
-    fontSize: 16,
-    fontFamily: Typography.bold,
-  },
-  qrInfoDesc: {
-    fontSize: 13,
-    fontFamily: Typography.regular,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  quickStepBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 12,
-    borderRadius: Radii.md,
-    marginVertical: 4,
-  },
-  quickStepText: {
-    fontSize: 12,
-    fontFamily: Typography.medium,
-    flex: 1,
-    lineHeight: 16,
-  },
-  switchTabBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: Radii.md,
-    marginTop: 4,
-  },
-  switchTabBtnText: {
-    fontSize: 13,
-    fontFamily: Typography.bold,
   },
   formContainer: {
     gap: 6,

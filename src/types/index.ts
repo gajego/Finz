@@ -105,3 +105,32 @@ export interface Investment {
   annualRate?: number;
   color: string;
 }
+
+// ─── Protocolo WebRTC & Sincronização Finz ──────────────────────────────────
+
+export interface SyncFullStatePayload {
+  profile: UserProfile;
+  cards: BankCard[];
+  transactions: Transaction[];
+  categories: Category[];
+  investments: Investment[];
+  notificationPreference: NotificationPreference;
+  activeCardIndex: number;
+  privacyMode: boolean;
+  presentationMode: boolean;
+  smartAlerts?: SmartAlert[];
+  syncedAt: number;
+}
+
+export interface SyncDeltaPayload {
+  deltaType: 'TRANSACTION_ADD' | 'CARD_UPDATE' | 'CATEGORY_UPDATE' | 'PROFILE_UPDATE' | 'PREFERENCE_UPDATE';
+  data: any;
+  timestamp: number;
+}
+
+export type SyncMessage =
+  | { type: 'SYNC_FULL_STATE'; payload: SyncFullStatePayload }
+  | { type: 'SYNC_DELTA'; payload: SyncDeltaPayload }
+  | { type: 'SYNC_PING'; timestamp: number }
+  | { type: 'SYNC_PONG'; timestamp: number };
+

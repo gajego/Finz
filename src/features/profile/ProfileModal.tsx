@@ -42,7 +42,9 @@ import {
   FileText,
   Sparkles,
   Presentation,
+  Monitor,
 } from 'lucide-react-native';
+import { WebSyncModal } from '@/features/webrtc/WebSyncModal';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, LetterSpacing } from '@/theme/typography';
@@ -80,6 +82,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
   const [isExportingBackup, setIsExportingBackup] = useState(false);
   const [isImportingBackup, setIsImportingBackup] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
+  const [webSyncVisible, setWebSyncVisible] = useState(false);
 
   // Sincroniza estado com o store ao abrir
   useEffect(() => {
@@ -1010,8 +1013,63 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                   </Text>
                 </Pressable>
               </View>
+
+              {/* SEÇÃO: FINZ WEB (ESPELHAMENTO DESKTOP P2P) */}
+              <View
+                style={[
+                  styles.presentationCard,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                    borderColor: colors.borderStrong,
+                    marginTop: 14,
+                  },
+                ]}
+              >
+                <View style={styles.presentationHeader}>
+                  <View
+                    style={[
+                      styles.presentationIconCircle,
+                      {
+                        backgroundColor: isDark ? 'rgba(217, 249, 32, 0.12)' : 'rgba(0, 0, 0, 0.05)',
+                        borderColor: colors.borderSubtle,
+                      },
+                    ]}
+                  >
+                    <Monitor size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={[styles.presentationTitle, { color: colors.text }]}>
+                      FINZ WEB (ESPELHAMENTO DESKTOP)
+                    </Text>
+                    <Text style={[styles.presentationDesc, { color: colors.textSecondary }]}>
+                      Conecte este celular ao Finz Web via WebRTC P2P. Seus dados são transmitidos em tempo real para a tela do seu computador com zero persistência na nuvem.
+                    </Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  onPress={() => setWebSyncVisible(true)}
+                  style={({ pressed }) => [
+                    styles.presentationButton,
+                    {
+                      backgroundColor: isDark ? 'rgba(217, 249, 32, 0.14)' : 'rgba(0,0,0,0.06)',
+                      borderColor: colors.primary,
+                      borderWidth: 1,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <Monitor size={15} color={colors.primary} style={{ marginRight: 6 }} />
+                  <Text style={[styles.presentationButtonText, { color: colors.primary }]}>
+                    CONECTAR AO FINZ WEB (QR CODE / CÓDIGO)
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </ScrollView>
+
+          {/* Modal de Pareamento WebRTC Host */}
+          <WebSyncModal visible={webSyncVisible} onClose={() => setWebSyncVisible(false)} />
 
           {/* Barra Inferior com Gesto de Arrastar para Fechar */}
           <ModalBottomHandle

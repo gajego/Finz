@@ -33,7 +33,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   const isDark = mode === 'dark';
 
   const [code, setCode] = useState('');
-  const [serverUrl, setServerUrl] = useState('ws://10.0.2.2:8080');
+  const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 

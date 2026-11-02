@@ -37,6 +37,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# editor / assistant configs
+.claude/
+
 # generated native folders
 /ios
 /android

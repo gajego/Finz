@@ -110,7 +110,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
             },
           ]}
         >
-          {/* Header */}
           <View style={styles.header}>
             <View style={styles.titleRow}>
               <View
@@ -133,7 +132,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
             </Pressable>
           </View>
 
-          {/* Status Badge com Animações de Radar e Sucesso */}
           <View
             style={[
               styles.statusBadge,
@@ -214,7 +212,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
             <Text style={[styles.errorText, { color: colors.danger }]}>{errorMessage}</Text>
           )}
 
-          {/* Conteúdo Conectado vs Formulário */}
           {connectionState === 'connected' ? (
             <View style={styles.connectedCard}>
               <View style={styles.securityNotice}>

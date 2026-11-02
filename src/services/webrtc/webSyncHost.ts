@@ -1,9 +1,3 @@
-/**
- * FINZ WEBRTC HOST (Mobile P2P Engine)
- * Sincroniza em tempo real o estado local das stores do SQLite/Zustand
- * para a interface Finz Web via RTCDataChannel ou Relay WebSocket.
- */
-
 import { useWalletStore } from '../../store/useWalletStore';
 import { SyncFullStatePayload, SyncMessage } from '../../types';
 
@@ -39,10 +33,8 @@ class WebSyncHost {
     this.currentServerUrl = serverUrl.trim();
     this.notifyState('connecting');
 
-    // Timeout de segurança para evitar loading infinito caso a porta/IP não responda
     this.connectTimeout = setTimeout(() => {
       if (this.connectionState === 'connecting') {
-        console.warn('[WebSyncHost] Timeout ao tentar conectar em:', this.currentServerUrl);
         this.disconnect();
         this.notifyState(
           'error',
@@ -59,7 +51,6 @@ class WebSyncHost {
           clearTimeout(this.connectTimeout);
           this.connectTimeout = null;
         }
-        console.log('[WebSyncHost] Conectado ao Signaling Server. Ingressando na sala:', this.currentRoomId);
         this.ws?.send(
           JSON.stringify({
             type: 'join',
@@ -74,7 +65,6 @@ class WebSyncHost {
           const msg = JSON.parse(event.data);
 
           if (msg.type === 'joined') {
-            console.log('[WebSyncHost] Ingressou na sala. Enviando snapshot inicial...');
             this.sendFullState();
             this.setupStoreSubscription();
             this.notifyState('connected');
@@ -90,17 +80,14 @@ class WebSyncHost {
             this.sendFullState();
             return;
           }
-        } catch (err) {
-          console.error('[WebSyncHost] Erro ao processar mensagem do servidor:', err);
-        }
+        } catch {}
       };
 
-      this.ws.onerror = (e) => {
+      this.ws.onerror = () => {
         if (this.connectTimeout) {
           clearTimeout(this.connectTimeout);
           this.connectTimeout = null;
         }
-        console.error('[WebSyncHost] Erro no WebSocket de Sinalização:', e);
         this.notifyState('error', 'Não foi possível conectar ao IP especificado. Verifique a porta e o Wi-Fi.');
       };
 
@@ -109,7 +96,6 @@ class WebSyncHost {
           clearTimeout(this.connectTimeout);
           this.connectTimeout = null;
         }
-        console.log('[WebSyncHost] WebSocket de Sinalização encerrado.');
         if (this.connectionState !== 'error') {
           this.notifyState('disconnected');
         }
@@ -125,15 +111,11 @@ class WebSyncHost {
   }
 
   private async handleSignaling(signal: any) {
-    // Caso suporte RTCPeerConnection no ambiente
     try {
       const g = globalThis as any;
       const globalRTC = g.RTCPeerConnection;
       if (globalRTC && !this.peer) {
-        this.peer = new globalRTC({
-          // 100% Offline / Rede Local (LAN) sem requisições para servidores STUN externos
-          iceServers: [],
-        });
+        this.peer = new globalRTC({ iceServers: [] });
 
         this.peer.onicecandidate = (event: any) => {
           if (event.candidate && this.ws?.readyState === WebSocket.OPEN) {
@@ -150,7 +132,6 @@ class WebSyncHost {
         this.peer.ondatachannel = (event: any) => {
           this.dataChannel = event.channel;
           this.dataChannel.onopen = () => {
-            console.log('[WebSyncHost] RTCDataChannel conectado diretamente!');
             this.sendFullState();
           };
           this.dataChannel.onmessage = (e: any) => {
@@ -181,9 +162,7 @@ class WebSyncHost {
         const Candidate = g.RTCIceCandidate;
         await this.peer.addIceCandidate(new Candidate(signal.candidate));
       }
-    } catch (e) {
-      console.warn('[WebSyncHost] WebRTC nativo não inicializado, operando via canal seguro de relay WebSocket:', e);
-    }
+    } catch {}
   }
 
   public sendFullState() {
@@ -225,17 +204,13 @@ class WebSyncHost {
   private sendMessage(msg: SyncMessage) {
     const serialized = JSON.stringify(msg);
 
-    // Prioriza envio via RTCDataChannel direto se aberto
     if (this.dataChannel && this.dataChannel.readyState === 'open') {
       try {
         this.dataChannel.send(serialized);
         return;
-      } catch (e) {
-        console.warn('[WebSyncHost] Falha ao enviar via DataChannel, usando relay:', e);
-      }
+      } catch {}
     }
 
-    // Fallback instantâneo e seguro via WebSocket
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(
         JSON.stringify({
@@ -256,7 +231,6 @@ class WebSyncHost {
     let lastProfile = useWalletStore.getState().profile;
 
     this.unsubscribeStore = useWalletStore.subscribe((state) => {
-      // Checa transações novas
       if (state.transactions.length !== lastTxCount) {
         lastTxCount = state.transactions.length;
         if (state.transactions[0]) {
@@ -264,19 +238,16 @@ class WebSyncHost {
         }
       }
 
-      // Checa mudanças de perfil
       if (state.profile !== lastProfile) {
         lastProfile = state.profile;
         this.sendDelta('PROFILE_UPDATE', state.profile);
       }
 
-      // Checa cartões
       if (state.cards !== lastCards) {
         lastCards = state.cards;
-        this.sendFullState(); // Mantém lista de cartões perfeitamente sincronizada
+        this.sendFullState();
       }
 
-      // Checa categorias
       if (state.categories !== lastCategories) {
         lastCategories = state.categories;
         this.sendFullState();

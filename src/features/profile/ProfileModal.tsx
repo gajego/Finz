@@ -1014,7 +1014,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                 </Pressable>
               </View>
 
-              {/* SEÇÃO: FINZ WEB (ESPELHAMENTO DESKTOP P2P) */}
               <View
                 style={[
                   styles.presentationCard,
@@ -1075,7 +1074,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
             </View>
           </ScrollView>
 
-          {/* Modal de Pareamento WebRTC Host */}
           <WebSyncModal visible={webSyncVisible} onClose={() => setWebSyncVisible(false)} />
 
           {/* Barra Inferior com Gesto de Arrastar para Fechar */}

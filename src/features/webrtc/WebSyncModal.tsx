@@ -10,7 +10,6 @@ import {
   Alert,
   Animated,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   X,
   Radio,
@@ -22,8 +21,7 @@ import {
   ShieldCheck,
   QrCode,
   Keyboard,
-  Camera,
-  ScanLine,
+  Sparkles,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
@@ -39,14 +37,11 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
 
-  const [syncMode, setSyncMode] = useState<'qr' | 'code'>('qr');
+  const [syncMode, setSyncMode] = useState<'code' | 'qr'>('code');
   const [code, setCode] = useState('');
   const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [scanned, setScanned] = useState(false);
-
-  const [permission, requestPermission] = useCameraPermissions();
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0.7)).current;
@@ -85,9 +80,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     const unsub = webSyncHost.addListener((state, err) => {
       setConnectionState(state);
       setErrorMessage(err || null);
-      if (state === 'error' || state === 'idle') {
-        setScanned(false);
-      }
     });
     return () => {
       unsub();
@@ -96,7 +88,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   useEffect(() => {
     if (visible) {
-      setScanned(false);
       const saved = loadWebSyncSession();
       if (saved) {
         if (saved.roomId && !code) setCode(saved.roomId);
@@ -105,42 +96,16 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     }
   }, [visible]);
 
-  const handleConnect = (overrideCode?: string, overrideUrl?: string) => {
-    const targetCode = (overrideCode || code).trim();
-    const targetUrl = (overrideUrl || serverUrl).trim();
+  const handleConnect = (overrideCode?: string) => {
+    const targetCode = (overrideCode || code).trim().toUpperCase();
     if (!targetCode || targetCode.length < 4) {
-      Alert.alert('Código Inválido', 'Insira o código de sessão exibido na tela do Finz.');
+      Alert.alert('Código Inválido', 'Insira o código de sessão de 6 dígitos exibido na tela do computador.');
       return;
     }
-    webSyncHost.connect(targetUrl, targetCode);
-  };
-
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
-    if (scanned || connectionState === 'connecting' || connectionState === 'connected') return;
-    setScanned(true);
-
-    let targetCode = data.trim();
-    let targetUrl = serverUrl;
-
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.sessionId) {
-        targetCode = String(parsed.sessionId).trim();
-      }
-      if (parsed.serverUrl) {
-        targetUrl = String(parsed.serverUrl).trim();
-        setServerUrl(targetUrl);
-      }
-    } catch {
-      // Valor puro do código sem encapsulamento JSON
-    }
-
-    setCode(targetCode);
-    handleConnect(targetCode, targetUrl);
+    webSyncHost.connect(serverUrl.trim(), targetCode);
   };
 
   const handleDisconnect = () => {
-    setScanned(false);
     webSyncHost.disconnect(true);
   };
 
@@ -174,7 +139,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               <View>
                 <Text style={[styles.title, { color: colors.text }]}>Finz Sync</Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  Conexão em Tempo Real
+                  Conectar ao Finz no Computador
                 </Text>
               </View>
             </View>
@@ -268,7 +233,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               <View style={styles.securityNotice}>
                 <ShieldCheck size={18} color={colors.primary} />
                 <Text style={[styles.securityText, { color: colors.textSecondary }]}>
-                  Sincronização em tempo real ativa. As movimentações e saldos do app são espelhados com o computador.
+                  Sincronização em tempo real ativa. Suas movimentações e saldos do celular estão espelhados com a tela do computador.
                 </Text>
               </View>
 
@@ -296,7 +261,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
             </View>
           ) : (
             <View style={styles.pairingContainer}>
-              {/* Abas Alternadoras: Ler QR Code ou Digitar Código */}
+              {/* Abas Alternadoras: Digitar Código ou QR Code */}
               <View
                 style={[
                   styles.tabBar,
@@ -306,37 +271,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                   },
                 ]}
               >
-                <Pressable
-                  onPress={() => {
-                    setSyncMode('qr');
-                    setScanned(false);
-                  }}
-                  style={[
-                    styles.tabButton,
-                    syncMode === 'qr' && [
-                      styles.tabButtonActive,
-                      {
-                        backgroundColor: isDark ? 'rgba(217, 249, 32, 0.15)' : 'rgba(0, 0, 0, 0.08)',
-                        borderColor: colors.primary,
-                      },
-                    ],
-                  ]}
-                >
-                  <QrCode
-                    size={16}
-                    color={syncMode === 'qr' ? colors.primary : colors.textMuted}
-                    strokeWidth={2.2}
-                  />
-                  <Text
-                    style={[
-                      styles.tabButtonText,
-                      { color: syncMode === 'qr' ? colors.text : colors.textMuted },
-                    ]}
-                  >
-                    Ler QR Code
-                  </Text>
-                </Pressable>
-
                 <Pressable
                   onPress={() => setSyncMode('code')}
                   style={[
@@ -364,90 +298,40 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                     Digitar Código
                   </Text>
                 </Pressable>
+
+                <Pressable
+                  onPress={() => setSyncMode('qr')}
+                  style={[
+                    styles.tabButton,
+                    syncMode === 'qr' && [
+                      styles.tabButtonActive,
+                      {
+                        backgroundColor: isDark ? 'rgba(217, 249, 32, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+                        borderColor: colors.primary,
+                      },
+                    ],
+                  ]}
+                >
+                  <QrCode
+                    size={16}
+                    color={syncMode === 'qr' ? colors.primary : colors.textMuted}
+                    strokeWidth={2.2}
+                  />
+                  <Text
+                    style={[
+                      styles.tabButtonText,
+                      { color: syncMode === 'qr' ? colors.text : colors.textMuted },
+                    ]}
+                  >
+                    QR Code
+                  </Text>
+                </Pressable>
               </View>
 
-              {syncMode === 'qr' ? (
-                <View style={styles.qrSection}>
-                  {!permission?.granted ? (
-                    <View
-                      style={[
-                        styles.permissionBox,
-                        {
-                          backgroundColor: colors.surfaceElevated,
-                          borderColor: colors.borderSubtle,
-                        },
-                      ]}
-                    >
-                      <Camera size={36} color={colors.primary} strokeWidth={1.8} />
-                      <Text style={[styles.permissionTitle, { color: colors.text }]}>
-                        Acesso à Câmera
-                      </Text>
-                      <Text style={[styles.permissionDesc, { color: colors.textSecondary }]}>
-                        Para conectar escaneando o QR Code na tela do seu computador, autorize o uso da câmera.
-                      </Text>
-                      <Pressable
-                        style={[styles.grantButton, { backgroundColor: colors.primary }]}
-                        onPress={requestPermission}
-                      >
-                        <ScanLine size={16} color={colors.primaryForeground} strokeWidth={2.2} />
-                        <Text style={[styles.grantButtonText, { color: colors.primaryForeground }]}>
-                          Permitir Câmera
-                        </Text>
-                      </Pressable>
-                    </View>
-                  ) : (
-                    <View style={styles.cameraBoxWrapper}>
-                      <View
-                        style={[
-                          styles.cameraContainer,
-                          {
-                            borderColor: colors.borderStrong,
-                            backgroundColor: '#000',
-                          },
-                        ]}
-                      >
-                        <CameraView
-                          style={StyleSheet.absoluteFill}
-                          facing="back"
-                          barcodeScannerSettings={{
-                            barcodeTypes: ['qr'],
-                          }}
-                          onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-                        />
-
-                        {/* Viewfinder Target Stylings */}
-                        <View style={styles.viewFinder}>
-                          <View style={[styles.cornerMarker, styles.cornerTL, { borderColor: colors.primary }]} />
-                          <View style={[styles.cornerMarker, styles.cornerTR, { borderColor: colors.primary }]} />
-                          <View style={[styles.cornerMarker, styles.cornerBL, { borderColor: colors.primary }]} />
-                          <View style={[styles.cornerMarker, styles.cornerBR, { borderColor: colors.primary }]} />
-                        </View>
-                      </View>
-
-                      <Text style={[styles.cameraHint, { color: colors.textSecondary }]}>
-                        {scanned
-                          ? 'QR Code identificado! Conectando...'
-                          : 'Aponte para o QR Code exibido na tela web'}
-                      </Text>
-
-                      {scanned && (
-                        <Pressable
-                          style={[styles.rescanBtn, { borderColor: colors.borderSubtle }]}
-                          onPress={() => setScanned(false)}
-                        >
-                          <RefreshCw size={14} color={colors.textSecondary} />
-                          <Text style={[styles.rescanBtnText, { color: colors.textSecondary }]}>
-                            Escanear novamente
-                          </Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  )}
-                </View>
-              ) : (
+              {syncMode === 'code' ? (
                 <View style={styles.formContainer}>
                   <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    CÓDIGO DE PAREAMENTO (6 DÍGITOS)
+                    CÓDIGO DE PAREAMENTO (6 DÍGITOS DO FINZ)
                   </Text>
                   <TextInput
                     style={[
@@ -463,6 +347,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                     value={code}
                     onChangeText={(t) => setCode(t.toUpperCase())}
                     autoCapitalize="characters"
+                    autoCorrect={false}
                     maxLength={8}
                   />
 
@@ -515,11 +400,51 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                       <>
                         <Wifi size={18} color={colors.primaryForeground} />
                         <Text style={[styles.connectButtonText, { color: colors.primaryForeground }]}>
-                          Conectar via Código
+                          Conectar ao Computador
                         </Text>
                       </>
                     )}
                   </Pressable>
+                </View>
+              ) : (
+                <View style={styles.qrInfoSection}>
+                  <View
+                    style={[
+                      styles.qrInfoCard,
+                      {
+                        backgroundColor: colors.surfaceElevated,
+                        borderColor: colors.borderSubtle,
+                      },
+                    ]}
+                  >
+                    <QrCode size={40} color={colors.primary} strokeWidth={1.8} />
+                    <Text style={[styles.qrInfoTitle, { color: colors.text }]}>
+                      Pareamento Rápido por Código
+                    </Text>
+                    <Text style={[styles.qrInfoDesc, { color: colors.textSecondary }]}>
+                      O QR Code exibido na tela web contém o código de 6 dígitos da sua sessão logo abaixo da imagem.
+                    </Text>
+                    <View
+                      style={[
+                        styles.quickStepBox,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' },
+                      ]}
+                    >
+                      <Sparkles size={16} color={colors.primary} />
+                      <Text style={[styles.quickStepText, { color: colors.text }]}>
+                        Basta digitar os 6 caracteres na aba anterior para conectar imediatamente sem precisar de permissões.
+                      </Text>
+                    </View>
+                    <Pressable
+                      style={[styles.switchTabBtn, { backgroundColor: colors.primary }]}
+                      onPress={() => setSyncMode('code')}
+                    >
+                      <Keyboard size={16} color={colors.primaryForeground} />
+                      <Text style={[styles.switchTabBtnText, { color: colors.primaryForeground }]}>
+                        Inserir Código de 6 Dígitos
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
             </View>
@@ -623,112 +548,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: Typography.medium,
   },
-  qrSection: {
-    alignItems: 'center',
-  },
-  permissionBox: {
+  qrInfoSection: {
     width: '100%',
-    padding: 24,
+  },
+  qrInfoCard: {
+    padding: 20,
     borderRadius: Radii.lg,
     borderWidth: 1,
     alignItems: 'center',
-    textAlign: 'center',
     gap: 10,
   },
-  permissionTitle: {
+  qrInfoTitle: {
     fontSize: 16,
     fontFamily: Typography.bold,
   },
-  permissionDesc: {
+  qrInfoDesc: {
     fontSize: 13,
     fontFamily: Typography.regular,
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 8,
   },
-  grantButton: {
+  quickStepBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    padding: 12,
     borderRadius: Radii.md,
+    marginVertical: 4,
   },
-  grantButtonText: {
-    fontSize: 13,
-    fontFamily: Typography.bold,
-  },
-  cameraBoxWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 12,
-  },
-  cameraContainer: {
-    width: '100%',
-    height: 240,
-    borderRadius: Radii.lg,
-    overflow: 'hidden',
-    borderWidth: 1,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewFinder: {
-    width: 170,
-    height: 170,
-    position: 'relative',
-  },
-  cornerMarker: {
-    position: 'absolute',
-    width: 22,
-    height: 22,
-    borderWidth: 3,
-  },
-  cornerTL: {
-    top: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderBottomWidth: 0,
-    borderTopLeftRadius: 6,
-  },
-  cornerTR: {
-    top: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderBottomWidth: 0,
-    borderTopRightRadius: 6,
-  },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
-    borderRightWidth: 0,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 6,
-  },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
-    borderLeftWidth: 0,
-    borderTopWidth: 0,
-    borderBottomRightRadius: 6,
-  },
-  cameraHint: {
-    fontSize: 12,
-    fontFamily: Typography.regular,
-    textAlign: 'center',
-  },
-  rescanBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: Radii.sm,
-    borderWidth: 1,
-  },
-  rescanBtnText: {
+  quickStepText: {
     fontSize: 12,
     fontFamily: Typography.medium,
+    flex: 1,
+    lineHeight: 16,
+  },
+  switchTabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
+    marginTop: 4,
+  },
+  switchTabBtnText: {
+    fontSize: 13,
+    fontFamily: Typography.bold,
   },
   formContainer: {
     gap: 6,

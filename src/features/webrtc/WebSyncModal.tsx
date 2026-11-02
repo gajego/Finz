@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -8,6 +8,7 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import {
   X,
@@ -36,6 +37,39 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const successScale = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    let loopAnim: Animated.CompositeAnimation | null = null;
+    if (connectionState === 'connecting') {
+      pulseAnim.setValue(0);
+      loopAnim = Animated.loop(
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        })
+      );
+      loopAnim.start();
+    } else if (connectionState === 'connected') {
+      pulseAnim.setValue(0);
+      Animated.spring(successScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 60,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      pulseAnim.setValue(0);
+      successScale.setValue(0.7);
+    }
+
+    return () => {
+      if (loopAnim) loopAnim.stop();
+    };
+  }, [connectionState]);
 
   useEffect(() => {
     const unsub = webSyncHost.addListener((state, err) => {
@@ -99,14 +133,14 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
             </Pressable>
           </View>
 
-          {/* Status Badge */}
+          {/* Status Badge com Animações de Radar e Sucesso */}
           <View
             style={[
               styles.statusBadge,
               {
                 backgroundColor:
                   connectionState === 'connected'
-                    ? isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)'
+                    ? isDark ? 'rgba(16, 185, 129, 0.18)' : 'rgba(16, 185, 129, 0.12)'
                     : connectionState === 'connecting'
                     ? isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)'
                     : isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
@@ -119,8 +153,36 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
               },
             ]}
           >
+            {connectionState === 'connecting' && (
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  width: 20,
+                  height: 20,
+                  borderRadius: 10,
+                  borderWidth: 1.5,
+                  borderColor: colors.warning,
+                  transform: [
+                    {
+                      scale: pulseAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [1, 2.2],
+                      }),
+                    },
+                  ],
+                  opacity: pulseAnim.interpolate({
+                    inputRange: [0, 0.6, 1],
+                    outputRange: [0.8, 0.3, 0],
+                  }),
+                }}
+              />
+            )}
+
             {connectionState === 'connected' ? (
-              <CheckCircle2 size={16} color={colors.success} />
+              <Animated.View style={{ transform: [{ scale: successScale }] }}>
+                <CheckCircle2 size={18} color={colors.success} />
+              </Animated.View>
             ) : connectionState === 'connecting' ? (
               <ActivityIndicator size="small" color={colors.warning} />
             ) : (
@@ -136,13 +198,14 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                       : connectionState === 'connecting'
                       ? colors.warning
                       : colors.textMuted,
+                  fontWeight: connectionState === 'connected' ? '700' : '500',
                 },
               ]}
             >
               {connectionState === 'connected'
-                ? 'Conectado ao Finz Web (Túnel Ativo)'
+                ? 'Conectado ao Finz Web (Túnel P2P Ativo)'
                 : connectionState === 'connecting'
-                ? 'Estabelecendo Túnel WebRTC...'
+                ? 'Sincronizando com o Finz Web...'
                 : 'Aguardando Pareamento'}
             </Text>
           </View>

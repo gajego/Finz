@@ -23,6 +23,7 @@ import {
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { webSyncHost, HostConnectionState } from '@/services/webrtc/webSyncHost';
+import { loadWebSyncSession } from '@/services/database/db';
 
 interface WebSyncModalProps {
   visible: boolean;
@@ -81,6 +82,16 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     };
   }, []);
 
+  useEffect(() => {
+    if (visible) {
+      const saved = loadWebSyncSession();
+      if (saved) {
+        if (saved.roomId && !code) setCode(saved.roomId);
+        if (saved.serverUrl) setServerUrl(saved.serverUrl);
+      }
+    }
+  }, [visible]);
+
   const handleConnect = () => {
     if (!code || code.trim().length < 4) {
       Alert.alert('Código Inválido', 'Insira o código de sessão exibido na tela do Finz.');
@@ -90,7 +101,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   };
 
   const handleDisconnect = () => {
-    webSyncHost.disconnect();
+    webSyncHost.disconnect(true);
   };
 
   const handleForceSync = () => {

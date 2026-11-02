@@ -1,5 +1,6 @@
 import { useWalletStore } from '../../store/useWalletStore';
 import { SyncFullStatePayload, SyncMessage } from '../../types';
+import { saveWebSyncSession, loadWebSyncSession } from '../database/db';
 
 export type HostConnectionState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -27,7 +28,18 @@ class WebSyncHost {
     }
   }
 
-  public connect(serverUrl: string, roomId: string) {
+  public autoConnectIfSaved() {
+    try {
+      const saved = loadWebSyncSession();
+      if (saved && saved.roomId && saved.serverUrl && saved.autoConnect) {
+        if (this.connectionState === 'idle' || this.connectionState === 'disconnected') {
+          this.connect(saved.serverUrl, saved.roomId, true);
+        }
+      }
+    } catch {}
+  }
+
+  public connect(serverUrl: string, roomId: string, silent = false) {
     this.disconnect();
     this.currentRoomId = roomId.trim().toUpperCase();
     this.currentServerUrl = serverUrl.trim();
@@ -36,12 +48,16 @@ class WebSyncHost {
     this.connectTimeout = setTimeout(() => {
       if (this.connectionState === 'connecting') {
         this.disconnect();
-        this.notifyState(
-          'error',
-          'Tempo limite esgotado. Verifique se o Finz está aberto no PC e se ambos estão na mesma rede Wi-Fi.'
-        );
+        if (!silent) {
+          this.notifyState(
+            'error',
+            'Tempo limite esgotado. Verifique se o Finz está aberto no PC e se ambos estão na mesma rede Wi-Fi.'
+          );
+        } else {
+          this.notifyState('disconnected');
+        }
       }
-    }, 6000);
+    }, 5000);
 
     try {
       this.ws = new WebSocket(this.currentServerUrl);
@@ -65,6 +81,7 @@ class WebSyncHost {
           const msg = JSON.parse(event.data);
 
           if (msg.type === 'joined') {
+            saveWebSyncSession(this.currentServerUrl, this.currentRoomId, true);
             this.sendFullState();
             this.setupStoreSubscription();
             this.notifyState('connected');
@@ -88,7 +105,11 @@ class WebSyncHost {
           clearTimeout(this.connectTimeout);
           this.connectTimeout = null;
         }
-        this.notifyState('error', 'Não foi possível conectar ao IP especificado. Verifique a porta e o Wi-Fi.');
+        if (!silent) {
+          this.notifyState('error', 'Não foi possível conectar ao IP especificado. Verifique a porta e o Wi-Fi.');
+        } else {
+          this.notifyState('disconnected');
+        }
       };
 
       this.ws.onclose = () => {
@@ -106,7 +127,11 @@ class WebSyncHost {
         clearTimeout(this.connectTimeout);
         this.connectTimeout = null;
       }
-      this.notifyState('error', err?.message || 'Erro ao inicializar conexão.');
+      if (!silent) {
+        this.notifyState('error', err?.message || 'Erro ao inicializar conexão.');
+      } else {
+        this.notifyState('disconnected');
+      }
     }
   }
 
@@ -262,7 +287,10 @@ class WebSyncHost {
     }
   }
 
-  public disconnect() {
+  public disconnect(manual = false) {
+    if (manual && this.currentServerUrl && this.currentRoomId) {
+      saveWebSyncSession(this.currentServerUrl, this.currentRoomId, false);
+    }
     if (this.connectTimeout) {
       clearTimeout(this.connectTimeout);
       this.connectTimeout = null;

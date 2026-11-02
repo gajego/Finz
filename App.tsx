@@ -45,6 +45,7 @@ import { AppSplashLoader } from './src/components/ui/AppSplashLoader';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
+import { webSyncHost } from './src/services/webrtc/webSyncHost';
 import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src/services/database/db';
 import { BankCard, Transaction } from './src/types';
 import { useSharedValue } from 'react-native-reanimated';
@@ -76,6 +77,7 @@ export default function App() {
   useEffect(() => {
     initStore();
     initNotifications();
+    webSyncHost.autoConnectIfSaved();
   }, [initStore]);
 
   // Modais de Controle

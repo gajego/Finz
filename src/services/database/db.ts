@@ -635,6 +635,45 @@ export function loadThemeMode(): 'dark' | 'light' | null {
   }
 }
 
+export function saveWebSyncSession(serverUrl: string, roomId: string, autoConnect = true) {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['web_sync_server_url', serverUrl.trim()]
+    );
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['web_sync_room_id', roomId.trim().toUpperCase()]
+    );
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['web_sync_auto_connect', autoConnect ? '1' : '0']
+    );
+  } catch (e) {
+    console.warn('[db] Falha ao persistir sessão WebSync:', e);
+  }
+}
+
+export function loadWebSyncSession(): { serverUrl: string; roomId: string; autoConnect: boolean } | null {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    const urlRow = db.getFirstSync<{ value: string }>('SELECT value FROM system_meta WHERE key = ?', ['web_sync_server_url']);
+    const roomRow = db.getFirstSync<{ value: string }>('SELECT value FROM system_meta WHERE key = ?', ['web_sync_room_id']);
+    const autoRow = db.getFirstSync<{ value: string }>('SELECT value FROM system_meta WHERE key = ?', ['web_sync_auto_connect']);
+    if (urlRow?.value && roomRow?.value) {
+      return {
+        serverUrl: urlRow.value,
+        roomId: roomRow.value,
+        autoConnect: autoRow?.value !== '0',
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export function persistNotificationPreference(pref: string): void {
   try {
     db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');

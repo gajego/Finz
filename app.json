@@ -11,8 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.finz.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Permitir que o Finz acesse a câmera para escanear o QR Code de sincronização com o computador."
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -25,20 +24,13 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.CAMERA"
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Permitir que o Finz acesse a câmera para escanear o QR Code de sincronização com o computador."
-        }
-      ],
       "expo-image",
       "expo-sqlite",
       "expo-font",

@@ -21,12 +21,13 @@ import {
   ShieldCheck,
   QrCode,
   Keyboard,
+  Sparkles,
+  Camera,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
 import { webSyncHost, HostConnectionState } from '@/services/webrtc/webSyncHost';
 import { loadWebSyncSession } from '@/services/database/db';
-import { QrScannerView } from './QrScannerView';
 
 interface WebSyncModalProps {
   visible: boolean;
@@ -42,7 +43,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
   const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [scanned, setScanned] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const successScale = useRef(new Animated.Value(0.7)).current;
@@ -81,9 +81,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     const unsub = webSyncHost.addListener((state, err) => {
       setConnectionState(state);
       setErrorMessage(err || null);
-      if (state === 'error' || state === 'idle') {
-        setScanned(false);
-      }
     });
     return () => {
       unsub();
@@ -92,7 +89,6 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   useEffect(() => {
     if (visible) {
-      setScanned(false);
       const saved = loadWebSyncSession();
       if (saved) {
         if (saved.roomId && !code) setCode(saved.roomId);
@@ -101,42 +97,16 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
     }
   }, [visible]);
 
-  const handleConnect = (overrideCode?: string, overrideUrl?: string) => {
+  const handleConnect = (overrideCode?: string) => {
     const targetCode = (overrideCode || code).trim().toUpperCase();
-    const targetUrl = (overrideUrl || serverUrl).trim();
     if (!targetCode || targetCode.length < 4) {
       Alert.alert('Código Inválido', 'Insira o código de sessão de 6 dígitos exibido na tela do computador.');
       return;
     }
-    webSyncHost.connect(targetUrl, targetCode);
-  };
-
-  const handleBarcodeScanned = (data: string) => {
-    if (scanned || connectionState === 'connecting' || connectionState === 'connected') return;
-    setScanned(true);
-
-    let targetCode = data.trim();
-    let targetUrl = serverUrl;
-
-    try {
-      const parsed = JSON.parse(data);
-      if (parsed.sessionId) {
-        targetCode = String(parsed.sessionId).trim();
-      }
-      if (parsed.serverUrl) {
-        targetUrl = String(parsed.serverUrl).trim();
-        setServerUrl(targetUrl);
-      }
-    } catch {
-      // Valor direto sem formatação JSON
-    }
-
-    setCode(targetCode.toUpperCase());
-    handleConnect(targetCode, targetUrl);
+    webSyncHost.connect(serverUrl.trim(), targetCode);
   };
 
   const handleDisconnect = () => {
-    setScanned(false);
     webSyncHost.disconnect(true);
   };
 
@@ -354,7 +324,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                       { color: syncMode === 'qr' ? colors.text : colors.textMuted },
                     ]}
                   >
-                    QR Code
+                    Ler QR Code
                   </Text>
                 </Pressable>
               </View>
@@ -439,12 +409,55 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                 </View>
               ) : (
                 <View style={styles.qrSectionWrapper}>
-                  <QrScannerView
-                    onScan={handleBarcodeScanned}
-                    onSwitchToCode={() => setSyncMode('code')}
-                    scanned={scanned}
-                    onResetScan={() => setScanned(false)}
-                  />
+                  <View
+                    style={[
+                      styles.qrCard,
+                      {
+                        backgroundColor: colors.surfaceElevated,
+                        borderColor: colors.borderSubtle,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.qrIconBubble, { backgroundColor: `${colors.primary}18` }]}>
+                      <Camera size={32} color={colors.primary} strokeWidth={2} />
+                    </View>
+
+                    <Text style={[styles.qrTitle, { color: colors.text }]}>
+                      Como Escanear o QR Code
+                    </Text>
+
+                    <Text style={[styles.qrDesc, { color: colors.textSecondary }]}>
+                      Abra o aplicativo de <Text style={{ color: colors.text, fontWeight: '700' }}>Câmera do seu iPhone ou Android</Text> e aponte para o QR Code na tela web.
+                    </Text>
+
+                    <View
+                      style={[
+                        styles.quickStepBox,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' },
+                      ]}
+                    >
+                      <Sparkles size={16} color={colors.primary} />
+                      <Text style={[styles.quickStepText, { color: colors.text }]}>
+                        O sistema reconhecerá o link e exibirá o banner <Text style={{ fontWeight: '700' }}>"Abrir no Finz"</Text> para conectar automaticamente!
+                      </Text>
+                    </View>
+
+                    <View style={styles.orDividerRow}>
+                      <View style={[styles.dividerLine, { backgroundColor: colors.borderSubtle }]} />
+                      <Text style={[styles.orText, { color: colors.textMuted }]}>OU</Text>
+                      <View style={[styles.dividerLine, { backgroundColor: colors.borderSubtle }]} />
+                    </View>
+
+                    <Pressable
+                      style={[styles.switchTabBtn, { backgroundColor: colors.primary }]}
+                      onPress={() => setSyncMode('code')}
+                    >
+                      <Keyboard size={16} color={colors.primaryForeground} />
+                      <Text style={[styles.switchTabBtnText, { color: colors.primaryForeground }]}>
+                        Digitar o Código de 6 Dígitos
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               )}
             </View>
@@ -550,6 +563,72 @@ const styles = StyleSheet.create({
   },
   qrSectionWrapper: {
     width: '100%',
+  },
+  qrCard: {
+    padding: 20,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 10,
+  },
+  qrIconBubble: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  qrTitle: {
+    fontSize: 16,
+    fontFamily: Typography.bold,
+  },
+  qrDesc: {
+    fontSize: 13,
+    fontFamily: Typography.regular,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  quickStepBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: Radii.md,
+    marginVertical: 4,
+  },
+  quickStepText: {
+    fontSize: 12,
+    fontFamily: Typography.medium,
+    flex: 1,
+    lineHeight: 16,
+  },
+  orDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    marginVertical: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  orText: {
+    fontSize: 11,
+    fontFamily: Typography.bold,
+  },
+  switchTabBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
+  },
+  switchTabBtnText: {
+    fontSize: 13,
+    fontFamily: Typography.bold,
   },
   formContainer: {
     gap: 6,

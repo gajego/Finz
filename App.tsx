@@ -246,6 +246,20 @@ export default function App() {
     const handleUrl = async (event: { url: string }) => {
       if (presentationMode) return;
       const url = event.url || getWebUrl();
+
+      // Deep link para pareamento direto com o computador via QR Code da câmera nativa
+      if (url && (url.includes('finz://sync') || (url.includes('sync') && url.includes('code=')))) {
+        const matchCode = url.match(/[?&]code=([a-zA-Z0-9]+)/i);
+        const matchServer = url.match(/[?&]server=([^&]+)/i);
+        if (matchCode && matchCode[1]) {
+          const targetCode = matchCode[1].toUpperCase();
+          const targetServer = matchServer && matchServer[1] ? decodeURIComponent(matchServer[1]) : 'ws://192.168.15.12:8080';
+          webSyncHost.connect(targetServer, targetCode);
+          Alert.alert('Finz Conectado', 'Espelhamento com o computador iniciado com sucesso!');
+          return;
+        }
+      }
+
       if (url && (url.includes('pluggy-callback') || /item_?id=/i.test(url))) {
         const match = url.match(/item_?id=([a-zA-Z0-9_-]+)/i);
         if (match && match[1]) {

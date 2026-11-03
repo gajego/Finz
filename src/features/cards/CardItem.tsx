@@ -539,7 +539,7 @@ const CardItemComponent: React.FC<CardItemProps> = ({
               </View>
 
               <View style={styles.limitContainer}>
-                {card.bankBalance !== undefined && card.bankBalance > 0 ? (
+                {typeof card.bankBalance === 'number' ? (
                   <>
                     <Text style={styles.balanceLabel}>SALDO CONTA</Text>
                     <Text style={styles.balanceValue}>

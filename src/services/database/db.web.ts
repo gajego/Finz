@@ -279,6 +279,23 @@ export function initDatabase() {
       } else if (tx.category_id === 'cat_investimentos') {
         tx.category_id = 'cat_shopping';
       }
+
+      // Reparo de transações salvas erroneamente como INCOME
+      if (tx.type === 'INCOME') {
+        const text = `${tx.merchant || ''} ${tx.raw_text || ''}`.toLowerCase();
+        const isSalary = /sal[aá]rio|folha|pro.?labore|rendimento|dividendo/.test(text);
+        const isRefund = /estorno|reembolso|devolu/.test(text);
+        const isExpenseCat = ['cat_food', 'cat_transport', 'cat_leisure', 'cat_shopping', 'cat_punctual', 'cat_pharmacy'].includes(tx.category_id);
+        const isExpenseMerchant = /99food|99 food|ifood|rappi|uber|99app|restaurante|mercado|supermercado|churros|alime|mcdonald|burger|farmacia|drogasil|posto|steam|netflix|spotify/.test(text);
+
+        if (isRefund) {
+          tx.type = 'REFUND';
+          tx.income_type = null;
+        } else if ((isExpenseCat || isExpenseMerchant) && !isSalary) {
+          tx.type = 'EXPENSE';
+          tx.income_type = null;
+        }
+      }
     });
     saveTables();
   } catch {}

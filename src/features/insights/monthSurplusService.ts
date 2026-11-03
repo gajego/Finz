@@ -135,18 +135,19 @@ export function calculateMonthSurplus(
   let totalRefunds = 0;
 
   for (const t of transactions) {
-    if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    const tParts = getBrazilDate(t.timestamp);
+    if (tParts.year !== year || tParts.month !== month) continue;
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
     if (t.type === 'REFUND') {
       // Regra contábil CFO: estornos não inflam receita bruta, abatem gastos
       totalRefunds += t.amount;
-    } else if (t.type === 'PIX_IN' || t.type === 'INCOME' || incomeCatIds.has(t.categoryId)) {
-      totalIncome += t.amount;
     } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
       if (consideredCatIds.has(t.categoryId)) {
         totalExpense += t.amount;
       }
+    } else if (t.type === 'PIX_IN' || t.type === 'INCOME' || incomeCatIds.has(t.categoryId)) {
+      totalIncome += t.amount;
     }
   }
 
@@ -164,9 +165,9 @@ export function calculateMonthSurplus(
   // Sobra líquida do mês (receitas - despesas)
   const netSurplus = totalIncome - totalExpense;
 
-  // Saldo em conta: soma dos saldos reais dos cartões/contas
+  // Saldo em conta: soma dos saldos reais disponíveis em conta corrente/poupança
   const totalCardsBalance = cards.reduce(
-    (sum, c) => sum + (c.bankBalance ?? c.balance ?? 0),
+    (sum, c) => sum + (c.bankBalance ?? 0),
     0
   );
 

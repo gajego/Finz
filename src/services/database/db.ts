@@ -171,11 +171,71 @@ export function initDatabase() {
       UPDATE categories SET name = 'Alimentação', icon = 'utensils', color = '#F59E0B' WHERE id = 'cat_food';
       UPDATE categories SET name = 'Transporte', icon = 'car', color = '#3B82F6' WHERE id = 'cat_transport';
       UPDATE categories SET name = 'Lazer', icon = 'gamepad-2', color = '#EC4899' WHERE id = 'cat_leisure';
+      UPDATE transactions SET category_id = 'cat_leisure' WHERE category_id = 'cat_lazer';
+      UPDATE transaction_category_overrides SET category_id = 'cat_leisure' WHERE category_id = 'cat_lazer';
       INSERT OR IGNORE INTO categories (id, name, icon, color, budget_limit) VALUES ('cat_investments', 'Investimentos', 'trending-up', '#10B981', 0);
       INSERT OR IGNORE INTO categories (id, name, icon, color, budget_limit) VALUES ('cat_others', 'Não categorizado', 'help-circle', '#64748B', 0);
     `);
   } catch (e) {
     console.warn('[db] Falha ao sincronizar categorias canônicas:', e);
+  }
+
+  // Reparo automático de transações classificadas incorretamente como INCOME
+  try {
+    // 1. Estornos gravados como INCOME viram REFUND
+    db.runSync(`
+      UPDATE transactions
+      SET type = 'REFUND',
+          income_type = NULL
+      WHERE type = 'INCOME'
+        AND (
+          LOWER(merchant) LIKE '%estorno%'
+          OR LOWER(merchant) LIKE '%reembolso%'
+          OR LOWER(merchant) LIKE '%devolu%'
+          OR LOWER(COALESCE(raw_text, '')) LIKE '%estorno%'
+          OR LOWER(COALESCE(raw_text, '')) LIKE '%reembolso%'
+        );
+    `);
+
+    // 2. Compras em cartão/débito gravadas como INCOME viram EXPENSE
+    db.runSync(`
+      UPDATE transactions
+      SET type = 'EXPENSE',
+          income_type = NULL
+      WHERE type = 'INCOME'
+        AND (
+          category_id IN ('cat_food', 'cat_transport', 'cat_leisure', 'cat_shopping', 'cat_punctual', 'cat_pharmacy')
+          OR category_id IN (SELECT id FROM categories WHERE type = 'expense' AND (is_salario = 0 OR is_salario IS NULL))
+          OR LOWER(merchant) LIKE '%99food%'
+          OR LOWER(merchant) LIKE '%99 food%'
+          OR LOWER(merchant) LIKE '%ifood%'
+          OR LOWER(merchant) LIKE '%rappi%'
+          OR LOWER(merchant) LIKE '%uber%'
+          OR LOWER(merchant) LIKE '%99app%'
+          OR LOWER(merchant) LIKE '%99 app%'
+          OR LOWER(merchant) LIKE '%restaurante%'
+          OR LOWER(merchant) LIKE '%mercado%'
+          OR LOWER(merchant) LIKE '%supermercado%'
+          OR LOWER(merchant) LIKE '%churros%'
+          OR LOWER(merchant) LIKE '%alime%'
+          OR LOWER(merchant) LIKE '%mcdonald%'
+          OR LOWER(merchant) LIKE '%burger%'
+          OR LOWER(merchant) LIKE '%farmacia%'
+          OR LOWER(merchant) LIKE '%drogasil%'
+          OR LOWER(merchant) LIKE '%posto%'
+          OR LOWER(merchant) LIKE '%steam%'
+          OR LOWER(merchant) LIKE '%netflix%'
+          OR LOWER(merchant) LIKE '%spotify%'
+        )
+        AND (income_type IS NULL OR income_type != 'salary')
+        AND LOWER(merchant) NOT LIKE '%salário%'
+        AND LOWER(merchant) NOT LIKE '%salario%'
+        AND LOWER(merchant) NOT LIKE '%folha%'
+        AND LOWER(merchant) NOT LIKE '%rendimento%'
+        AND LOWER(merchant) NOT LIKE '%dividendo%';
+    `);
+  } catch (e) {
+    console.warn('[db] Falha na migração corretiva de transações:', e);
   }
 
   // Purgar mocks antigos e inicializar banco limpo
@@ -272,7 +332,8 @@ export function loadAllDataFromSQLite(): {
       t.merchant, 
       COALESCE(o.category_id, t.category_id, 'cat_others') AS category_id, 
       t.timestamp, 
-      t.raw_text 
+      t.raw_text,
+      t.income_type
     FROM transactions t
     LEFT JOIN transaction_category_overrides o ON t.id = o.transaction_id
     ORDER BY t.timestamp DESC

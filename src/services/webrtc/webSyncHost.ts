@@ -250,17 +250,15 @@ class WebSyncHost {
   private setupStoreSubscription() {
     this.cleanupSubscription();
 
-    let lastTxCount = useWalletStore.getState().transactions.length;
+    let lastTransactions = useWalletStore.getState().transactions;
     let lastCards = useWalletStore.getState().cards;
     let lastCategories = useWalletStore.getState().categories;
     let lastProfile = useWalletStore.getState().profile;
 
     this.unsubscribeStore = useWalletStore.subscribe((state) => {
-      if (state.transactions.length !== lastTxCount) {
-        lastTxCount = state.transactions.length;
-        if (state.transactions[0]) {
-          this.sendDelta('TRANSACTION_ADD', state.transactions[0]);
-        }
+      if (state.transactions !== lastTransactions) {
+        lastTransactions = state.transactions;
+        this.sendFullState();
       }
 
       if (state.profile !== lastProfile) {

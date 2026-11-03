@@ -92,8 +92,9 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   );
 
   const isRefund = transaction.type === 'REFUND';
-  const isIncome = transaction.type === 'PIX_IN';
+  const isIncome = transaction.type === 'PIX_IN' || transaction.type === 'INCOME';
   const isPixOut = transaction.type === 'PIX_OUT';
+  const isTransfer = transaction.type === 'TRANSFER';
 
   const { cleanName, installment } = parseMerchantAndInstallments(
     transaction.merchant,
@@ -130,7 +131,7 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
   } else if (isIncome) {
     amountColor = mintGreen;
     signPrefix = '+ ';
-    statusBadgeText = 'PIX RECEBIDO • CONCLUÍDO';
+    statusBadgeText = transaction.type === 'PIX_IN' ? 'PIX RECEBIDO • CONCLUÍDO' : 'RECEITA • CONCLUÍDA';
     statusBadgeBg = isDark ? 'rgba(52, 211, 153, 0.12)' : 'rgba(5, 150, 105, 0.08)';
     statusBadgeBorder = isDark ? 'rgba(52, 211, 153, 0.3)' : 'rgba(5, 150, 105, 0.2)';
     StatusIcon = ArrowDownLeft;
@@ -140,6 +141,13 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
     statusBadgeText = 'PIX ENVIADO • CONCLUÍDO';
     statusBadgeBg = isDark ? 'rgba(248, 113, 113, 0.12)' : 'rgba(225, 29, 72, 0.08)';
     statusBadgeBorder = isDark ? 'rgba(248, 113, 113, 0.3)' : 'rgba(225, 29, 72, 0.2)';
+    StatusIcon = ArrowUpRight;
+  } else if (isTransfer) {
+    amountColor = electricBlue;
+    signPrefix = '';
+    statusBadgeText = 'TRANSFERÊNCIA • CONCLUÍDA';
+    statusBadgeBg = isDark ? 'rgba(96, 165, 250, 0.12)' : 'rgba(37, 99, 235, 0.08)';
+    statusBadgeBorder = isDark ? 'rgba(96, 165, 250, 0.3)' : 'rgba(37, 99, 235, 0.2)';
     StatusIcon = ArrowUpRight;
   }
 

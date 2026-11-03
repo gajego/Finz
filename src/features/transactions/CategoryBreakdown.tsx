@@ -83,14 +83,23 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
     };
   }, []);
 
-  // Soma exclusivamente as despesas do mês corrente para a categoria
+  const curParts = getBrazilDateParts(Date.now());
+
+  // Soma exclusivamente as despesas do mês corrente para a categoria (abatendo estornos)
   const getCategorySpent = (categoryId: string) => {
-    return transactions
-      .filter((t) => {
-        if (t.categoryId !== categoryId || (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT')) return false;
-        return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
+    let spent = 0;
+    for (const t of transactions) {
+      if (t.categoryId !== categoryId) continue;
+      const tParts = getBrazilDateParts(t.timestamp);
+      if (tParts.year !== curParts.year || tParts.month !== curParts.month) continue;
+
+      if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
+        spent += t.amount;
+      } else if (t.type === 'REFUND') {
+        spent = Math.max(0, spent - t.amount);
+      }
+    }
+    return spent;
   };
 
   const formatBRL = (cents: number) => {

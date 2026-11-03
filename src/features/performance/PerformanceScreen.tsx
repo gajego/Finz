@@ -402,16 +402,36 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     let totalCur = 0;
     let totalPrev = 0;
 
+    const curParts = getBrazilDateParts(Date.now());
+    const curYear = curParts.year;
+    const curMonth = curParts.month;
+    const prevYear = curMonth === 0 ? curYear - 1 : curYear;
+    const prevMonth = curMonth === 0 ? 11 : curMonth - 1;
+
     for (const t of transactions) {
-      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
+      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT' && t.type !== 'REFUND') continue;
       if (!consideredCatIds.has(t.categoryId)) continue;
 
-      if (t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd) {
-        curMap[t.categoryId] = (curMap[t.categoryId] || 0) + t.amount;
-        totalCur += t.amount;
-      } else if (t.timestamp >= prevMonthStart && t.timestamp <= prevMonthEnd) {
-        prevMap[t.categoryId] = (prevMap[t.categoryId] || 0) + t.amount;
-        totalPrev += t.amount;
+      const tParts = getBrazilDateParts(t.timestamp);
+      const isCur = tParts.year === curYear && tParts.month === curMonth;
+      const isPrev = tParts.year === prevYear && tParts.month === prevMonth;
+
+      if (isCur) {
+        if (t.type === 'REFUND') {
+          curMap[t.categoryId] = Math.max(0, (curMap[t.categoryId] || 0) - t.amount);
+          totalCur = Math.max(0, totalCur - t.amount);
+        } else {
+          curMap[t.categoryId] = (curMap[t.categoryId] || 0) + t.amount;
+          totalCur += t.amount;
+        }
+      } else if (isPrev) {
+        if (t.type === 'REFUND') {
+          prevMap[t.categoryId] = Math.max(0, (prevMap[t.categoryId] || 0) - t.amount);
+          totalPrev = Math.max(0, totalPrev - t.amount);
+        } else {
+          prevMap[t.categoryId] = (prevMap[t.categoryId] || 0) + t.amount;
+          totalPrev += t.amount;
+        }
       }
     }
 
@@ -553,17 +573,23 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     const catTotalMap: Record<string, number> = {};
 
     for (const t of transactions) {
-      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
+      if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT' && t.type !== 'REFUND') continue;
       if (!consideredCatIds.has(t.categoryId)) continue;
-      if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) continue;
 
       const parts = getBrazilDateParts(t.timestamp);
+      if (parts.year !== nowParts.year || parts.month !== nowParts.month) continue;
+
       const d = parts.day;
       const catId = t.categoryId || 'other';
 
       if (!catDayMap[catId]) catDayMap[catId] = {};
-      catDayMap[catId][d] = (catDayMap[catId][d] || 0) + t.amount;
-      catTotalMap[catId] = (catTotalMap[catId] || 0) + t.amount;
+      if (t.type === 'REFUND') {
+        catDayMap[catId][d] = Math.max(0, (catDayMap[catId][d] || 0) - t.amount);
+        catTotalMap[catId] = Math.max(0, (catTotalMap[catId] || 0) - t.amount);
+      } else {
+        catDayMap[catId][d] = (catDayMap[catId][d] || 0) + t.amount;
+        catTotalMap[catId] = (catTotalMap[catId] || 0) + t.amount;
+      }
     }
 
     // Categorias com gastos no mês (apenas consideradas)

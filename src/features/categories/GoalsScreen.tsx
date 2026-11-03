@@ -30,7 +30,7 @@ import { Category } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
-import { formatBRL } from '@/features/transactions/transactionUtils';
+import { formatBRL, getBrazilDateParts } from '@/features/transactions/transactionUtils';
 import { getCategoryIconComponent } from './categoryIcons';
 import { CategoryModal } from './CategoryModal';
 
@@ -88,25 +88,38 @@ export const GoalsScreen: React.FC = () => {
     return name.charAt(0).toUpperCase() + name.slice(1);
   }, []);
 
-  // Gasto por categoria de despesa
+  const curDateParts = getBrazilDateParts(Date.now());
+
+  // Gasto por categoria de despesa (com abatimento de estornos e ancoragem no fuso de Brasília)
   const getCategorySpent = (categoryId: string) => {
-    return transactions
-      .filter((t) => {
-        if (t.categoryId !== categoryId || (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT')) return false;
-        return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
+    let spent = 0;
+    for (const t of transactions) {
+      if (t.categoryId !== categoryId) continue;
+      const tParts = getBrazilDateParts(t.timestamp);
+      if (tParts.year !== curDateParts.year || tParts.month !== curDateParts.month) continue;
+
+      if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
+        spent += t.amount;
+      } else if (t.type === 'REFUND') {
+        spent = Math.max(0, spent - t.amount);
+      }
+    }
+    return spent;
   };
 
   // Entradas recebidas por categoria de receita
   const getCategoryIncome = (categoryId: string) => {
-    return transactions
-      .filter((t) => {
-        if (t.categoryId !== categoryId) return false;
-        if (t.type !== 'PIX_IN' && t.type !== 'INCOME' && t.type !== 'REFUND') return false;
-        return t.timestamp >= currentMonthStart && t.timestamp <= currentMonthEnd;
-      })
-      .reduce((sum, t) => sum + t.amount, 0);
+    let income = 0;
+    for (const t of transactions) {
+      if (t.categoryId !== categoryId) continue;
+      const tParts = getBrazilDateParts(t.timestamp);
+      if (tParts.year !== curDateParts.year || tParts.month !== curDateParts.month) continue;
+
+      if (t.type === 'PIX_IN' || t.type === 'INCOME') {
+        income += t.amount;
+      }
+    }
+    return income;
   };
 
   // Estatísticas globais do mês (considerando apenas categorias ativas de despesa nos totais)
@@ -114,21 +127,24 @@ export const GoalsScreen: React.FC = () => {
     const consideredCategories = categories.filter((c) => c.considerar !== false && c.type !== 'income');
     const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
 
-    const spent = transactions
-      .filter(
-        (t) =>
-          (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
-          t.timestamp >= currentMonthStart &&
-          t.timestamp <= currentMonthEnd &&
-          consideredCatIds.has(t.categoryId)
-      )
-      .reduce((sum, t) => sum + t.amount, 0);
+    let spent = 0;
+    for (const t of transactions) {
+      if (!consideredCatIds.has(t.categoryId)) continue;
+      const tParts = getBrazilDateParts(t.timestamp);
+      if (tParts.year !== curDateParts.year || tParts.month !== curDateParts.month) continue;
+
+      if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
+        spent += t.amount;
+      } else if (t.type === 'REFUND') {
+        spent = Math.max(0, spent - t.amount);
+      }
+    }
 
     const budget = consideredCategories.reduce((sum, c) => sum + (c.budgetLimit || 0), 0);
     const percent = budget > 0 ? Math.round((spent / budget) * 100) : 0;
 
     return { totalSpent: spent, totalBudget: budget, overallPercent: percent };
-  }, [transactions, categories, currentMonthStart, currentMonthEnd]);
+  }, [transactions, categories, curDateParts.year, curDateParts.month]);
 
   const handleOpenCreate = () => {
     setSelectedCategoryToEdit(null);

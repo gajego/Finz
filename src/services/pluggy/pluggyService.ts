@@ -873,22 +873,33 @@ async function doSyncPluggyItem(itemId: string, shouldUpdateStore = true): Promi
           : classifyTransactionCategory(cleanDescription, t.description, t.category || t.merchant?.category);
 
         // Classificação inteligente de Pix e Crédito/Débito
-        const isCredit = t.type === 'CREDIT' || safeAmount > 0;
+        const isCreditAccount = acc.type === 'CREDIT' || Boolean(t.creditCardMetadata);
         const descForPix = `${t.description || ''} ${t.operationType || ''} ${cleanDescription}`;
         const isPix = /pix/i.test(descForPix);
         const isRefund = /estorno|reembolso|devolu[cç]|cancelamento/i.test(descForPix);
         const isSalary = /sal[aá]rio|folha|pro.?labore|remunera[cç]|ordenado|pagamento recebi/i.test(descForPix);
+        const isBillPayment = /pagamento fatura|pgto fatura|pagamento recebido|pagamento efetuado/i.test(descForPix);
 
         let txType: TransactionType;
         if (isPix) {
-          txType = isCredit ? 'PIX_IN' : 'PIX_OUT';
-        } else if (isCredit) {
-          txType = isRefund ? 'REFUND' : 'INCOME';
+          // Pix em conta bancária ou cartão
+          const isPixCredit = t.type === 'CREDIT' || (!isCreditAccount && safeAmount > 0 && t.type !== 'DEBIT');
+          txType = isPixCredit ? 'PIX_IN' : 'PIX_OUT';
+        } else if (isRefund) {
+          // Estornos abatem despesas, nunca entram como receita
+          txType = 'REFUND';
+        } else if (isCreditAccount) {
+          // Em cartão de crédito: lançamentos positivos na fatura são compras (EXPENSE)
+          // Pagamento de fatura é transferência entre contas (TRANSFER)
+          txType = isBillPayment ? 'TRANSFER' : 'EXPENSE';
+        } else if (t.type === 'CREDIT' || (safeAmount > 0 && t.type !== 'DEBIT')) {
+          // Em conta corrente: créditos a favor do cliente são receitas ou transferências
+          txType = isBillPayment ? 'TRANSFER' : 'INCOME';
         } else {
           txType = 'EXPENSE';
         }
 
-        const incomeType = isCredit ? (isSalary ? 'salary' : isRefund ? undefined : 'other') : undefined;
+        const incomeType = (txType === 'INCOME' || txType === 'PIX_IN') ? (isSalary ? 'salary' : 'other') : undefined;
 
         const transaction: Transaction = {
           id: txId,

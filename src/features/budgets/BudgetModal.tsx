@@ -33,6 +33,7 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { Category } from '@/types';
+import { getBrazilDateParts } from '@/features/transactions/transactionUtils';
 import {
   useSwipeModalDismiss,
   ModalTopHandle,
@@ -148,9 +149,9 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
   const activeCategory =
     categories.find((c) => c.id === selectedCatId) || categories[0];
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+  const { year, month } = getBrazilDateParts(Date.now());
+  const startOfMonth = new Date(year, month, 1, 0, 0, 0, 0).getTime();
+  const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
 
   const currentSpent = transactions
     .filter(

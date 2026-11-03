@@ -26,6 +26,7 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
 import { getCategoryIconComponent } from '@/features/categories/categoryIcons';
+import { getBrazilDateParts } from './transactionUtils';
 
 interface CategoryBreakdownProps {
   onOpenBudgetManager: (categoryId?: string) => void;
@@ -68,21 +69,18 @@ export const CategoryBreakdown: React.FC<CategoryBreakdownProps> = ({ onOpenBudg
   const transactions = useWalletStore((s) => s.transactions);
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
-  // Intervalo do mês atual em milissegundos
-  const currentMonthStart = useMemo(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-  }, []);
-
-  const currentMonthEnd = useMemo(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
-  }, []);
-
-  const currentMonthName = useMemo(() => {
-    const d = new Date();
-    const name = d.toLocaleDateString('pt-BR', { month: 'long' });
-    return name.charAt(0).toUpperCase() + name.slice(1);
+  // Intervalo do mês atual em milissegundos (fuso de Brasília)
+  const { currentMonthStart, currentMonthEnd, currentMonthName } = useMemo(() => {
+    const { year, month } = getBrazilDateParts(Date.now());
+    const start = new Date(year, month, 1, 0, 0, 0, 0).getTime();
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
+    const curDate = new Date(year, month, 1);
+    const name = curDate.toLocaleDateString('pt-BR', { month: 'long' });
+    return {
+      currentMonthStart: start,
+      currentMonthEnd: end,
+      currentMonthName: name.charAt(0).toUpperCase() + name.slice(1),
+    };
   }, []);
 
   // Soma exclusivamente as despesas do mês corrente para a categoria

@@ -20,6 +20,7 @@ import {
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography } from '@/theme/typography';
+import { getBrazilDateParts } from '@/features/transactions/transactionUtils';
 
 interface NotificationCenterModalProps {
   visible: boolean;
@@ -67,8 +68,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const notifications = useMemo<SystemNotification[]>(() => {
     const list: SystemNotification[] = [];
 
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const { year, month } = getBrazilDateParts(Date.now());
+    const startOfMonth = new Date(year, month, 1, 0, 0, 0, 0).getTime();
 
     // 1. Alertas Reais de Tetos e Metas por Categoria
     categories.forEach((cat) => {

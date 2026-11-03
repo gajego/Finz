@@ -19,6 +19,7 @@ import {
 } from '@/services/database/db';
 import { notifyBalanceChange } from '@/services/notifications/notificationService';
 import { preserveCardsOrder } from '@/services/pluggy/pluggyService';
+import { getBrazilDateParts } from '@/features/transactions/transactionUtils';
 import {
   DEMO_PROFILE,
   DEMO_CARDS,
@@ -339,8 +340,8 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     if (tx.type === 'EXPENSE' || tx.type === 'PIX_OUT') {
       const category = state.categories.find((c) => c.id === tx.categoryId);
       if (category && category.type !== 'income' && category.considerar !== false && category.budgetLimit > 0) {
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const { year, month } = getBrazilDateParts(Date.now());
+        const startOfMonth = new Date(year, month, 1, 0, 0, 0, 0).getTime();
         const totalSpent = updatedTransactions
           .filter(
             (t) =>

@@ -3,6 +3,7 @@ import { db, loadAllDataFromSQLite, getTransactionCategoryOverrides, persistInve
 import { BankCard, Transaction, TransactionType, Investment, InvestmentType } from '@/types';
 import { useWalletStore } from '@/store/useWalletStore';
 import { notifyNewTransaction, notifyBalanceChange } from '@/services/notifications/notificationService';
+import { parseBankTransactionDate } from '@/features/transactions/transactionUtils';
 
 const PLUGGY_API_BASE = 'https://api.pluggy.ai';
 
@@ -846,20 +847,12 @@ async function doSyncPluggyItem(itemId: string, shouldUpdateStore = true): Promi
         const safeAmount = Number.isFinite(rawAmount) ? rawAmount : 0;
         const amountCents = Math.round(Math.abs(safeAmount) * 100);
 
-        // Captura de data precisa e resiliente a fusos horários
+        // Captura de data precisa e ancorada no dia civil brasileiro (Horário de Brasília)
         const dateStr =
           (t.creditCardMetadata?.purchaseDate && String(t.creditCardMetadata.purchaseDate).trim()) ||
           (t.creditCardMetadata?.transactionDateTime && String(t.creditCardMetadata.transactionDateTime).trim()) ||
           (t.date && String(t.date).trim());
-        let parsedTime = NaN;
-        if (dateStr) {
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            parsedTime = new Date(`${dateStr}T12:00:00-03:00`).getTime();
-          } else {
-            parsedTime = new Date(dateStr).getTime();
-          }
-        }
-        const timestamp = Number.isFinite(parsedTime) && parsedTime > 0 ? parsedTime : Date.now();
+        const timestamp = parseBankTransactionDate(dateStr);
 
         // Nome/Merchant limpo com fallback robusto
         const rawMerchantName =

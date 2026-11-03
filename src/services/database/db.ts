@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { BankCard, Category, Transaction, UserProfile, Investment, MonthClosingRecord } from '@/types';
+import { parseBankTransactionDate } from '@/features/transactions/transactionUtils';
 
 const DB_NAME = 'finz.db';
 
@@ -346,7 +347,7 @@ export function loadAllDataFromSQLite(): {
     type: r.type,
     merchant: String(r.merchant || 'Transação'),
     categoryId: String(r.category_id || 'cat_food'),
-    timestamp: Number(r.timestamp) || 0,
+    timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
     rawText: r.raw_text || undefined,
     incomeType: (r.income_type as any) || undefined,
   }));
@@ -568,15 +569,16 @@ export function deleteCategory(categoryId: string) {
 }
 
 export function persistTransaction(tx: Transaction) {
+  const safeTimestamp = parseBankTransactionDate(tx.timestamp);
   try {
     db.runSync(
       'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null, tx.incomeType || null]
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null, tx.incomeType || null]
     );
   } catch {
     db.runSync(
       'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null]
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null]
     );
   }
 }

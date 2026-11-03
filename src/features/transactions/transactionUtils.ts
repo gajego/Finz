@@ -100,12 +100,77 @@ export const BRAZIL_TIMEZONE = 'America/Sao_Paulo';
 export const BRAZIL_UTC_OFFSET_MS = 3 * 60 * 60 * 1000;
 
 /**
+ * Converte qualquer representação de data bancária (ISO UTC com T00:00:00Z, YYYY-MM-DD ou timestamp pré-existente)
+ * para timestamp universal calibrado rigorosamente no dia civil brasileiro (Horário de Brasília).
+ * Evita o bug de virada de mês onde a meia-noite UTC (00:00Z) vira 21:00 do dia/mês anterior no Brasil.
+ */
+export function parseBankTransactionDate(rawDate?: string | number | null): number {
+  if (!rawDate) return Date.now();
+
+  // Timestamp numérico
+  if (typeof rawDate === 'number') {
+    if (!Number.isFinite(rawDate) || rawDate <= 0) return Date.now();
+    // Se o timestamp cai exatamente na meia-noite UTC (múltiplo de 24h),
+    // foi originado de uma data "YYYY-MM-DDT00:00:00.000Z" sem fuso local.
+    // No Brasil (UTC-3), isso corresponde às 21h do dia anterior.
+    // Avançamos 15 horas para fixar ao meio-dia (12:00 BRT) do dia civil correto.
+    if (rawDate % 86400000 === 0) {
+      return rawDate + 15 * 60 * 60 * 1000;
+    }
+    return rawDate;
+  }
+
+  const str = String(rawDate).trim();
+  if (!str) return Date.now();
+
+  // String numérica de timestamp em milissegundos
+  if (/^\d{12,14}$/.test(str)) {
+    const num = Number(str);
+    if (Number.isFinite(num) && num > 0) {
+      if (num % 86400000 === 0) {
+        return num + 15 * 60 * 60 * 1000;
+      }
+      return num;
+    }
+  }
+
+  // Regex para formato bancário padrão YYYY-MM-DD com ou sem horário
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (match) {
+    const [, yearStr, monthStr, dayStr, hourStr, minStr, secStr] = match;
+    const h = hourStr !== undefined ? parseInt(hourStr, 10) : 0;
+    const m = minStr !== undefined ? parseInt(minStr, 10) : 0;
+    const s = secStr !== undefined ? parseInt(secStr, 10) : 0;
+
+    // Se vier sem horário ou com meia-noite zerada (padrão Pluggy/Open Finance),
+    // ancoramos às 12:00:00-03:00 (meio-dia de Brasília) para imunizar contra timezone offsets.
+    if (h === 0 && m === 0 && s === 0) {
+      const parsedMidday = new Date(`${yearStr}-${monthStr}-${dayStr}T12:00:00-03:00`).getTime();
+      if (Number.isFinite(parsedMidday) && parsedMidday > 0) {
+        return parsedMidday;
+      }
+    }
+
+    // Se houver hora/minuto real de compra
+    const parsedWithTime = new Date(str).getTime();
+    if (Number.isFinite(parsedWithTime) && parsedWithTime > 0) {
+      return parsedWithTime;
+    }
+    return new Date(`${yearStr}-${monthStr}-${dayStr}T12:00:00-03:00`).getTime();
+  }
+
+  const fallback = new Date(str).getTime();
+  return Number.isFinite(fallback) && fallback > 0 ? fallback : Date.now();
+}
+
+/**
  * Retorna as partes da data (dia, mês 0-11, ano) rigorosamente no Horário de Brasília (UTC-3).
  * Utiliza cálculo aritmético determinístico UTC-3 imune a variações de fuso local do dispositivo.
  */
 export function getBrazilDateParts(timestamp: number): { day: number; month: number; year: number } {
   const validTimestamp = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
-  const brt = new Date(validTimestamp - BRAZIL_UTC_OFFSET_MS);
+  const safeTimestamp = parseBankTransactionDate(validTimestamp);
+  const brt = new Date(safeTimestamp - BRAZIL_UTC_OFFSET_MS);
   return {
     day: brt.getUTCDate(),
     month: brt.getUTCMonth(),

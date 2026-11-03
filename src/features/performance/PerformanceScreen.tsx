@@ -352,7 +352,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
   const transactions = useWalletStore((s) => s.transactions);
   const privacyMode = useWalletStore((s) => s.privacyMode);
 
-  // Timestamps do mês atual e mês anterior
+  // Timestamps do mês atual e mês anterior (calibrados no fuso bancário de Brasília)
   const {
     currentMonthStart,
     currentMonthEnd,
@@ -361,15 +361,18 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     currentMonthLabel,
     prevMonthLabel,
   } = useMemo(() => {
-    const now = new Date();
-    const curStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    const curEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+    const { year, month } = getBrazilDateParts(Date.now());
+    const curStart = new Date(year, month, 1, 0, 0, 0, 0).getTime();
+    const curEnd = new Date(year, month + 1, 0, 23, 59, 59, 999).getTime();
 
-    const pStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
-    const pEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999).getTime();
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const pStart = new Date(prevYear, prevMonth, 1, 0, 0, 0, 0).getTime();
+    const pEnd = new Date(year, month, 0, 23, 59, 59, 999).getTime();
 
-    const curLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    const pDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const curDate = new Date(year, month, 1);
+    const curLabel = curDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const pDate = new Date(prevYear, prevMonth, 1);
     const pLabel = pDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
     return {

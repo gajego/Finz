@@ -1,4 +1,5 @@
 import { BankCard, Category, Transaction, UserProfile, MonthClosingRecord } from '@/types';
+import { parseBankTransactionDate } from '@/features/transactions/transactionUtils';
 
 const STORAGE_KEY = 'finz_web_db_v1';
 
@@ -435,7 +436,7 @@ export function loadAllDataFromSQLite(): {
     type: r.type,
     merchant: String(r.merchant || 'Transação'),
     categoryId: String(r.category_id || 'cat_food'),
-    timestamp: Number(r.timestamp) || 0,
+    timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
     rawText: r.raw_text || undefined,
     incomeType: (r.income_type as any) || undefined,
   }));

@@ -1,9 +1,21 @@
-import React, { Component, ReactNode } from 'react';
+import React, { Component, ReactNode, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Camera, RefreshCw, Keyboard, AlertCircle, ScanLine } from 'lucide-react-native';
+import { Camera, RefreshCw, Keyboard, AlertCircle, ScanLine, QrCode } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
+
+function loadExpoCamera(): any | null {
+  try {
+    // Carregamento dinâmico seguro em runtime para não quebrar a inicialização do app no boot
+    const mod = require('expo-camera');
+    if (mod && (mod.CameraView || mod.useCameraPermissions)) {
+      return mod;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -23,7 +35,7 @@ class CameraErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error) {
-    console.warn('[QrScannerView] Falha ao inicializar CameraView:', error.message);
+    console.warn('[QrScannerView] Falha ao inicializar CameraView:', error?.message);
   }
 
   render() {
@@ -41,15 +53,20 @@ interface QrScannerViewProps {
   onResetScan: () => void;
 }
 
-const CameraScanner: React.FC<QrScannerViewProps> = ({
+interface NativeScannerProps extends QrScannerViewProps {
+  CameraModule: any;
+}
+
+const NativeScanner: React.FC<NativeScannerProps> = ({
+  CameraModule,
   onScan,
   onSwitchToCode,
   scanned,
   onResetScan,
 }) => {
-  const { colors, mode } = useTheme();
-  const isDark = mode === 'dark';
-  const [permission, requestPermission] = useCameraPermissions();
+  const { colors } = useTheme();
+  const [permission, requestPermission] = CameraModule.useCameraPermissions();
+  const CameraView = CameraModule.CameraView;
 
   if (!permission) {
     return (
@@ -123,7 +140,7 @@ const CameraScanner: React.FC<QrScannerViewProps> = ({
           onBarcodeScanned={
             scanned
               ? undefined
-              : ({ data }) => {
+              : ({ data }: { data: string }) => {
                   if (data) onScan(data);
                 }
           }
@@ -158,6 +175,39 @@ const CameraScanner: React.FC<QrScannerViewProps> = ({
 
 export const QrScannerView: React.FC<QrScannerViewProps> = (props) => {
   const { colors } = useTheme();
+  const [cameraModule] = useState<any | null>(() => loadExpoCamera());
+
+  if (!cameraModule) {
+    return (
+      <View
+        style={[
+          styles.permissionCard,
+          {
+            backgroundColor: colors.surfaceElevated,
+            borderColor: colors.borderSubtle,
+          },
+        ]}
+      >
+        <QrCode size={36} color={colors.primary} />
+        <Text style={[styles.permissionTitle, { color: colors.text }]}>
+          Câmera Requer Novo Build Nativo
+        </Text>
+        <Text style={[styles.permissionDesc, { color: colors.textSecondary }]}>
+          O módulo nativo de câmera precisa ser compilado no binário do aplicativo para abrir a lente.
+          Conecte instantaneamente digitando o código de 6 dígitos exibido na tela web!
+        </Text>
+        <Pressable
+          style={[styles.grantBtn, { backgroundColor: colors.primary }]}
+          onPress={props.onSwitchToCode}
+        >
+          <Keyboard size={16} color={colors.primaryForeground} />
+          <Text style={[styles.grantBtnText, { color: colors.primaryForeground }]}>
+            Digitar Código de 6 Dígitos
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <CameraErrorBoundary
@@ -176,7 +226,7 @@ export const QrScannerView: React.FC<QrScannerViewProps> = (props) => {
             Câmera Indisponível
           </Text>
           <Text style={[styles.permissionDesc, { color: colors.textSecondary }]}>
-            Não foi possível carregar a câmera neste dispositivo. Utilize o código de 6 dígitos exibido no computador para parear.
+            Não foi possível inicializar a câmera neste dispositivo. Utilize o código de 6 dígitos exibido no computador para parear.
           </Text>
           <Pressable
             style={[styles.grantBtn, { backgroundColor: colors.primary }]}
@@ -190,7 +240,7 @@ export const QrScannerView: React.FC<QrScannerViewProps> = (props) => {
         </View>
       )}
     >
-      <CameraScanner {...props} />
+      <NativeScanner CameraModule={cameraModule} {...props} />
     </CameraErrorBoundary>
   );
 };

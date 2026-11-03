@@ -51,6 +51,10 @@ import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src
 import { BankCard, Transaction } from './src/types';
 import { useSharedValue } from 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Previne o auto-hide da splash para evitar flash/piscar de elementos no boot
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const MAIN_TABS: MainTab[] = ['home', 'performance', 'insights', 'goals', 'investments'];
 
@@ -104,6 +108,12 @@ export default function App() {
     }, 1200);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (fontsLoaded && isInitialized) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, isInitialized]);
 
   const isAppReady = Boolean(fontsLoaded && isInitialized && minPresentationElapsed);
   const { width: screenWidth } = useWindowDimensions();

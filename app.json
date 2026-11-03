@@ -38,9 +38,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#060709",
-          "image": "./assets/splash-icon.png",
-          "resizeMode": "contain"
+          "backgroundColor": "#040405"
         }
       ],
       "expo-status-bar"

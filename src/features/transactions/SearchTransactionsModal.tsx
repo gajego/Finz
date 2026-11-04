@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { Search, X, History, Sparkles } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
@@ -17,6 +18,7 @@ import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, Radii } from '@/theme/typography';
 import { Transaction } from '@/types';
 import { TransactionItem } from './TransactionItem';
+import { useSwipeModalDismiss, ModalTopHandle } from '@/components/ui/SwipeableModalSheet';
 
 interface SearchTransactionsModalProps {
   visible: boolean;
@@ -43,6 +45,12 @@ export const SearchTransactionsModal: React.FC<SearchTransactionsModalProps> = (
 
   const [query, setQuery] = useState('');
   const inputRef = useRef<any>(null);
+
+  const {
+    handlePanResponder,
+    headerPanResponder,
+    animatedSheetStyle,
+  } = useSwipeModalDismiss({ onClose, visible });
 
   // Foco automático no input ao abrir o modal
   useEffect(() => {
@@ -104,22 +112,28 @@ export const SearchTransactionsModal: React.FC<SearchTransactionsModalProps> = (
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardContainer}
         >
-          <SafeAreaView
+          <Animated.View
             style={[
               styles.modalSheet,
               {
                 backgroundColor: isDark ? colors.surface : '#FFFFFF',
                 borderColor: colors.borderSubtle,
               },
+              animatedSheetStyle,
             ]}
           >
-            {/* Indicador de puxador no topo */}
-            <View style={styles.handleContainer}>
-              <View style={[styles.handleBar, { backgroundColor: colors.borderSubtle }]} />
-            </View>
+            <SafeAreaView style={styles.sheetSafeContent}>
+              {/* Alça Superior com Gesto Fluido de Puxar para Fechar */}
+              <ModalTopHandle
+                panHandlers={handlePanResponder.panHandlers}
+                color={colors.borderStrong}
+              />
 
-            {/* Cabeçalho */}
-            <View style={styles.headerRow}>
+              {/* Cabeçalho */}
+              <View
+                {...headerPanResponder.panHandlers}
+                style={styles.headerRow}
+              >
               <View>
                 <Text style={[styles.headerPreTitle, { color: colors.primary }]}>
                   BUSCA INTELIGENTE
@@ -288,7 +302,8 @@ export const SearchTransactionsModal: React.FC<SearchTransactionsModalProps> = (
                 </View>
               }
             />
-          </SafeAreaView>
+            </SafeAreaView>
+          </Animated.View>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -311,21 +326,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     borderWidth: 1,
     borderBottomWidth: 0,
-    paddingTop: 10,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -6 },
     shadowOpacity: 0.35,
     shadowRadius: 18,
     elevation: 24,
   },
-  handleContainer: {
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  handleBar: {
-    width: 38,
-    height: 4,
-    borderRadius: 2,
+  sheetSafeContent: {
+    flex: 1,
   },
   headerRow: {
     flexDirection: 'row',

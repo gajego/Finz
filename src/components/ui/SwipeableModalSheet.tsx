@@ -23,7 +23,7 @@ interface UseSwipeModalDismissOptions {
 export function useSwipeModalDismiss({
   onClose,
   visible = true,
-  threshold = 65,
+  threshold = 45,
 }: UseSwipeModalDismissOptions) {
   const panY = useRef(new Animated.Value(0)).current;
   const isClosingRef = useRef(false);
@@ -79,20 +79,20 @@ export function useSwipeModalDismiss({
     });
   };
 
-  // Responde imediatamente em áreas dedicadas (alças superior e inferior)
+  // Responde imediatamente em áreas dedicadas (alças superior e inferior com alta sensibilidade)
   const handlePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 3;
+        return Math.abs(gestureState.dy) > 1;
       },
       onPanResponderMove: (_, gestureState) => {
         panY.setValue(gestureState.dy);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -threshold || gestureState.vy < -0.4) {
+        if (gestureState.dy < -threshold || gestureState.vy < -0.3) {
           dismissUp();
-        } else if (gestureState.dy > threshold || gestureState.vy > 0.4) {
+        } else if (gestureState.dy > threshold || gestureState.vy > 0.3) {
           dismissDown();
         } else {
           Animated.spring(panY, {
@@ -120,17 +120,17 @@ export function useSwipeModalDismiss({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         return (
-          Math.abs(gestureState.dy) > 8 &&
-          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.5
+          Math.abs(gestureState.dy) > 5 &&
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 1.2
         );
       },
       onPanResponderMove: (_, gestureState) => {
         panY.setValue(gestureState.dy);
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy < -threshold || gestureState.vy < -0.4) {
+        if (gestureState.dy < -threshold || gestureState.vy < -0.3) {
           dismissUp();
-        } else if (gestureState.dy > threshold || gestureState.vy > 0.4) {
+        } else if (gestureState.dy > threshold || gestureState.vy > 0.3) {
           dismissDown();
         } else {
           Animated.spring(panY, {
@@ -178,7 +178,11 @@ export const ModalTopHandle: React.FC<{
 }> = ({ panHandlers, color, style }) => {
   const { colors } = useTheme();
   return (
-    <View {...panHandlers} style={[styles.topHandleContainer, style]}>
+    <View
+      {...panHandlers}
+      style={[styles.topHandleContainer, style]}
+      hitSlop={{ top: 25, bottom: 25, left: 80, right: 80 }}
+    >
       <View style={[styles.handleBar, { backgroundColor: color || colors.borderStrong }]} />
     </View>
   );
@@ -191,7 +195,11 @@ export const ModalBottomHandle: React.FC<{
 }> = ({ panHandlers, color, style }) => {
   const { colors } = useTheme();
   return (
-    <View {...panHandlers} style={[styles.bottomHandleContainer, style]}>
+    <View
+      {...panHandlers}
+      style={[styles.bottomHandleContainer, style]}
+      hitSlop={{ top: 25, bottom: 25, left: 80, right: 80 }}
+    >
       <View style={[styles.bottomHandleBar, { backgroundColor: color || colors.borderStrong }]} />
     </View>
   );
@@ -200,25 +208,28 @@ export const ModalBottomHandle: React.FC<{
 const styles = StyleSheet.create({
   topHandleContainer: {
     width: '100%',
+    minHeight: 46,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingTop: 12,
+    paddingBottom: 18,
   },
   handleBar: {
-    width: 40,
-    height: 4,
+    width: 52,
+    height: 5,
     borderRadius: Radii.full,
   },
   bottomHandleContainer: {
     width: '100%',
+    minHeight: 42,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
   },
   bottomHandleBar: {
-    width: 48,
-    height: 4,
+    width: 52,
+    height: 5,
     borderRadius: Radii.full,
     opacity: 0.6,
   },

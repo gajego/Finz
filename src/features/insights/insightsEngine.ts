@@ -116,11 +116,15 @@ export function calculateDailyBurnRate(
   for (const t of transactions) {
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
+    const tParts = getBrazilParts(t.timestamp);
+    const isThisMonth = tParts.year === year && tParts.month === month;
+    const isToday = isThisMonth && tParts.day === currentDay;
+
     if (t.type === 'REFUND') {
-      if (t.timestamp >= startOfMonth && t.timestamp <= endOfMonth) {
+      if (isThisMonth) {
         currentMonthRefunds += t.amount;
       }
-      if (t.timestamp >= startOfToday && t.timestamp <= endOfToday) {
+      if (isToday) {
         todayRefunds += t.amount;
       }
       continue;
@@ -129,10 +133,10 @@ export function calculateDailyBurnRate(
     if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') continue;
     if (!consideredIds.has(t.categoryId)) continue;
 
-    if (t.timestamp >= startOfMonth && t.timestamp <= endOfMonth) {
+    if (isThisMonth) {
       currentMonthSpent += t.amount;
     }
-    if (t.timestamp >= startOfToday && t.timestamp <= endOfToday) {
+    if (isToday) {
       todaySpent += t.amount;
     }
   }
@@ -203,7 +207,8 @@ export function calculateFinancialHealthScore(
   const catSpentMap: Record<string, number> = {};
 
   for (const t of transactions) {
-    if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    const tParts = getBrazilParts(t.timestamp);
+    if (tParts.year !== year || tParts.month !== month) continue;
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
     if (t.type === 'REFUND') {
@@ -404,7 +409,8 @@ export function calculateBudget503020(
   let availableIncome = 0;
 
   for (const t of transactions) {
-    if (t.timestamp < startOfMonth || t.timestamp > endOfMonth) continue;
+    const tParts = getBrazilParts(t.timestamp);
+    if (tParts.year !== year || tParts.month !== month) continue;
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in' || t.type === 'REFUND') continue;
 
     // Renda disponível (Salário, Freelance, Entradas)

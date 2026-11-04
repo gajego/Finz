@@ -58,7 +58,7 @@ const getTransactionIcon = (
     };
   }
 
-  if (tx.type === 'PIX_IN') {
+  if (tx.type === 'PIX_IN' || tx.type === 'INCOME') {
     return {
       Icon: ArrowDownLeft,
       bgColor: isDark ? 'rgba(52, 211, 153, 0.14)' : 'rgba(5, 150, 105, 0.10)',
@@ -130,7 +130,7 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
     const card = cards.find((c) => c.id === transaction.cardId);
 
     const isRefund = transaction.type === 'REFUND';
-    const isIncome = transaction.type === 'PIX_IN';
+    const isIncome = transaction.type === 'PIX_IN' || transaction.type === 'INCOME';
     const isPixOut = transaction.type === 'PIX_OUT';
 
     const { cleanName, installment } = parseMerchantAndInstallments(

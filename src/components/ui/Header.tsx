@@ -5,6 +5,7 @@ import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, LetterSpacing } from '@/theme/typography';
 import { webSyncHost } from '@/services/webrtc/webSyncHost';
+import { getBrazilDateParts } from '@/features/transactions/transactionUtils';
 
 interface HeaderProps {
   onOpenNotifications?: () => void;
@@ -38,11 +39,20 @@ export const Header: React.FC<HeaderProps> = ({
 
   const hasAlert = useMemo(() => {
     if (activeAlert) return true;
+    const curParts = getBrazilDateParts(Date.now());
     return categories.some((cat) => {
-      if (cat.considerar === false || cat.budgetLimit <= 0) return false;
-      const spent = transactions
-        .filter((t) => t.categoryId === cat.id && t.type === 'EXPENSE')
-        .reduce((sum, t) => sum + t.amount, 0);
+      if (cat.considerar === false || cat.budgetLimit <= 0 || cat.type === 'income') return false;
+      let spent = 0;
+      for (const t of transactions) {
+        if (t.categoryId !== cat.id) continue;
+        const tParts = getBrazilDateParts(t.timestamp);
+        if (tParts.year !== curParts.year || tParts.month !== curParts.month) continue;
+        if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
+          spent += t.amount;
+        } else if (t.type === 'REFUND') {
+          spent = Math.max(0, spent - t.amount);
+        }
+      }
       return spent / cat.budgetLimit >= 0.8;
     });
   }, [activeAlert, categories, transactions]);

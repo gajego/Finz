@@ -143,16 +143,16 @@ const OverBudgetCategoryCard: React.FC<OverBudgetCategoryCardProps> = ({
   const pct = Math.round((item.currentSpent / item.budget) * 100);
 
   const categoryTransactions = useMemo(() => {
+    const curParts = getBrazilDateParts(Date.now());
     return transactions
-      .filter(
-        (t) =>
-          t.categoryId === item.category.id &&
-          (t.type === 'EXPENSE' || t.type === 'PIX_OUT') &&
-          t.timestamp >= currentMonthStart &&
-          t.timestamp <= currentMonthEnd
-      )
+      .filter((t) => {
+        if (t.categoryId !== item.category.id) return false;
+        if (t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') return false;
+        const tParts = getBrazilDateParts(t.timestamp);
+        return tParts.year === curParts.year && tParts.month === curParts.month;
+      })
       .sort((a, b) => b.timestamp - a.timestamp);
-  }, [transactions, item.category.id, currentMonthStart, currentMonthEnd]);
+  }, [transactions, item.category.id]);
 
   const visibleTransactions = expanded
     ? categoryTransactions
@@ -621,9 +621,8 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
       ? transactions
           .filter((t) => {
             if ((t.type !== 'EXPENSE' && t.type !== 'PIX_OUT') || t.categoryId !== chosenCatId) return false;
-            if (t.timestamp < currentMonthStart || t.timestamp > currentMonthEnd) return false;
             const parts = getBrazilDateParts(t.timestamp);
-            return parts.day === selectedDay;
+            return parts.year === nowParts.year && parts.month === nowParts.month && parts.day === selectedDay;
           })
           .sort((a, b) => b.amount - a.amount)
       : [];

@@ -811,6 +811,21 @@ async function doSyncPluggyItem(itemId: string, shouldUpdateStore = true): Promi
   const existingTxRows = db.getAllSync<{ id: string }>('SELECT id FROM transactions');
   const existingTxIds = new Set<string>(existingTxRows.map((r) => r.id));
 
+  // Carrega categorias cadastradas para distinção determinística entre Despesa e Receita
+  let incomeCategoryIds = new Set<string>();
+  let expenseCategoryIds = new Set<string>();
+  try {
+    const catRows = db.getAllSync<{ id: string; type?: string; is_salario?: number }>(
+      'SELECT id, type, is_salario FROM categories'
+    );
+    incomeCategoryIds = new Set(
+      catRows.filter((c) => c.type === 'income' || c.is_salario === 1).map((c) => c.id)
+    );
+    expenseCategoryIds = new Set(
+      catRows.filter((c) => c.type === 'expense' && !c.is_salario).map((c) => c.id)
+    );
+  } catch {}
+
   // Carrega overrides manuais de categoria definidos pelo usuário para preservação perpétua
   const overridesMap = getTransactionCategoryOverrides();
 
@@ -874,27 +889,38 @@ async function doSyncPluggyItem(itemId: string, shouldUpdateStore = true): Promi
 
         // Classificação inteligente de Pix e Crédito/Débito
         const isCreditAccount = acc.type === 'CREDIT' || Boolean(t.creditCardMetadata);
-        const descForPix = `${t.description || ''} ${t.operationType || ''} ${cleanDescription}`;
-        const isPix = /pix/i.test(descForPix);
-        const isRefund = /estorno|reembolso|devolu[cç]|cancelamento/i.test(descForPix);
-        const isSalary = /sal[aá]rio|folha|pro.?labore|remunera[cç]|ordenado|pagamento recebi/i.test(descForPix);
-        const isBillPayment = /pagamento fatura|pgto fatura|pagamento recebido|pagamento efetuado/i.test(descForPix);
+        const descLower = `${t.description || ''} ${t.operationType || ''} ${cleanDescription}`.toLowerCase();
+        const isPix = /pix/i.test(descLower);
+        const isRefund = /estorno|reembolso|devolu[cç]|cancelamento/i.test(descLower);
+        const isSalary = /sal[aá]rio|folha|pro.?labore|remunera[cç]|ordenado|pagamento recebi/i.test(descLower);
+        const isBillPayment = /pagamento fatura|pgto fatura|pagamento cart[aã]o|pagamento recebido|pagamento efetuado/i.test(descLower);
+        const isExplicitIncomeDesc = /sal[aá]rio|folha|pro.?labore|remunera[cç]|ordenado|rendimento|dividendo|provento|cashback|dep[oó]sito|ted recebida|doc recebido|ted de|recebimento pix|pix recebido/i.test(descLower);
+        const isCommercialExpenseDesc = /99food|99 food|ifood|rappi|uber|99app|99 app|restaurante|mercado|supermercado|churros|alime|mcdonald|burger|farmacia|drogasil|posto|steam|netflix|spotify|padaria|pizzaria|hamburgueria|bar\b|boteco|cervejaria|conveniencia|loja|magazine|amazon|shopee|mercado livre|aliexpress/i.test(descLower);
+
+        const isIncomeCat = incomeCategoryIds.has(categoryId);
+        const isExpenseCat = expenseCategoryIds.has(categoryId) || [
+          'cat_food', 'cat_transport', 'cat_leisure', 'cat_shopping', 'cat_punctual', 'cat_pharmacy'
+        ].includes(categoryId);
 
         let txType: TransactionType;
-        if (isPix) {
-          // Pix em conta bancária ou cartão
-          const isPixCredit = t.type === 'CREDIT' || (!isCreditAccount && safeAmount > 0 && t.type !== 'DEBIT');
-          txType = isPixCredit ? 'PIX_IN' : 'PIX_OUT';
-        } else if (isRefund) {
-          // Estornos abatem despesas, nunca entram como receita
+        if (isRefund) {
+          // 1. Estornos abatem despesas, nunca inflam receita
           txType = 'REFUND';
-        } else if (isCreditAccount) {
-          // Em cartão de crédito: lançamentos positivos na fatura são compras (EXPENSE)
-          // Pagamento de fatura é transferência entre contas (TRANSFER)
-          txType = isBillPayment ? 'TRANSFER' : 'EXPENSE';
-        } else if (t.type === 'CREDIT' || (safeAmount > 0 && t.type !== 'DEBIT')) {
-          // Em conta corrente: créditos a favor do cliente são receitas ou transferências
-          txType = isBillPayment ? 'TRANSFER' : 'INCOME';
+        } else if (isBillPayment) {
+          // 2. Pagamento de fatura é transferência de saldo
+          txType = 'TRANSFER';
+        } else if (isIncomeCat || isSalary || isExplicitIncomeDesc) {
+          // 3. Receitas legítimas (salário, rendimentos ou categoria de receita)
+          txType = isPix ? 'PIX_IN' : 'INCOME';
+        } else if (isExpenseCat || isCommercialExpenseDesc || isCreditAccount) {
+          // 4. Se pertence a categoria de despesa, merchant comercial ou cartão de crédito -> SEMPRE despesa
+          txType = isPix ? 'PIX_OUT' : 'EXPENSE';
+        } else if (safeAmount < 0 || t.type === 'DEBIT') {
+          // 5. Débito bancário explícito
+          txType = isPix ? 'PIX_OUT' : 'EXPENSE';
+        } else if (t.type === 'CREDIT' || safeAmount > 0) {
+          // 6. Entradas residuais sem características comerciais
+          txType = isPix ? 'PIX_IN' : 'INCOME';
         } else {
           txType = 'EXPENSE';
         }

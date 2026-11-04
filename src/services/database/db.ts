@@ -181,6 +181,18 @@ export function initDatabase() {
   }
 
   // Reparo automático de transações classificadas incorretamente como INCOME
+  sanitizeTransactionsInDb();
+
+  // Purgar mocks antigos e inicializar banco limpo
+  purgeMockDataIfPresent();
+  checkAndExecuteMonthlyTurnover();
+  seedDefaultCategories();
+}
+
+/**
+ * Sanitização profunda de transações com reconciliação contábil ACID
+ */
+export function sanitizeTransactionsInDb() {
   try {
     // 1. Estornos gravados como INCOME viram REFUND
     db.runSync(`
@@ -202,7 +214,7 @@ export function initDatabase() {
       UPDATE transactions
       SET type = 'EXPENSE',
           income_type = NULL
-      WHERE type = 'INCOME'
+      WHERE (type = 'INCOME' OR type = 'PIX_IN')
         AND (
           category_id IN ('cat_food', 'cat_transport', 'cat_leisure', 'cat_shopping', 'cat_punctual', 'cat_pharmacy')
           OR category_id IN (SELECT id FROM categories WHERE type = 'expense' AND (is_salario = 0 OR is_salario IS NULL))
@@ -226,6 +238,9 @@ export function initDatabase() {
           OR LOWER(merchant) LIKE '%steam%'
           OR LOWER(merchant) LIKE '%netflix%'
           OR LOWER(merchant) LIKE '%spotify%'
+          OR LOWER(merchant) LIKE '%padaria%'
+          OR LOWER(merchant) LIKE '%pizzaria%'
+          OR LOWER(merchant) LIKE '%hamburgueria%'
         )
         AND (income_type IS NULL OR income_type != 'salary')
         AND LOWER(merchant) NOT LIKE '%salário%'
@@ -237,11 +252,6 @@ export function initDatabase() {
   } catch (e) {
     console.warn('[db] Falha na migração corretiva de transações:', e);
   }
-
-  // Purgar mocks antigos e inicializar banco limpo
-  purgeMockDataIfPresent();
-  checkAndExecuteMonthlyTurnover();
-  seedDefaultCategories();
 }
 
 /**
@@ -401,17 +411,35 @@ export function loadAllDataFromSQLite(): {
     };
   });
 
-  const transactions: Transaction[] = txRows.map((r) => ({
-    id: String(r.id),
-    cardId: String(r.card_id),
-    amount: Number(r.amount) || 0,
-    type: r.type,
-    merchant: String(r.merchant || 'Transação'),
-    categoryId: String(r.category_id || 'cat_food'),
-    timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
-    rawText: r.raw_text || undefined,
-    incomeType: (r.income_type as any) || undefined,
-  }));
+  const expenseCatIds = new Set(
+    categories.filter((c) => c.type !== 'income' && !c.isSalario).map((c) => c.id)
+  );
+
+  const transactions: Transaction[] = txRows.map((r) => {
+    let txType = r.type;
+    let incomeType = (r.income_type as any) || undefined;
+    const catId = String(r.category_id || 'cat_food');
+    const merchantStr = String(r.merchant || 'Transação');
+
+    // Sanitização defensiva em runtime: despesas e compras comerciais jamais devem ser tratadas como INCOME
+    const isCommercial = /99food|99 food|ifood|rappi|uber|99app|99 app|restaurante|mercado|supermercado|churros|alime|mcdonald|burger|farmacia|drogasil|posto|steam|netflix|spotify|padaria|pizzaria|hamburgueria/i.test(merchantStr);
+    if ((txType === 'INCOME' || txType === 'PIX_IN') && (expenseCatIds.has(catId) || isCommercial)) {
+      txType = txType === 'PIX_IN' ? 'PIX_OUT' : 'EXPENSE';
+      incomeType = undefined;
+    }
+
+    return {
+      id: String(r.id),
+      cardId: String(r.card_id),
+      amount: Number(r.amount) || 0,
+      type: txType,
+      merchant: merchantStr,
+      categoryId: catId,
+      timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
+      rawText: r.raw_text || undefined,
+      incomeType,
+    };
+  });
 
   const investments: Investment[] = invRows.map((r) => ({
     id: String(r.id),

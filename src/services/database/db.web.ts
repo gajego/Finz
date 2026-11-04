@@ -446,17 +446,35 @@ export function loadAllDataFromSQLite(): {
     };
   });
 
-  const transactions: Transaction[] = txRows.map((r) => ({
-    id: String(r.id),
-    cardId: String(r.card_id),
-    amount: Number(r.amount) || 0,
-    type: r.type,
-    merchant: String(r.merchant || 'Transação'),
-    categoryId: String(r.category_id || 'cat_food'),
-    timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
-    rawText: r.raw_text || undefined,
-    incomeType: (r.income_type as any) || undefined,
-  }));
+  const expenseCatIds = new Set(
+    categories.filter((c) => c.type !== 'income' && !c.isSalario).map((c) => c.id)
+  );
+
+  const transactions: Transaction[] = txRows.map((r) => {
+    let txType = r.type;
+    let incomeType = (r.income_type as any) || undefined;
+    const catId = String(r.category_id || 'cat_food');
+    const merchantStr = String(r.merchant || 'Transação');
+
+    // Sanitização defensiva em runtime: compras comerciais e despesas jamais devem ser computadas como INCOME
+    const isCommercial = /99food|99 food|ifood|rappi|uber|99app|99 app|restaurante|mercado|supermercado|churros|alime|mcdonald|burger|farmacia|drogasil|posto|steam|netflix|spotify|padaria|pizzaria|hamburgueria/i.test(merchantStr);
+    if ((txType === 'INCOME' || txType === 'PIX_IN') && (expenseCatIds.has(catId) || isCommercial)) {
+      txType = txType === 'PIX_IN' ? 'PIX_OUT' : 'EXPENSE';
+      incomeType = undefined;
+    }
+
+    return {
+      id: String(r.id),
+      cardId: String(r.card_id),
+      amount: Number(r.amount) || 0,
+      type: txType,
+      merchant: merchantStr,
+      categoryId: catId,
+      timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
+      rawText: r.raw_text || undefined,
+      incomeType,
+    };
+  });
 
   let profile: UserProfile | undefined = undefined;
   const profileRow = db.getFirstSync<{ value: string }>(

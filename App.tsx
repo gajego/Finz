@@ -30,6 +30,7 @@ import { CategoryBreakdown } from './src/features/transactions/CategoryBreakdown
 import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
+import { SearchTransactionsModal } from './src/features/transactions/SearchTransactionsModal';
 import { UncategorizedTransactionsModal } from './src/features/transactions/UncategorizedTransactionsModal';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
@@ -95,6 +96,7 @@ export default function App() {
   const [onboardingVisible, setOnboardingVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [uncategorizedModalVisible, setUncategorizedModalVisible] = useState(false);
+  const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
@@ -442,10 +444,11 @@ export default function App() {
           onTabChange={handleTabChange}
         />
 
-        {/* Círculo Flutuante no Canto Inferior Direito para Seleção Rápida de Telas/Abas */}
+        {/* Círculo Flutuante no Canto Inferior Direito para Seleção Rápida de Telas/Abas e Busca */}
         <FloatingTabsQuickMenu
           activeTab={activeMainTab}
           onSelectTab={handleTabChange}
+          onOpenSearch={() => setSearchModalVisible(true)}
         />
 
         {/* Menu de Perfil e Ajustes */}
@@ -499,6 +502,16 @@ export default function App() {
         <UncategorizedTransactionsModal
           visible={uncategorizedModalVisible}
           onClose={() => setUncategorizedModalVisible(false)}
+        />
+
+        {/* Modal de Busca Inteligente de Transações */}
+        <SearchTransactionsModal
+          visible={searchModalVisible}
+          onClose={() => setSearchModalVisible(false)}
+          onSelectTransaction={(tx) => {
+            setSearchModalVisible(false);
+            setSelectedTransactionForDetails(tx);
+          }}
         />
 
         {/* Detalhes da Movimentação e Alteração de Categoria */}

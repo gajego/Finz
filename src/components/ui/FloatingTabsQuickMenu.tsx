@@ -13,6 +13,7 @@ import Animated, {
 import {
   Layers2,
   X,
+  Search,
   Home,
   BarChart2,
   Sparkles,
@@ -42,11 +43,13 @@ const MENU_OPTIONS: TabOption[] = [
 interface FloatingTabsQuickMenuProps {
   activeTab: MainTab;
   onSelectTab: (tab: MainTab) => void;
+  onOpenSearch?: () => void;
 }
 
 export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
   activeTab,
   onSelectTab,
+  onOpenSearch,
 }) => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
@@ -156,28 +159,50 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         </Animated.View>
       )}
 
-      {/* Círculo Flutuante (FAB) no Canto Inferior Direito na Cor Primária */}
-      <Pressable
-        onPress={() => setIsOpen((prev) => !prev)}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            backgroundColor: colors.primary,
-            borderColor: isDark ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.25)',
-            shadowColor: colors.primary,
-            transform: [{ scale: pressed ? 0.92 : 1 }],
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Menu rápido de abas"
-        accessibilityHint="Abre o seletor rápido para navegar entre as telas do aplicativo"
-      >
-        {isOpen ? (
-          <X size={20} color={colors.primaryForeground} strokeWidth={2.4} />
-        ) : (
-          <Layers2 size={21} color={colors.primaryForeground} strokeWidth={2.4} />
+      {/* Botões Flutuantes no Canto Inferior Direito: Busca e Seleção de Telas */}
+      <View style={styles.fabRow} pointerEvents="box-none">
+        {onOpenSearch && (
+          <Pressable
+            onPress={onOpenSearch}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                borderColor: colors.borderSubtle,
+                shadowColor: '#000000',
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Buscar transações"
+            accessibilityHint="Abre o modal de busca para pesquisar transações por nome ou estabelecimento"
+          >
+            <Search size={20} color={colors.text} strokeWidth={2.2} />
+          </Pressable>
         )}
-      </Pressable>
+
+        <Pressable
+          onPress={() => setIsOpen((prev) => !prev)}
+          style={({ pressed }) => [
+            styles.fab,
+            {
+              backgroundColor: colors.primary,
+              borderColor: isDark ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.25)',
+              shadowColor: colors.primary,
+              transform: [{ scale: pressed ? 0.92 : 1 }],
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Menu rápido de abas"
+          accessibilityHint="Abre o seletor rápido para navegar entre as telas do aplicativo"
+        >
+          {isOpen ? (
+            <X size={20} color={colors.primaryForeground} strokeWidth={2.4} />
+          ) : (
+            <Layers2 size={21} color={colors.primaryForeground} strokeWidth={2.4} />
+          )}
+        </Pressable>
+      </View>
     </>
   );
 };
@@ -188,17 +213,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     zIndex: 998,
   },
-  fab: {
+  fabRow: {
     position: 'absolute',
     right: 16,
     bottom: Platform.OS === 'ios' ? 24 : 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    zIndex: 999,
+  },
+  fab: {
     width: 48,
     height: 48,
     borderRadius: 24,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 999,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 10,

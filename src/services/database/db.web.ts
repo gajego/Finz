@@ -712,6 +712,31 @@ export function loadLastUncategorizedCount(): number | null {
   }
 }
 
+export function persistExpoPushToken(token: string) {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    db.runSync(
+      'INSERT OR REPLACE INTO system_meta (key, value) VALUES (?, ?)',
+      ['expo_push_token', token.trim()]
+    );
+  } catch (e) {
+    console.warn('[db.web] Falha ao persistir token de push:', e);
+  }
+}
+
+export function getStoredExpoPushToken(): string | null {
+  try {
+    db.execSync('CREATE TABLE IF NOT EXISTS system_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    const row = db.getFirstSync<{ value: string }>(
+      'SELECT value FROM system_meta WHERE key = ?',
+      ['expo_push_token']
+    );
+    return row?.value || null;
+  } catch {
+    return null;
+  }
+}
+
 export function saveWebSyncSession(serverUrl: string, roomId: string, autoConnect = true) {
   try {
     db.runSync(

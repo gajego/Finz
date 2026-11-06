@@ -51,6 +51,12 @@ import { Typography, LetterSpacing } from '@/theme/typography';
 import { NotificationPreference } from '@/types';
 import { fetchPluggyIdentity } from '@/services/pluggy/pluggyService';
 import { exportBackupToFile, importBackupFromFile } from '@/services/backup/backupService';
+import {
+  sendDelayedBackgroundTestNotification,
+  sendRemotePushNotification,
+  getExpoPushToken,
+} from '@/services/notifications/notificationService';
+import { getStoredExpoPushToken } from '@/services/database/db';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -83,6 +89,61 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
   const [isImportingBackup, setIsImportingBackup] = useState(false);
   const [saveSuccessNotice, setSaveSuccessNotice] = useState<string | null>(null);
   const [webSyncVisible, setWebSyncVisible] = useState(false);
+  const [testingBackground, setTestingBackground] = useState(false);
+  const [testingRemotePush, setTestingRemotePush] = useState(false);
+  const [expoPushToken, setExpoPushToken] = useState<string | null>(() => getStoredExpoPushToken());
+
+  useEffect(() => {
+    if (visible && !expoPushToken) {
+      getExpoPushToken().then((t) => {
+        if (t) setExpoPushToken(t);
+      }).catch(() => {});
+    }
+  }, [visible, expoPushToken]);
+
+  const handleTestDelayedNotification = async () => {
+    try {
+      setTestingBackground(true);
+      await sendDelayedBackgroundTestNotification(3);
+      Alert.alert(
+        '🔔 Notificação Agendada (3 segundos)',
+        'Bloqueie o celular ou minimize o app AGORA para ver o alerta tocar na tela de bloqueio!',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setTimeout(() => setTestingBackground(false), 3000);
+    }
+  };
+
+  const handleTestRemotePush = async () => {
+    try {
+      setTestingRemotePush(true);
+      let token = expoPushToken || (await getExpoPushToken());
+      if (!token) {
+        Alert.alert(
+          'Token Não Encontrado',
+          'Não foi possível obter o Expo Push Token. Verifique se as permissões de notificação foram concedidas no iOS.'
+        );
+        return;
+      }
+      const ok = await sendRemotePushNotification({
+        pushToken: token,
+        title: '📲 Finz • Push Remoto',
+        body: 'Notificação remota entregue com sucesso via APNs/Expo Push Service!',
+      });
+      if (ok) {
+        Alert.alert(
+          '🚀 Push Remoto Disparado!',
+          'A notificação foi enviada pelo servidor do Expo diretamente para a Apple (APNs). Feche o app completamente ou bloqueie o aparelho para recebê-la!',
+          [{ text: 'Entendido' }]
+        );
+      } else {
+        Alert.alert('Falha no Envio', 'Não foi possível contatar o serviço de push.');
+      }
+    } finally {
+      setTestingRemotePush(false);
+    }
+  };
 
   // Sincroniza estado com o store ao abrir
   useEffect(() => {
@@ -751,6 +812,76 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ visible, onClose }) 
                     </Pressable>
                   );
                 })}
+              </View>
+
+              {/* Card de Teste & Status de Notificações em Segundo Plano */}
+              <View
+                style={[
+                  styles.notificationGroupCard,
+                  {
+                    backgroundColor: isDark ? colors.surface : colors.surfaceElevated,
+                    borderColor: colors.border,
+                    marginTop: 12,
+                    padding: 16,
+                  },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <Bell size={15} color={colors.primary} style={{ marginRight: 8 }} />
+                  <Text style={{ fontFamily: Typography.bold, fontSize: 13, color: colors.text }}>
+                    Notificações em Suspensão & App Fechado
+                  </Text>
+                </View>
+
+                <Text style={{ fontFamily: Typography.regular, fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
+                  {expoPushToken
+                    ? 'Token de Push Remoto registrado com sucesso para este dispositivo.'
+                    : 'Solicitando permissões nativas de push no iOS...'}
+                </Text>
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Pressable
+                    onPress={handleTestDelayedNotification}
+                    disabled={testingBackground}
+                    style={({ pressed }) => [
+                      {
+                        flex: 1,
+                        backgroundColor: colors.surfaceSubtle,
+                        borderWidth: 1,
+                        borderColor: colors.borderStrong,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed || testingBackground ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontFamily: Typography.medium, fontSize: 11.5, color: colors.text }}>
+                      {testingBackground ? 'Agendado...' : 'Testar Suspenso (3s)'}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={handleTestRemotePush}
+                    disabled={testingRemotePush}
+                    style={({ pressed }) => [
+                      {
+                        flex: 1,
+                        backgroundColor: colors.primary,
+                        borderRadius: 12,
+                        paddingVertical: 10,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed || testingRemotePush ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontFamily: Typography.bold, fontSize: 11.5, color: '#040405' }}>
+                      {testingRemotePush ? 'Disparando...' : 'Testar Push Remoto'}
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
 

@@ -11,7 +11,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.finz.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -34,7 +38,15 @@
       "expo-image",
       "expo-sqlite",
       "expo-font",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00D09E",
+          "sounds": ["default"],
+          "mode": "production"
+        }
+      ],
       [
         "expo-splash-screen",
         {

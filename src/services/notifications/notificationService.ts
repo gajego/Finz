@@ -1,7 +1,9 @@
 import { Platform, AppState } from 'react-native';
 import type * as ExpoNotifications from 'expo-notifications';
 import { Transaction } from '@/types';
-import { loadNotificationPreference } from '@/services/database/db';
+import { loadNotificationPreference, persistExpoPushToken, getStoredExpoPushToken } from '@/services/database/db';
+
+export const EAS_PROJECT_ID = '9d8c6867-298d-4747-b06b-8cccc7eb8caf';
 
 /**
  * Identificadores padronizados dos canais de notificação no Android
@@ -18,18 +20,13 @@ try {
   Notifications = require('expo-notifications');
   if (Notifications?.setNotificationHandler) {
     Notifications.setNotificationHandler({
-      handleNotification: async () => {
-        // Se o usuário já está com o app aberto em primeiro plano, suprime o banner pop-up
-        // para não atrapalhar a visualização da tela com alertas repetitivos
-        const isForeground = AppState.currentState === 'active';
-        return {
-          shouldShowAlert: !isForeground,
-          shouldShowBanner: !isForeground,
-          shouldShowList: true,
-          shouldPlaySound: !isForeground,
-          shouldSetBadge: true,
-        };
-      },
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
     });
   }
 } catch (error) {
@@ -45,8 +42,15 @@ export async function getExpoPushToken(): Promise<string | null> {
   try {
     const hasPerm = await requestNotificationPermissions();
     if (!hasPerm) return null;
-    const tokenData = await Notifications.getExpoPushTokenAsync();
-    return tokenData.data || null;
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: EAS_PROJECT_ID,
+    });
+    const token = tokenData?.data || null;
+    if (token) {
+      persistExpoPushToken(token);
+      console.log(`[NotificationService] 📲 Expo Push Token registrado: ${token}`);
+    }
+    return token;
   } catch (e) {
     console.warn('[NotificationService] Não foi possível obter token de push remoto:', e);
     return null;
@@ -144,6 +148,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
           allowAlert: true,
           allowBadge: true,
           allowSound: true,
+          provideAppNotificationSettings: true,
         },
       });
 
@@ -180,10 +185,11 @@ export interface SendLocalNotificationParams {
   data?: Record<string, unknown>;
   channelId?: string;
   badge?: number;
+  delaySeconds?: number;
 }
 
 /**
- * Dispara uma notificação nativa local imediatamente
+ * Dispara uma notificação nativa local imediatamente ou com delay para teste em background
  */
 export async function sendLocalNotification({
   title,
@@ -191,6 +197,7 @@ export async function sendLocalNotification({
   data = {},
   channelId = NOTIFICATION_CHANNELS.ALERTS,
   badge,
+  delaySeconds,
 }: SendLocalNotificationParams): Promise<string | undefined> {
   if (!Notifications) {
     console.log('[NotificationService] Notificação enviada (sem módulo nativo):', title, body);
@@ -221,9 +228,24 @@ export async function sendLocalNotification({
       }
     }
 
-    // Configura trigger com canal específico no Android para acionar alta prioridade
-    const trigger =
-      Platform.OS === 'android' && channelId ? { channelId } : null;
+    // Configura trigger nativo:
+    // No Android: canal de alta prioridade
+    // No iOS: agendamento com TIME_INTERVAL (1s ou delay configurado) para garantir
+    // que o UNUserNotificationCenter nativo entregue mesmo com tela bloqueada ou app em suspensão
+    let trigger: any = null;
+    const delay = typeof delaySeconds === 'number' && delaySeconds > 0 ? delaySeconds : 1;
+    if (Platform.OS === 'android') {
+      trigger = channelId ? { channelId } : null;
+    } else if (Platform.OS === 'ios') {
+      const timeIntervalType = (Notifications as any).SchedulableTriggerInputTypes?.TIME_INTERVAL;
+      trigger = timeIntervalType
+        ? {
+            type: timeIntervalType,
+            seconds: delay,
+            repeats: false,
+          }
+        : { seconds: delay };
+    }
 
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
@@ -237,7 +259,7 @@ export async function sendLocalNotification({
       trigger,
     });
 
-    console.log(`[NotificationService] ✅ Notificação enviada com sucesso [${identifier}]: "${title}" - "${body}"`);
+    console.log(`[NotificationService] ✅ Notificação agendada com sucesso [${identifier}]: "${title}" - "${body}"`);
     return identifier;
   } catch (error) {
     console.error('[NotificationService] Falha ao disparar notificação local:', error);
@@ -246,7 +268,7 @@ export async function sendLocalNotification({
 }
 
 /**
- * Dispara notificação de teste para verificar se o sistema nativo está 100% ativo
+ * Dispara notificação de teste imediata
  */
 export async function sendTestNotification(): Promise<string | undefined> {
   await requestNotificationPermissions();
@@ -256,6 +278,66 @@ export async function sendTestNotification(): Promise<string | undefined> {
     channelId: NOTIFICATION_CHANNELS.ALERTS,
     data: { type: 'TEST_NOTIFICATION' },
   });
+}
+
+/**
+ * Dispara notificação de teste atrasada (ex: 3 segundos) para permitir que o usuário
+ * minimize o app ou bloqueie a tela e confirme o recebimento em suspensão
+ */
+export async function sendDelayedBackgroundTestNotification(seconds: number = 3): Promise<string | undefined> {
+  await requestNotificationPermissions();
+  return sendLocalNotification({
+    title: '📱 Finz • Notificação em Suspensão',
+    body: 'Sucesso! Notificação nativa entregue com o app suspenso ou tela bloqueada.',
+    channelId: NOTIFICATION_CHANNELS.ALERTS,
+    data: { type: 'SUSPENDED_TEST_NOTIFICATION' },
+    delaySeconds: seconds,
+  });
+}
+
+/**
+ * Envia uma Push Notification Remota via Expo Push Notification Service (APNs no iOS)
+ * Este é o método que entrega com o app 100% FECHADO.
+ */
+export async function sendRemotePushNotification(params: {
+  pushToken?: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  badge?: number;
+}): Promise<boolean> {
+  const token = params.pushToken || getStoredExpoPushToken();
+  if (!token) {
+    console.warn('[NotificationService] Nenhum push token disponível para envio remoto.');
+    return false;
+  }
+  try {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: token,
+        title: params.title,
+        body: params.body,
+        data: params.data || {},
+        sound: 'default',
+        priority: 'high',
+        channelId: NOTIFICATION_CHANNELS.TRANSACTIONS,
+        badge: typeof params.badge === 'number' ? params.badge : 1,
+        _displayInForeground: true,
+      }),
+    });
+    const json = await res.json();
+    console.log('[NotificationService] Resposta do envio remoto Expo Push:', json);
+    return res.ok;
+  } catch (err) {
+    console.warn('[NotificationService] Falha ao enviar push remoto via Expo Push Service:', err);
+    return false;
+  }
 }
 
 /**

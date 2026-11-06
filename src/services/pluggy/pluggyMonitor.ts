@@ -8,6 +8,7 @@ import {
 import {
   requestNotificationPermissions,
   hasNotificationPermissions,
+  getExpoPushToken,
 } from '@/services/notifications/notificationService';
 
 export interface PluggyDiagnosticState {
@@ -195,27 +196,37 @@ export function isPluggyPollingActive(): boolean {
  * Hook do React para iniciar e gerenciar o ciclo de vida do polling a cada 10s.
  * Respeita o estado do aplicativo (AppState), pausando em background e retomando ao voltar ao primeiro plano.
  */
-export function usePluggyMonitor(intervalMs: number = 10000, pauseInBackground: boolean = true) {
+export function usePluggyMonitor(intervalMs: number = 10000, pauseInBackground: boolean = false) {
   const appState = useRef<AppStateStatus>((AppState.currentState as AppStateStatus) || 'active');
 
   useEffect(() => {
-    // Solicita permissões de notificação para alertas de novas transações
-    requestNotificationPermissions().catch(() => {});
+    // Solicita permissões de notificação e registra push token para alertas
+    requestNotificationPermissions().then(() => {
+      getExpoPushToken().catch(() => {});
+    }).catch(() => {});
 
-    // Inicia o monitoramento periódico a cada 10 segundos
+    // Inicia o monitoramento periódico
     startPluggyPolling(intervalMs);
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
       const isComingToForeground =
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active';
+      const isGoingToBackground =
+        appState.current === 'active' &&
+        nextAppState.match(/inactive|background/);
+
+      if (isGoingToBackground) {
+        // App acabou de ir para background/suspensão: dispara sincronização imediata
+        pollPluggyNow().catch(() => {});
+      }
 
       if (pauseInBackground) {
         if (isComingToForeground) {
           // App retornou ao primeiro plano: retoma o polling com sync imediato
           startPluggyPolling(intervalMs);
         } else if (nextAppState.match(/inactive|background/)) {
-          // App foi para segundo plano: encerra o timer para poupar bateria
+          // App foi para segundo plano: encerra o timer
           stopPluggyPolling();
         }
       } else if (isComingToForeground) {

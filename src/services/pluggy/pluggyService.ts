@@ -1455,3 +1455,38 @@ export async function fetchPluggyIdentity(itemId?: string): Promise<PluggyIdenti
     phone: data.phoneNumbers?.[0]?.value,
   };
 }
+
+/**
+ * Registra a URL de Webhook na Pluggy para receber notificações em tempo real
+ * de novas transações com o app 100% fechado
+ */
+export async function registerPluggyWebhook(
+  webhookUrl: string,
+  event: string = 'transactions/created'
+): Promise<boolean> {
+  try {
+    const apiKey = await getValidApiKey();
+    const res = await fetch(`${PLUGGY_API_BASE}/webhooks`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': apiKey,
+      },
+      body: JSON.stringify({
+        event,
+        url: webhookUrl.trim(),
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn(`[Pluggy] Falha ao registrar webhook (${res.status}):`, err);
+      return false;
+    }
+    const data = await res.json();
+    console.log('[Pluggy] ✅ Webhook registrado com sucesso:', data);
+    return true;
+  } catch (err) {
+    console.warn('[Pluggy] Erro de rede ao cadastrar webhook:', err);
+    return false;
+  }
+}

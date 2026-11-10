@@ -12,7 +12,7 @@ import {
   SafeAreaView,
   Animated,
 } from 'react-native';
-import { Search, X, History, Sparkles } from 'lucide-react-native';
+import { Search, X, History, Zap } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, Radii } from '@/theme/typography';
@@ -205,7 +205,7 @@ export const SearchTransactionsModal: React.FC<SearchTransactionsModalProps> = (
             {topSuggestions.length > 0 && (
               <View style={styles.chipsSection}>
                 <View style={styles.chipsLabelRow}>
-                  <Sparkles size={12} color={colors.primary} strokeWidth={2.4} />
+                  <Zap size={12} color={colors.primary} strokeWidth={2.4} />
                   <Text style={[styles.chipsLabel, { color: colors.textSecondary }]}>
                     SUGESTÕES RÁPIDAS
                   </Text>

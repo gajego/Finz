@@ -31,6 +31,7 @@ import { BudgetModal } from './src/features/budgets/BudgetModal';
 import { TransactionList } from './src/features/transactions/TransactionList';
 import { TransactionDetailsModal } from './src/features/transactions/TransactionDetailsModal';
 import { SearchTransactionsModal } from './src/features/transactions/SearchTransactionsModal';
+import { SpendingCalendarModal } from './src/features/transactions/SpendingCalendarModal';
 import { UncategorizedTransactionsModal } from './src/features/transactions/UncategorizedTransactionsModal';
 import { OnboardingModal } from './src/features/onboarding/OnboardingModal';
 import { NotificationCenterModal } from './src/features/notifications/NotificationCenterModal';
@@ -103,6 +104,7 @@ export default function App() {
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [uncategorizedModalVisible, setUncategorizedModalVisible] = useState(false);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
+  const [spendingCalendarVisible, setSpendingCalendarVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
@@ -416,6 +418,7 @@ export default function App() {
                   console.log('[App] 🔍 Abrindo detalhes da transação:', tx.id, tx.merchant);
                   setSelectedTransactionForDetails(tx);
                 }}
+                onOpenCalendar={() => setSpendingCalendarVisible(true)}
               />
             </ScrollView>
           </View>
@@ -455,6 +458,7 @@ export default function App() {
           activeTab={activeMainTab}
           onSelectTab={handleTabChange}
           onOpenSearch={() => setSearchModalVisible(true)}
+          onOpenCalendar={() => setSpendingCalendarVisible(true)}
         />
 
         {/* Menu de Perfil e Ajustes */}
@@ -516,6 +520,15 @@ export default function App() {
           onClose={() => setSearchModalVisible(false)}
           onSelectTransaction={(tx) => {
             setSearchModalVisible(false);
+            setSelectedTransactionForDetails(tx);
+          }}
+        />
+
+        {/* Modal do Calendário de Gastos Mensais */}
+        <SpendingCalendarModal
+          visible={spendingCalendarVisible}
+          onClose={() => setSpendingCalendarVisible(false)}
+          onSelectTransaction={(tx) => {
             setSelectedTransactionForDetails(tx);
           }}
         />

@@ -14,6 +14,7 @@ import {
   Layers2,
   X,
   Search,
+  Calendar,
   Home,
   BarChart2,
   Sparkles,
@@ -44,12 +45,14 @@ interface FloatingTabsQuickMenuProps {
   activeTab: MainTab;
   onSelectTab: (tab: MainTab) => void;
   onOpenSearch?: () => void;
+  onOpenCalendar?: () => void;
 }
 
 export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
   activeTab,
   onSelectTab,
   onOpenSearch,
+  onOpenCalendar,
 }) => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
@@ -159,8 +162,28 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         </Animated.View>
       )}
 
-      {/* Botões Flutuantes no Canto Inferior Direito: Busca e Seleção de Telas */}
+      {/* Botões Flutuantes no Canto Inferior Direito: Calendário, Busca e Seleção de Telas */}
       <View style={styles.fabRow} pointerEvents="box-none">
+        {onOpenCalendar && (
+          <Pressable
+            onPress={onOpenCalendar}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                borderColor: colors.borderSubtle,
+                shadowColor: '#000000',
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir calendário de gastos"
+            accessibilityHint="Visualiza o calendário mensal e histórico de gastos por dia"
+          >
+            <Calendar size={19} color={colors.text} strokeWidth={2.2} />
+          </Pressable>
+        )}
+
         {onOpenSearch && (
           <Pressable
             onPress={onOpenSearch}

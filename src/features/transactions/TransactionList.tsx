@@ -13,6 +13,7 @@ interface TransactionListProps {
   pageSize?: number;
   onEndReached?: () => void;
   onPressTransaction?: (transaction: Transaction) => void;
+  onOpenCalendar?: () => void;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -20,6 +21,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   pageSize = 30,
   onEndReached,
   onPressTransaction,
+  onOpenCalendar,
 }) => {
   const { colors } = useTheme();
   const transactions = useWalletStore((s) => s.transactions);
@@ -81,6 +83,27 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             {transactions.length === 1 ? '1 movimentação' : `${transactions.length} movimentações`}
           </Text>
         </View>
+
+        {onOpenCalendar && (
+          <Pressable
+            onPress={onOpenCalendar}
+            style={({ pressed }) => [
+              styles.calendarBtn,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.borderSubtle,
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir calendário de gastos"
+          >
+            <Calendar size={13} color={colors.primary} strokeWidth={2.4} />
+            <Text style={[styles.calendarBtnText, { color: colors.text }]}>
+              Calendário
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {/* Lista de Movimentações ou Empty State Limpo */}
@@ -233,6 +256,19 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 12,
     marginTop: 2,
+  },
+  calendarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+  },
+  calendarBtnText: {
+    fontSize: 12,
+    fontFamily: Typography.medium,
   },
   list: {
     gap: 4,

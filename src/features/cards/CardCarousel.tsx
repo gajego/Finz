@@ -9,7 +9,7 @@ import {
   NativeScrollEvent,
   Pressable,
 } from 'react-native';
-import { Landmark, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
+import { Landmark, ArrowRight, Eye, EyeOff, Plus } from 'lucide-react-native';
 import { SharedValue, useSharedValue } from 'react-native-reanimated';
 import { BankCard } from '@/types';
 import { CardItem } from './CardItem';
@@ -27,6 +27,7 @@ interface CardCarouselProps {
   onIndexChange: (index: number) => void;
   onEditSkin: (card: BankCard) => void;
   onOpenPluggy?: () => void;
+  onAddCard?: () => void;
   scrollY?: SharedValue<number>;
   pagerScrollX?: SharedValue<number>;
 }
@@ -37,6 +38,7 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
   onIndexChange,
   onEditSkin,
   onOpenPluggy,
+  onAddCard,
   scrollY,
   pagerScrollX,
 }) => {
@@ -100,6 +102,25 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
               Vincule Nubank, Itaú, Inter ou outro banco via Open Finance para sincronizar seus cartões automaticamente.
             </Text>
           </Pressable>
+
+          {onAddCard && (
+            <Pressable
+              onPress={onAddCard}
+              style={({ pressed }) => [
+                styles.manualCardBtn,
+                {
+                  backgroundColor: `${colors.primary}15`,
+                  borderColor: `${colors.primary}35`,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Plus size={14} color={colors.primary} strokeWidth={2.4} />
+              <Text style={[styles.manualCardBtnText, { color: colors.primary }]}>
+                Ou adicionar cartão manualmente
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
     );
@@ -164,25 +185,46 @@ export const CardCarousel: React.FC<CardCarouselProps> = ({
           })}
         </View>
 
-        <Pressable
-          onPress={togglePrivacyMode}
-          hitSlop={10}
-          style={({ pressed }) => [
-            styles.eyeBtn,
-            {
-              backgroundColor: colors.surfaceElevated,
-              borderColor: colors.borderSubtle,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-          accessibilityLabel="Ocultar ou exibir valores"
-        >
-          {privacyMode ? (
-            <EyeOff size={13} color={colors.textSecondary} />
-          ) : (
-            <Eye size={13} color={colors.textSecondary} />
+        <View style={styles.footerActions}>
+          {onAddCard && (
+            <Pressable
+              onPress={onAddCard}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.eyeBtn,
+                {
+                  backgroundColor: `${colors.primary}18`,
+                  borderColor: `${colors.primary}35`,
+                  marginRight: 6,
+                  opacity: pressed ? 0.7 : 1,
+                },
+              ]}
+              accessibilityLabel="Adicionar cartão manualmente"
+            >
+              <Plus size={13} color={colors.primary} strokeWidth={2.4} />
+            </Pressable>
           )}
-        </Pressable>
+
+          <Pressable
+            onPress={togglePrivacyMode}
+            hitSlop={10}
+            style={({ pressed }) => [
+              styles.eyeBtn,
+              {
+                backgroundColor: colors.surfaceElevated,
+                borderColor: colors.borderSubtle,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+            accessibilityLabel="Ocultar ou exibir valores"
+          >
+            {privacyMode ? (
+              <EyeOff size={13} color={colors.textSecondary} />
+            ) : (
+              <Eye size={13} color={colors.textSecondary} />
+            )}
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -235,6 +277,20 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     maxWidth: 260,
   },
+  manualCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  manualCardBtnText: {
+    fontSize: 12,
+    fontFamily: Typography.medium,
+  },
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -243,6 +299,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     height: 24,
     position: 'relative',
+  },
+  footerActions: {
+    position: 'absolute',
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   pagination: {
     flexDirection: 'row',
@@ -255,8 +317,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
   },
   eyeBtn: {
-    position: 'absolute',
-    right: 24,
     width: 26,
     height: 26,
     borderRadius: 13,

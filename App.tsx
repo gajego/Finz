@@ -38,6 +38,8 @@ import { NotificationCenterModal } from './src/features/notifications/Notificati
 import { ProfileModal } from './src/features/profile/ProfileModal';
 import { PluggyConnectModal } from './src/features/pluggy/PluggyConnectModal';
 import { WebSyncModal } from './src/features/webrtc/WebSyncModal';
+import { AddTransactionModal } from './src/features/transactions/AddTransactionModal';
+import { AddCardModal } from './src/features/cards/AddCardModal';
 import { FloatingBottomNav, MainTab } from './src/components/ui/FloatingBottomNav';
 import { FloatingTabsQuickMenu } from './src/components/ui/FloatingTabsQuickMenu';
 import { GoalsScreen } from './src/features/categories/GoalsScreen';
@@ -105,6 +107,8 @@ export default function App() {
   const [uncategorizedModalVisible, setUncategorizedModalVisible] = useState(false);
   const [searchModalVisible, setSearchModalVisible] = useState(false);
   const [spendingCalendarVisible, setSpendingCalendarVisible] = useState(false);
+  const [addTransactionModalVisible, setAddTransactionModalVisible] = useState(false);
+  const [addCardModalVisible, setAddCardModalVisible] = useState(false);
   const [isSyncingPluggy, setIsSyncingPluggy] = useState(false);
   const [selectedTransactionForDetails, setSelectedTransactionForDetails] = useState<Transaction | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<MainTab>('home');
@@ -402,6 +406,7 @@ export default function App() {
                 onIndexChange={setActiveCardIndex}
                 onEditSkin={(card) => setSelectedCardForSkin(card)}
                 onOpenPluggy={() => setPluggyModalVisible(true)}
+                onAddCard={() => setAddCardModalVisible(true)}
                 scrollY={homeScrollY}
                 pagerScrollX={pagerScrollX}
               />
@@ -419,6 +424,7 @@ export default function App() {
                   setSelectedTransactionForDetails(tx);
                 }}
                 onOpenCalendar={() => setSpendingCalendarVisible(true)}
+                onAddTransaction={() => setAddTransactionModalVisible(true)}
               />
             </ScrollView>
           </View>
@@ -459,6 +465,7 @@ export default function App() {
           onSelectTab={handleTabChange}
           onOpenSearch={() => setSearchModalVisible(true)}
           onOpenCalendar={() => setSpendingCalendarVisible(true)}
+          onAddTransaction={() => setAddTransactionModalVisible(true)}
         />
 
         {/* Menu de Perfil e Ajustes */}
@@ -538,6 +545,18 @@ export default function App() {
           visible={!!selectedTransactionForDetails}
           transaction={activeTransaction}
           onClose={() => setSelectedTransactionForDetails(null)}
+        />
+
+        {/* Modal de Nova Transação Manual */}
+        <AddTransactionModal
+          visible={addTransactionModalVisible}
+          onClose={() => setAddTransactionModalVisible(false)}
+        />
+
+        {/* Modal de Novo Cartão Manual */}
+        <AddCardModal
+          visible={addCardModalVisible}
+          onClose={() => setAddCardModalVisible(false)}
         />
 
         {/* Loader de Apresentação Cinematográfico Estilo Nubank / Neo-Fintech */}

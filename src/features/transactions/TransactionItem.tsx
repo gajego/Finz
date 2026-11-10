@@ -240,6 +240,15 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
               </>
             )}
 
+            {transaction.isManual && (
+              <>
+                <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
+                <Text style={[styles.bankTag, { color: colors.primary }]}>
+                  Manual
+                </Text>
+              </>
+            )}
+
             {(card?.bankName || paymentModality.shortLabel) && (
               <>
                 <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>

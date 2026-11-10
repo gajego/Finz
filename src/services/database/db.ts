@@ -22,7 +22,8 @@ export function initDatabase() {
       cardholder_name TEXT NOT NULL,
       balance INTEGER NOT NULL,
       limit_cents INTEGER NOT NULL,
-      bank_balance INTEGER DEFAULT 0
+      bank_balance INTEGER DEFAULT 0,
+      is_manual INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS categories (
@@ -48,7 +49,8 @@ export function initDatabase() {
       category_id TEXT NOT NULL,
       timestamp INTEGER NOT NULL,
       raw_text TEXT,
-      income_type TEXT
+      income_type TEXT,
+      is_manual INTEGER DEFAULT 0
     );
 
     CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions (timestamp DESC);
@@ -92,6 +94,16 @@ export function initDatabase() {
   }
   try {
     db.execSync('ALTER TABLE cards ADD COLUMN created_at INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE cards ADD COLUMN is_manual INTEGER DEFAULT 0;');
+  } catch {
+    // Coluna já existe
+  }
+  try {
+    db.execSync('ALTER TABLE transactions ADD COLUMN is_manual INTEGER DEFAULT 0;');
   } catch {
     // Coluna já existe
   }
@@ -343,7 +355,8 @@ export function loadAllDataFromSQLite(): {
       COALESCE(o.category_id, t.category_id, 'cat_others') AS category_id, 
       t.timestamp, 
       t.raw_text,
-      t.income_type
+      t.income_type,
+      t.is_manual
     FROM transactions t
     LEFT JOIN transaction_category_overrides o ON t.id = o.transaction_id
     ORDER BY t.timestamp DESC
@@ -375,6 +388,7 @@ export function loadAllDataFromSQLite(): {
       balance: Number(r.balance) || 0,
       limit: Number(r.limit_cents) || 0,
       bankBalance: Number(r.bank_balance) || 0,
+      isManual: Boolean(r.is_manual),
     };
   });
 
@@ -438,6 +452,7 @@ export function loadAllDataFromSQLite(): {
       timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
       rawText: r.raw_text || undefined,
       incomeType,
+      isManual: Boolean(r.is_manual),
     };
   });
 
@@ -520,8 +535,8 @@ export function persistCard(card: BankCard) {
   } catch {}
 
   db.runSync(
-    `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance, created_at, is_manual)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       card.id,
       card.bankName,
@@ -536,6 +551,7 @@ export function persistCard(card: BankCard) {
       card.limit,
       card.bankBalance || 0,
       createdAt,
+      card.isManual ? 1 : 0,
     ]
   );
 }
@@ -659,16 +675,24 @@ export function deleteCategory(categoryId: string) {
 
 export function persistTransaction(tx: Transaction) {
   const safeTimestamp = parseBankTransactionDate(tx.timestamp);
+  const isManualVal = tx.isManual ? 1 : 0;
   try {
     db.runSync(
-      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null, tx.incomeType || null]
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type, is_manual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null, tx.incomeType || null, isManualVal]
     );
   } catch {
-    db.runSync(
-      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null]
-    );
+    try {
+      db.runSync(
+        'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null, tx.incomeType || null]
+      );
+    } catch {
+      db.runSync(
+        'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, safeTimestamp, tx.rawText || null]
+      );
+    }
   }
 }
 

@@ -23,6 +23,7 @@ export interface BankCard {
   balance: number;
   limit: number;
   bankBalance?: number;
+  isManual?: boolean;
 }
 
 export type TransactionType = 'EXPENSE' | 'REFUND' | 'PIX_OUT' | 'PIX_IN' | 'INCOME' | 'TRANSFER';
@@ -38,6 +39,7 @@ export interface Transaction {
   timestamp: number;
   rawText?: string;
   incomeType?: IncomeType;
+  isManual?: boolean;
 }
 
 export type CategoryPilar = 'essential' | 'lifestyle' | 'investment';

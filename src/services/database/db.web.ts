@@ -106,6 +106,8 @@ export const db = {
         balance,
         limit_cents,
         bank_balance = 0,
+        created_at,
+        is_manual = 0,
       ] = params;
 
       tables.cards[id] = {
@@ -121,6 +123,8 @@ export const db = {
         balance: Number(balance) || 0,
         limit_cents: Number(limit_cents) || 0,
         bank_balance: Number(bank_balance) || 0,
+        created_at: Number(created_at) || Date.now(),
+        is_manual: Number(is_manual) || 0,
       };
       saveTables();
       return { changes: 1, lastInsertRowId: 1 };
@@ -155,7 +159,7 @@ export const db = {
 
     // 7. INSERT OR REPLACE INTO transactions
     if (/INSERT\s+(OR\s+REPLACE\s+)?INTO\s+transactions/i.test(cleanSql)) {
-      const [id, card_id, amount, type, merchant, category_id, timestamp, raw_text] = params;
+      const [id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type, is_manual = 0] = params;
       tables.transactions[id] = {
         id,
         card_id,
@@ -165,6 +169,8 @@ export const db = {
         category_id,
         timestamp: Number(timestamp) || Date.now(),
         raw_text,
+        income_type,
+        is_manual: Number(is_manual) || 0,
       };
       saveTables();
       return { changes: 1, lastInsertRowId: 1 };
@@ -410,6 +416,7 @@ export function loadAllDataFromSQLite(): {
       balance: Number(r.balance) || 0,
       limit: Number(r.limit_cents) || 0,
       bankBalance: Number(r.bank_balance) || 0,
+      isManual: Boolean(r.is_manual),
     };
   });
 
@@ -473,6 +480,7 @@ export function loadAllDataFromSQLite(): {
       timestamp: parseBankTransactionDate(Number(r.timestamp) || 0),
       rawText: r.raw_text || undefined,
       incomeType,
+      isManual: Boolean(r.is_manual),
     };
   });
 
@@ -499,8 +507,8 @@ export function persistProfile(profile: UserProfile) {
 
 export function persistCard(card: BankCard) {
   db.runSync(
-    `INSERT INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO cards (id, bank_name, package_name, last_four, gradient_0, gradient_1, wallpaper_uri, accent_color, cardholder_name, balance, limit_cents, bank_balance, created_at, is_manual)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       card.id,
       card.bankName,
@@ -514,6 +522,8 @@ export function persistCard(card: BankCard) {
       card.balance,
       card.limit,
       card.bankBalance || 0,
+      Date.now(),
+      card.isManual ? 1 : 0,
     ]
   );
 }
@@ -595,8 +605,8 @@ export function deleteCategory(categoryId: string) {
 export function persistTransaction(tx: Transaction) {
   try {
     db.runSync(
-      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null, tx.incomeType || null]
+      'INSERT OR REPLACE INTO transactions (id, card_id, amount, type, merchant, category_id, timestamp, raw_text, income_type, is_manual) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [tx.id, tx.cardId, tx.amount, tx.type, tx.merchant, tx.categoryId, tx.timestamp, tx.rawText || null, tx.incomeType || null, tx.isManual ? 1 : 0]
     );
   } catch {
     db.runSync(

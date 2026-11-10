@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { ArrowLeftRight, ChevronDown, Calendar } from 'lucide-react-native';
+import { ArrowLeftRight, ChevronDown, Calendar, Plus } from 'lucide-react-native';
 import { useWalletStore } from '@/store/useWalletStore';
 import { useTheme } from '@/theme/useTheme';
 import { Typography, Radii } from '@/theme/typography';
@@ -14,6 +14,7 @@ interface TransactionListProps {
   onEndReached?: () => void;
   onPressTransaction?: (transaction: Transaction) => void;
   onOpenCalendar?: () => void;
+  onAddTransaction?: () => void;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -22,6 +23,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   onEndReached,
   onPressTransaction,
   onOpenCalendar,
+  onAddTransaction,
 }) => {
   const { colors } = useTheme();
   const transactions = useWalletStore((s) => s.transactions);
@@ -84,26 +86,49 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </Text>
         </View>
 
-        {onOpenCalendar && (
-          <Pressable
-            onPress={onOpenCalendar}
-            style={({ pressed }) => [
-              styles.calendarBtn,
-              {
-                backgroundColor: colors.surfaceElevated,
-                borderColor: colors.borderSubtle,
-                opacity: pressed ? 0.75 : 1,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir calendário de gastos"
-          >
-            <Calendar size={13} color={colors.primary} strokeWidth={2.4} />
-            <Text style={[styles.calendarBtnText, { color: colors.text }]}>
-              Calendário
-            </Text>
-          </Pressable>
-        )}
+        <View style={styles.headerRightActions}>
+          {onOpenCalendar && (
+            <Pressable
+              onPress={onOpenCalendar}
+              style={({ pressed }) => [
+                styles.calendarBtn,
+                {
+                  backgroundColor: colors.surfaceElevated,
+                  borderColor: colors.borderSubtle,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir calendário de gastos"
+            >
+              <Calendar size={13} color={colors.primary} strokeWidth={2.4} />
+              <Text style={[styles.calendarBtnText, { color: colors.text }]}>
+                Calendário
+              </Text>
+            </Pressable>
+          )}
+
+          {onAddTransaction && (
+            <Pressable
+              onPress={onAddTransaction}
+              style={({ pressed }) => [
+                styles.calendarBtn,
+                {
+                  backgroundColor: `${colors.primary}18`,
+                  borderColor: `${colors.primary}40`,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Adicionar transação manual"
+            >
+              <Plus size={13} color={colors.primary} strokeWidth={2.6} />
+              <Text style={[styles.calendarBtnText, { color: colors.primary, fontFamily: Typography.bold }]}>
+                Nova
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Lista de Movimentações ou Empty State Limpo */}
@@ -132,8 +157,27 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             Nenhuma movimentação ainda
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Conecte sua conta via Open Finance para visualizar suas compras e transferências em tempo real.
+            Conecte sua conta via Open Finance ou registre uma movimentação manual.
           </Text>
+
+          {onAddTransaction && (
+            <Pressable
+              onPress={onAddTransaction}
+              style={({ pressed }) => [
+                styles.emptyActionBtn,
+                {
+                  backgroundColor: `${colors.primary}18`,
+                  borderColor: `${colors.primary}40`,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Plus size={14} color={colors.primary} strokeWidth={2.4} />
+              <Text style={[styles.emptyActionText, { color: colors.primary }]}>
+                Adicionar Transação Manual
+              </Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <View style={styles.list}>
@@ -247,6 +291,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 14,
   },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     fontFamily: Typography.bold,
     fontSize: 18,
@@ -329,6 +378,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     maxWidth: 280,
+  },
+  emptyActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  emptyActionText: {
+    fontSize: 12,
+    fontFamily: Typography.bold,
   },
   loadMoreWrapper: {
     paddingTop: 18,

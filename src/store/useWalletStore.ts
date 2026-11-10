@@ -60,7 +60,7 @@ interface WalletState {
   deleteCategory: (id: string) => void;
   updateTransactionCategory: (transactionId: string, newCategoryId: string) => void;
   dismissAlert: () => void;
-  addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'>) => void;
+  addTransaction: (tx: Omit<Transaction, 'id' | 'timestamp'> & { timestamp?: number }) => void;
 }
 
 export const useWalletStore = create<WalletState>((set, get) => ({
@@ -196,6 +196,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const newCard: BankCard = {
       ...cardData,
       id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      isManual: cardData.isManual !== undefined ? cardData.isManual : true,
     };
     if (!get().presentationMode) {
       persistCard(newCard);
@@ -327,11 +328,37 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     const newTx: Transaction = {
       ...tx,
       id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      timestamp: Date.now(),
+      timestamp: tx.timestamp || Date.now(),
+      isManual: tx.isManual !== undefined ? tx.isManual : true,
     };
 
     if (!state.presentationMode) {
       persistTransaction(newTx);
+    }
+
+    // Se a transação estiver associada a um cartão e for manual, atualiza fatura/saldo do cartão
+    let updatedCards = state.cards;
+    if (newTx.cardId) {
+      updatedCards = state.cards.map((c) => {
+        if (c.id !== newTx.cardId) return c;
+        if (newTx.type === 'EXPENSE') {
+          const newBal = (c.balance || 0) + newTx.amount;
+          const updatedCard = { ...c, balance: newBal };
+          if (!state.presentationMode) persistCard(updatedCard);
+          return updatedCard;
+        } else if (newTx.type === 'PIX_OUT' && (c.bankBalance || 0) > 0) {
+          const newBankBal = Math.max(0, (c.bankBalance || 0) - newTx.amount);
+          const updatedCard = { ...c, bankBalance: newBankBal };
+          if (!state.presentationMode) persistCard(updatedCard);
+          return updatedCard;
+        } else if ((newTx.type === 'INCOME' || newTx.type === 'PIX_IN')) {
+          const newBankBal = (c.bankBalance || 0) + newTx.amount;
+          const updatedCard = { ...c, bankBalance: newBankBal };
+          if (!state.presentationMode) persistCard(updatedCard);
+          return updatedCard;
+        }
+        return c;
+      });
     }
 
     const updatedTransactions = [newTx, ...state.transactions];
@@ -367,6 +394,7 @@ export const useWalletStore = create<WalletState>((set, get) => ({
     }
 
     set({
+      cards: updatedCards,
       transactions: updatedTransactions,
       activeAlert: triggeredAlert || state.activeAlert,
     });

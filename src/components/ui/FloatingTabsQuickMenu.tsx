@@ -21,6 +21,7 @@ import {
   Target,
   TrendingUp,
   Check,
+  Plus,
   LucideIcon,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
@@ -46,6 +47,7 @@ interface FloatingTabsQuickMenuProps {
   onSelectTab: (tab: MainTab) => void;
   onOpenSearch?: () => void;
   onOpenCalendar?: () => void;
+  onAddTransaction?: () => void;
 }
 
 export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
@@ -53,6 +55,7 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
   onSelectTab,
   onOpenSearch,
   onOpenCalendar,
+  onAddTransaction,
 }) => {
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
@@ -164,6 +167,26 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
 
       {/* Botões Flutuantes no Canto Inferior Direito: Calendário, Busca e Seleção de Telas */}
       <View style={styles.fabRow} pointerEvents="box-none">
+        {onAddTransaction && (
+          <Pressable
+            onPress={onAddTransaction}
+            style={({ pressed }) => [
+              styles.fab,
+              {
+                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+                borderColor: `${colors.primary}50`,
+                shadowColor: '#000000',
+                transform: [{ scale: pressed ? 0.92 : 1 }],
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Adicionar transação manual"
+            accessibilityHint="Abre o formulário para registrar uma movimentação financeira manual"
+          >
+            <Plus size={20} color={colors.primary} strokeWidth={2.4} />
+          </Pressable>
+        )}
+
         {onOpenCalendar && (
           <Pressable
             onPress={onOpenCalendar}

@@ -476,6 +476,15 @@ export const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = (
                   </Text>
                 </View>
 
+                <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />
+
+                <View style={styles.detailRow}>
+                  <Text style={[styles.detailLabel, { color: colors.textMuted }]}>Origem do Registro</Text>
+                  <Text style={[styles.detailValue, { color: transaction.isManual ? colors.primary : colors.text }]}>
+                    {transaction.isManual ? 'Lançamento Manual' : 'Sincronização Bancária (Open Finance)'}
+                  </Text>
+                </View>
+
                 {installment && (
                   <>
                     <View style={[styles.divider, { backgroundColor: colors.borderSubtle }]} />

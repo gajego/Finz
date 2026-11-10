@@ -47,6 +47,9 @@ import { AppSplashLoader } from './src/components/ui/AppSplashLoader';
 import { syncPluggyItem, syncAllPluggyItems } from './src/services/pluggy/pluggyService';
 import { usePluggyMonitor } from './src/services/pluggy/pluggyMonitor';
 import { initNotifications, notifyUncategorizedTransactions } from './src/services/notifications/notificationService';
+// Importação obrigatória no escopo global para o OS registrar a task headless
+import './src/services/pluggy/backgroundTask';
+import { registerPluggyBackgroundFetch } from './src/services/pluggy/backgroundTask';
 import { webSyncHost } from './src/services/webrtc/webSyncHost';
 import { loadLastUncategorizedCount, persistLastUncategorizedCount } from './src/services/database/db';
 import { BankCard, Transaction } from './src/types';
@@ -82,7 +85,10 @@ export default function App() {
 
   useEffect(() => {
     initStore();
-    initNotifications();
+    initNotifications().then(() => {
+      // Registra background fetch para sincronização com app fechado
+      registerPluggyBackgroundFetch().catch(() => {});
+    });
     webSyncHost.autoConnectIfSaved();
   }, [initStore]);
 

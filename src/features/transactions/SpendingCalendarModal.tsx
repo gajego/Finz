@@ -21,11 +21,12 @@ import {
   Receipt,
   CalendarDays,
   ArrowLeft,
+  EyeOff,
 } from 'lucide-react-native';
 import { useTheme } from '@/theme/useTheme';
 import { useWalletStore } from '@/store/useWalletStore';
 import { Typography, Radii } from '@/theme/typography';
-import { Transaction } from '@/types';
+import { Transaction, Category } from '@/types';
 import { TransactionItem } from './TransactionItem';
 import {
   formatBRL,
@@ -74,7 +75,22 @@ function CalendarContent({
   const { colors, mode } = useTheme();
   const isDark = mode === 'dark';
   const transactions = useWalletStore((s) => s.transactions);
+  const categories = useWalletStore((s) => s.categories);
   const presentationMode = useWalletStore((s) => s.presentationMode);
+
+  // Mapeamento de categorias consideradas em totais (considerar !== false e type !== 'income')
+  const isTxConsidered = useMemo(() => {
+    const catMap = new Map<string, Category>();
+    for (const c of categories) {
+      catMap.set(c.id, c);
+    }
+    return (tx: Transaction): boolean => {
+      if (!tx.categoryId) return true;
+      const cat = catMap.get(tx.categoryId);
+      if (!cat) return true;
+      return cat.considerar !== false && cat.type !== 'income';
+    };
+  }, [categories]);
 
   const nowParts = useMemo(() => getBrazilDateParts(Date.now()), []);
 
@@ -118,14 +134,18 @@ function CalendarContent({
       const d = p.day;
       if (!stats[d]) stats[d] = { totalSpent: 0, txCount: 0, transactions: [] };
       stats[d].transactions.push(tx);
-      if (tx.type === 'EXPENSE' || tx.type === 'PIX_OUT') {
-        stats[d].totalSpent += tx.amount;
-        stats[d].txCount++;
-        monthTotal += tx.amount;
-        totalCount++;
-      } else if (tx.type === 'REFUND') {
-        stats[d].totalSpent = Math.max(0, stats[d].totalSpent - tx.amount);
-        monthTotal = Math.max(0, monthTotal - tx.amount);
+
+      // Apenas computa nos totais se a categoria não estiver desconsiderada
+      if (isTxConsidered(tx)) {
+        if (tx.type === 'EXPENSE' || tx.type === 'PIX_OUT') {
+          stats[d].totalSpent += tx.amount;
+          stats[d].txCount++;
+          monthTotal += tx.amount;
+          totalCount++;
+        } else if (tx.type === 'REFUND') {
+          stats[d].totalSpent = Math.max(0, stats[d].totalSpent - tx.amount);
+          monthTotal = Math.max(0, monthTotal - tx.amount);
+        }
       }
     }
 
@@ -142,7 +162,7 @@ function CalendarContent({
       peakDay: maxDay > 0 ? { day: maxDay, amount: maxSpent } : null,
       totalTxCount: totalCount,
     };
-  }, [transactions, selectedYear, selectedMonth, daysInMonth]);
+  }, [transactions, selectedYear, selectedMonth, daysInMonth, isTxConsidered]);
 
   const dailyAverage = useMemo(() => {
     const days = isCurrentMonth ? Math.max(1, Math.min(nowParts.day, daysInMonth)) : daysInMonth;
@@ -479,9 +499,30 @@ function CalendarContent({
           </View>
         ) : (
           <View style={styles.txList}>
-            {selectedDayData.transactions.map((tx) => (
-              <TransactionItem key={tx.id} transaction={tx} onPress={onSelectTransaction} />
-            ))}
+            {selectedDayData.transactions.map((tx) => {
+              const considered = isTxConsidered(tx);
+              return (
+                <View key={tx.id} style={styles.txItemWrapper}>
+                  <TransactionItem transaction={tx} onPress={onSelectTransaction} />
+                  {!considered && (
+                    <View
+                      style={[
+                        styles.ignoredBadge,
+                        {
+                          backgroundColor: isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(148, 163, 184, 0.08)',
+                          borderColor: colors.borderSubtle,
+                        },
+                      ]}
+                    >
+                      <EyeOff size={10} color={colors.textMuted} strokeWidth={2} />
+                      <Text style={[styles.ignoredBadgeText, { color: colors.textMuted }]}>
+                        Não considerada nos totais
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </View>
@@ -950,5 +991,25 @@ const styles = StyleSheet.create({
   // ── Lista de transações ──
   txList: {
     gap: 6,
+  },
+  txItemWrapper: {
+    gap: 4,
+  },
+  ignoredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    marginLeft: 58,
+    marginTop: -2,
+    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+  },
+  ignoredBadgeText: {
+    fontSize: 10,
+    fontFamily: Typography.regular,
   },
 });

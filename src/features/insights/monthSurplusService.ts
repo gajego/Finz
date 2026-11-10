@@ -124,7 +124,7 @@ export function calculateMonthSurplus(
   const closedAt = isClosed ? endOfMonth : Date.now();
 
   const consideredCatIds = new Set(
-    categories.filter((c) => c.considerar !== false).map((c) => c.id)
+    categories.filter((c) => c.considerar !== false && c.type !== 'income').map((c) => c.id)
   );
   const incomeCatIds = new Set(
     categories.filter((c) => c.type === 'income').map((c) => c.id)
@@ -140,8 +140,10 @@ export function calculateMonthSurplus(
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
     if (t.type === 'REFUND') {
-      // Regra contábil CFO: estornos não inflam receita bruta, abatem gastos
-      totalRefunds += t.amount;
+      // Regra contábil CFO: estornos não inflam receita bruta, abatem gastos de categorias consideradas
+      if (consideredCatIds.has(t.categoryId)) {
+        totalRefunds += t.amount;
+      }
     } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {
       if (consideredCatIds.has(t.categoryId)) {
         totalExpense += t.amount;

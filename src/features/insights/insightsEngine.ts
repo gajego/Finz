@@ -121,11 +121,13 @@ export function calculateDailyBurnRate(
     const isToday = isThisMonth && tParts.day === currentDay;
 
     if (t.type === 'REFUND') {
-      if (isThisMonth) {
-        currentMonthRefunds += t.amount;
-      }
-      if (isToday) {
-        todayRefunds += t.amount;
+      if (consideredIds.has(t.categoryId)) {
+        if (isThisMonth) {
+          currentMonthRefunds += t.amount;
+        }
+        if (isToday) {
+          todayRefunds += t.amount;
+        }
       }
       continue;
     }
@@ -212,8 +214,10 @@ export function calculateFinancialHealthScore(
     if (t.type === 'TRANSFER' || t.incomeType === 'transfer_in') continue;
 
     if (t.type === 'REFUND') {
-      // Regra CFO: estorno abate despesa e não infla renda bruta
-      totalRefunds += t.amount;
+      // Regra CFO: estorno abate despesa de categorias consideradas e não infla renda bruta
+      if (consideredIds.has(t.categoryId)) {
+        totalRefunds += t.amount;
+      }
     } else if (t.type === 'PIX_IN' || t.type === 'INCOME' || incomeCatIds.has(t.categoryId) || t.incomeType === 'salary' || t.incomeType === 'extra') {
       totalIncome += t.amount;
     } else if (t.type === 'EXPENSE' || t.type === 'PIX_OUT') {

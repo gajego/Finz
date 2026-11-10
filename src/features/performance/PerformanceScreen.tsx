@@ -393,7 +393,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     overBudgetCategories,
     totalOverBudgetDiff,
   } = useMemo(() => {
-    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCategories = categories.filter((c) => c.considerar !== false && c.type !== 'income');
     const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
 
     const curMap: Record<string, number> = {};
@@ -562,7 +562,7 @@ export const PerformanceScreen: React.FC<PerformanceScreenProps> = ({
     paddingLeft,
     selectedPoint,
   } = useMemo(() => {
-    const consideredCategories = categories.filter((c) => c.considerar !== false);
+    const consideredCategories = categories.filter((c) => c.considerar !== false && c.type !== 'income');
     const consideredCatIds = new Set(consideredCategories.map((c) => c.id));
 
     const nowParts = getBrazilDateParts(Date.now());

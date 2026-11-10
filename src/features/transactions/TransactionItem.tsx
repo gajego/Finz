@@ -231,6 +231,15 @@ export const TransactionItem: React.FC<TransactionItemProps> = React.memo(
               </Text>
             )}
 
+            {category?.considerar === false && (
+              <>
+                <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
+                <Text style={[styles.ignoredTag, { color: colors.textMuted }]}>
+                  Ignorada
+                </Text>
+              </>
+            )}
+
             {(card?.bankName || paymentModality.shortLabel) && (
               <>
                 <Text style={[styles.dot, { color: colors.textMuted }]}>·</Text>
@@ -351,6 +360,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.regular,
     fontSize: 11,
     maxWidth: 90,
+  },
+  ignoredTag: {
+    fontFamily: Typography.regular,
+    fontSize: 10,
+    letterSpacing: -0.1,
   },
   installmentBadge: {
     paddingHorizontal: 5,

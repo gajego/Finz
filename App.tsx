@@ -277,7 +277,7 @@ export default function App() {
         const matchServer = url.match(/[?&]server=([^&]+)/i);
         if (matchCode && matchCode[1]) {
           const targetCode = matchCode[1].toUpperCase();
-          const targetServer = matchServer && matchServer[1] ? decodeURIComponent(matchServer[1]) : 'ws://192.168.15.12:8080';
+          const targetServer = matchServer && matchServer[1] ? decodeURIComponent(matchServer[1]) : 'ws://192.168.15.15:8080';
           webSyncHost.connect(targetServer, targetCode);
           Alert.alert('Finz Conectado', 'Espelhamento com o computador iniciado com sucesso!');
           return;

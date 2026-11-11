@@ -33,7 +33,10 @@ class WebSyncHost {
       const saved = loadWebSyncSession();
       if (saved && saved.roomId && saved.serverUrl && saved.autoConnect) {
         if (this.connectionState === 'idle' || this.connectionState === 'disconnected') {
-          this.connect(saved.serverUrl, saved.roomId, true);
+          const cleanServerUrl = saved.serverUrl.includes('192.168.15.12')
+            ? saved.serverUrl.replace('192.168.15.12', '192.168.15.15')
+            : saved.serverUrl;
+          this.connect(cleanServerUrl, saved.roomId, true);
         }
       }
     } catch {}

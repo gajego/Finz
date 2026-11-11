@@ -40,7 +40,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
 
   const [syncMode, setSyncMode] = useState<'code' | 'qr'>('code');
   const [code, setCode] = useState('');
-  const [serverUrl, setServerUrl] = useState('ws://192.168.15.12:8080');
+  const [serverUrl, setServerUrl] = useState('ws://192.168.15.15:8080');
   const [connectionState, setConnectionState] = useState<HostConnectionState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -92,7 +92,12 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
       const saved = loadWebSyncSession();
       if (saved) {
         if (saved.roomId && !code) setCode(saved.roomId);
-        if (saved.serverUrl) setServerUrl(saved.serverUrl);
+        if (saved.serverUrl) {
+          const cleanUrl = saved.serverUrl.includes('192.168.15.12')
+            ? saved.serverUrl.replace('192.168.15.12', '192.168.15.15')
+            : saved.serverUrl;
+          setServerUrl(cleanUrl);
+        }
       }
     }
   }, [visible]);
@@ -366,7 +371,7 @@ export const WebSyncModal: React.FC<WebSyncModalProps> = ({ visible, onClose }) 
                         borderColor: colors.borderSubtle,
                       },
                     ]}
-                    placeholder="ws://192.168.15.12:8080"
+                    placeholder="ws://192.168.15.15:8080"
                     placeholderTextColor={colors.textMuted}
                     value={serverUrl}
                     onChangeText={setServerUrl}

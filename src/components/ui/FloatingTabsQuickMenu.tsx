@@ -92,6 +92,106 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
             },
           ]}
         >
+          {/* Seção de Ações Rápidas */}
+          {(onAddTransaction || onOpenCalendar || onOpenSearch) && (
+            <>
+              <Text style={[styles.menuHeaderLabel, { color: colors.textSecondary }]}>
+                AÇÕES RÁPIDAS
+              </Text>
+
+              <View style={styles.optionsList}>
+                {onAddTransaction && (
+                  <Pressable
+                    onPress={() => {
+                      setIsOpen(false);
+                      onAddTransaction();
+                    }}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      {
+                        backgroundColor: pressed
+                          ? isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+                          : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        { backgroundColor: `${colors.primary}20` },
+                      ]}
+                    >
+                      <Plus size={15} color={colors.primary} strokeWidth={2.4} />
+                    </View>
+                    <Text style={[styles.optionLabel, { color: colors.text, fontFamily: Typography.medium }]}>
+                      Nova Transação
+                    </Text>
+                  </Pressable>
+                )}
+
+                {onOpenCalendar && (
+                  <Pressable
+                    onPress={() => {
+                      setIsOpen(false);
+                      onOpenCalendar();
+                    }}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      {
+                        backgroundColor: pressed
+                          ? isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+                          : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
+                      ]}
+                    >
+                      <Calendar size={15} color={colors.textSecondary} />
+                    </View>
+                    <Text style={[styles.optionLabel, { color: colors.text, fontFamily: Typography.medium }]}>
+                      Calendário de Gastos
+                    </Text>
+                  </Pressable>
+                )}
+
+                {onOpenSearch && (
+                  <Pressable
+                    onPress={() => {
+                      setIsOpen(false);
+                      onOpenSearch();
+                    }}
+                    style={({ pressed }) => [
+                      styles.optionRow,
+                      {
+                        backgroundColor: pressed
+                          ? isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)'
+                          : 'transparent',
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)' },
+                      ]}
+                    >
+                      <Search size={15} color={colors.textSecondary} />
+                    </View>
+                    <Text style={[styles.optionLabel, { color: colors.text, fontFamily: Typography.medium }]}>
+                      Buscar Transações
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              <View style={[styles.menuDivider, { backgroundColor: colors.borderSubtle }]} />
+            </>
+          )}
+
           <Text style={[styles.menuHeaderLabel, { color: colors.textSecondary }]}>
             SELECIONAR TELA
           </Text>
@@ -165,68 +265,8 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
         </Animated.View>
       )}
 
-      {/* Botões Flutuantes no Canto Inferior Direito: Calendário, Busca e Seleção de Telas */}
+      {/* Botão Flutuante Compacto no Canto Inferior Direito (sem sobrepor o indicador de abas) */}
       <View style={styles.fabRow} pointerEvents="box-none">
-        {onAddTransaction && (
-          <Pressable
-            onPress={onAddTransaction}
-            style={({ pressed }) => [
-              styles.fab,
-              {
-                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                borderColor: `${colors.primary}50`,
-                shadowColor: '#000000',
-                transform: [{ scale: pressed ? 0.92 : 1 }],
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Adicionar transação manual"
-            accessibilityHint="Abre o formulário para registrar uma movimentação financeira manual"
-          >
-            <Plus size={20} color={colors.primary} strokeWidth={2.4} />
-          </Pressable>
-        )}
-
-        {onOpenCalendar && (
-          <Pressable
-            onPress={onOpenCalendar}
-            style={({ pressed }) => [
-              styles.fab,
-              {
-                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                borderColor: colors.borderSubtle,
-                shadowColor: '#000000',
-                transform: [{ scale: pressed ? 0.92 : 1 }],
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir calendário de gastos"
-            accessibilityHint="Visualiza o calendário mensal e histórico de gastos por dia"
-          >
-            <Calendar size={19} color={colors.text} strokeWidth={2.2} />
-          </Pressable>
-        )}
-
-        {onOpenSearch && (
-          <Pressable
-            onPress={onOpenSearch}
-            style={({ pressed }) => [
-              styles.fab,
-              {
-                backgroundColor: isDark ? 'rgba(22, 23, 30, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-                borderColor: colors.borderSubtle,
-                shadowColor: '#000000',
-                transform: [{ scale: pressed ? 0.92 : 1 }],
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Buscar transações"
-            accessibilityHint="Abre o modal de busca para pesquisar transações por nome ou estabelecimento"
-          >
-            <Search size={20} color={colors.text} strokeWidth={2.2} />
-          </Pressable>
-        )}
-
         <Pressable
           onPress={() => setIsOpen((prev) => !prev)}
           style={({ pressed }) => [
@@ -239,8 +279,8 @@ export const FloatingTabsQuickMenu: React.FC<FloatingTabsQuickMenuProps> = ({
             },
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Menu rápido de abas"
-          accessibilityHint="Abre o seletor rápido para navegar entre as telas do aplicativo"
+          accessibilityLabel="Menu rápido de abas e ações"
+          accessibilityHint="Abre o menu para criar transação, abrir calendário e navegar entre as telas"
         >
           {isOpen ? (
             <X size={20} color={colors.primaryForeground} strokeWidth={2.4} />
@@ -284,7 +324,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     bottom: Platform.OS === 'ios' ? 82 : 72,
-    width: 200,
+    width: 220,
     borderRadius: 18,
     borderWidth: 1,
     padding: 6,
@@ -304,6 +344,11 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     gap: 2,
+  },
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 4,
+    marginHorizontal: 8,
   },
   optionRow: {
     flexDirection: 'row',

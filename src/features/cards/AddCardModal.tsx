@@ -21,6 +21,7 @@ import {
   Check,
   AlertCircle,
   Sparkles,
+  Palette,
 } from 'lucide-react-native';
 import Svg, { Rect, Defs, LinearGradient as SvgLinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '@/theme/useTheme';
@@ -29,6 +30,35 @@ import { Typography, Radii } from '@/theme/typography';
 import { BankCard } from '@/types';
 import { formatBRL } from '@/features/transactions/transactionUtils';
 import { useSwipeModalDismiss, ModalTopHandle } from '@/components/ui/SwipeableModalSheet';
+
+function darkenColor(hex: string, amount: number = 40): string {
+  let clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    clean = clean.split('').map((c) => c + c).join('');
+  }
+  if (clean.length !== 6) return '#0F172A';
+  const num = parseInt(clean, 16);
+  if (isNaN(num)) return '#0F172A';
+  const r = Math.max(0, Math.min(255, (num >> 16) - amount));
+  const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) - amount));
+  const b = Math.max(0, Math.min(255, (num & 0x0000FF) - amount));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+const CUSTOM_SWATCHES = [
+  '#10B981', // Verde Esmeralda
+  '#06B6D4', // Ciano Neon
+  '#3B82F6', // Azul Royal
+  '#6366F1', // Índigo
+  '#8B5CF6', // Roxo Violeta
+  '#EC4899', // Rosa Pink
+  '#F43F5E', // Vermelho Carmim
+  '#F97316', // Laranja Coral
+  '#EAB308', // Dourado
+  '#14B8A6', // Turquesa
+  '#18181B', // Preto Ônix
+  '#475569', // Cinza Titânio
+];
 
 interface AddCardModalProps {
   visible: boolean;
@@ -112,7 +142,14 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
   const [balanceCents, setBalanceCents] = useState(0); // Fatura atual
   const [bankBalanceCents, setBankBalanceCents] = useState(0); // Saldo em conta
   const [selectedPreset, setSelectedPreset] = useState<BankPreset>(BANK_PRESETS[0]);
+  const [isCustomColor, setIsCustomColor] = useState(false);
+  const [customHex, setCustomHex] = useState('#10B981');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const activeGradient: [string, string] = isCustomColor
+    ? [customHex, darkenColor(customHex, 45)]
+    : selectedPreset.gradient;
+  const activeAccentColor = isCustomColor ? customHex : selectedPreset.accentColor;
 
   const {
     handlePanResponder,
@@ -125,6 +162,8 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
     if (visible) {
       setBankName(BANK_PRESETS[0].name);
       setSelectedPreset(BANK_PRESETS[0]);
+      setIsCustomColor(false);
+      setCustomHex('#10B981');
       setCardholderName(profile.fullName || profile.nickname || 'MEU CARTAO');
       setLastFour('1234');
       setLimitCents(500000);
@@ -135,6 +174,7 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
   }, [visible, profile]);
 
   const handleSelectPreset = (preset: BankPreset) => {
+    setIsCustomColor(false);
     setSelectedPreset(preset);
     setBankName(preset.name);
   };
@@ -172,8 +212,8 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
       bankName: bankName.trim().toUpperCase(),
       packageName: selectedPreset.packageName || 'com.finz.manual',
       lastFourDigits: cleanDigits.slice(-4),
-      gradient: selectedPreset.gradient,
-      accentColor: selectedPreset.accentColor,
+      gradient: activeGradient,
+      accentColor: activeAccentColor,
       cardholderName: (cardholderName || 'MEU CARTAO').trim().toUpperCase(),
       balance: balanceCents,
       limit: limitCents,
@@ -262,12 +302,12 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
 
             {/* Preview Visual em Tempo Real do Cartão */}
             <View style={styles.cardPreviewContainer}>
-              <View style={[styles.cardPreview, { backgroundColor: selectedPreset.gradient[0] }]}>
+              <View style={[styles.cardPreview, { backgroundColor: activeGradient[0] }]}>
                 <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
                   <Defs>
                     <SvgLinearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <Stop offset="0%" stopColor={selectedPreset.gradient[0]} />
-                      <Stop offset="100%" stopColor={selectedPreset.gradient[1]} />
+                      <Stop offset="0%" stopColor={activeGradient[0]} />
+                      <Stop offset="100%" stopColor={activeGradient[1]} />
                     </SvgLinearGradient>
                   </Defs>
                   <Rect width="100%" height="100%" rx={Radii.lg} fill="url(#cardGrad)" />
@@ -315,8 +355,34 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.presetsScroll}
             >
+              {/* Opção Cor Personalizada */}
+              <Pressable
+                onPress={() => setIsCustomColor(true)}
+                style={[
+                  styles.presetChip,
+                  {
+                    backgroundColor: isDark ? colors.surfaceElevated : colors.surfaceSubtle,
+                    borderColor: isCustomColor ? colors.primary : colors.borderSubtle,
+                  },
+                ]}
+              >
+                <Palette size={14} color={isCustomColor ? colors.primary : colors.textSecondary} />
+                <Text
+                  style={[
+                    styles.presetChipText,
+                    {
+                      color: isCustomColor ? colors.text : colors.textSecondary,
+                      fontFamily: isCustomColor ? Typography.bold : Typography.regular,
+                    },
+                  ]}
+                >
+                  Personalizado
+                </Text>
+                {isCustomColor && <Check size={12} color={colors.primary} />}
+              </Pressable>
+
               {BANK_PRESETS.map((preset) => {
-                const isSelected = selectedPreset.name === preset.name;
+                const isSelected = !isCustomColor && selectedPreset.name === preset.name;
                 return (
                   <Pressable
                     key={preset.name}
@@ -351,6 +417,68 @@ export const AddCardModal: React.FC<AddCardModalProps> = ({
                 );
               })}
             </ScrollView>
+
+            {/* Painel de Cor Personalizada */}
+            {isCustomColor && (
+              <View style={styles.customColorSection}>
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 14 }]}>
+                  PALETA DE CORES PERSONALIZADAS
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.swatchesScroll}
+                >
+                  {CUSTOM_SWATCHES.map((hex) => {
+                    const isSelected = customHex.toLowerCase() === hex.toLowerCase();
+                    return (
+                      <Pressable
+                        key={hex}
+                        onPress={() => setCustomHex(hex)}
+                        style={[
+                          styles.swatchCircle,
+                          {
+                            backgroundColor: hex,
+                            borderColor: isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.25)',
+                            transform: [{ scale: isSelected ? 1.15 : 1 }],
+                          },
+                        ]}
+                      >
+                        {isSelected && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 12 }]}>
+                  CÓDIGO HEXADECIMAL
+                </Text>
+                <View
+                  style={[
+                    styles.inputBox,
+                    {
+                      backgroundColor: isDark ? colors.surfaceElevated : colors.surface,
+                      borderColor: colors.borderSubtle,
+                    },
+                  ]}
+                >
+                  <View style={[styles.swatchPreviewSmall, { backgroundColor: customHex }]} />
+                  <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>#</Text>
+                  <TextInput
+                    style={[styles.inputField, { color: colors.text, textTransform: 'uppercase' }]}
+                    value={customHex.replace('#', '')}
+                    onChangeText={(t) => {
+                      const clean = t.replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
+                      setCustomHex(`#${clean}`);
+                    }}
+                    placeholder="10B981"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="characters"
+                    maxLength={6}
+                  />
+                </View>
+              </View>
+            )}
 
             {/* Nome do Banco */}
             <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginTop: 18 }]}>
@@ -696,6 +824,28 @@ const styles = StyleSheet.create({
   },
   presetChipText: {
     fontSize: 12,
+  },
+  customColorSection: {
+    marginTop: 4,
+  },
+  swatchesScroll: {
+    gap: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+  swatchCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swatchPreviewSmall: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    marginRight: 8,
   },
   inputBox: {
     flexDirection: 'row',
